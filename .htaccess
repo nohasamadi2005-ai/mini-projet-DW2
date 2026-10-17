@@ -1,0 +1,2 @@
+RewriteEngine On
+RewriteRule ^(BD|Traitement|IHM)(/|$) - [F,L]
