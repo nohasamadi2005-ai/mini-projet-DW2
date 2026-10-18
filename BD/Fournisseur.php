@@ -20,3 +20,12 @@ function modifierMotDePasseFournisseur($id, $hash)
     mysqli_stmt_bind_param($stmt, "si", $hash, $id);
     return mysqli_stmt_execute($stmt);
 }
+
+function creerFournisseur($nom, $prenom, $email, $hash)
+{
+    $cnx  = Connexion();
+    $stmt = mysqli_prepare($cnx,
+        "INSERT INTO admin (Nom, Prenom, Email, Mot_De_Passe) VALUES (?, ?, ?, ?)");
+    mysqli_stmt_bind_param($stmt, "ssss", $nom, $prenom, $email, $hash);
+    return mysqli_stmt_execute($stmt);
+}

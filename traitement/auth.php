@@ -97,6 +97,31 @@ function inscrireClient($nom, $prenom, $adresse, $telephone, $email, $mdp, $mdp2
     return $erreurs;   // tableau vide = succès
 }
 
+// TEST : à supprimer avec l'inscription fournisseur
+function inscrireFournisseur($nom, $prenom, $email, $mdp, $mdp2)
+{
+    $erreurs = [];
+    if ($nom === '' || $prenom === '') {
+        $erreurs[] = 'Le nom et le prénom sont obligatoires.';
+    }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $erreurs[] = 'Adresse e-mail invalide.';
+    }
+    if ($e = erreurMotDePasse($mdp)) {
+        $erreurs[] = $e;
+    }
+    if ($mdp !== $mdp2) {
+        $erreurs[] = 'Les deux mots de passe ne correspondent pas.';
+    }
+    if (!$erreurs && trouverFournisseurParEmail($email)) {
+        $erreurs[] = 'Cette adresse e-mail est déjà utilisée.';
+    }
+    if (!$erreurs) {
+        creerFournisseur($nom, $prenom, $email, password_hash($mdp, PASSWORD_DEFAULT));
+    }
+    return $erreurs;
+}
+
 function changerMotDePasse($ancien, $nouveau, $nouveau2)
 {
     $u       = $_SESSION['user'];

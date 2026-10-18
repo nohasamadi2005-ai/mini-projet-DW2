@@ -1,5 +1,7 @@
 <?php
+const INSCRIPTION_FOURNISSEUR_TEST = true;   // TEST : mettre false (ou supprimer) à la fin
 require_once __DIR__ . '/Traitement/Auth.php';
+$post = $_SERVER['REQUEST_METHOD'] === 'POST';
 
 $page = $_GET['page'] ?? 'login';
 
@@ -83,6 +85,30 @@ switch ($page) {
         exigerRole('client');
         require __DIR__ . '/IHM/client/saisie.php';
         break;
+
+         // TEST : inscription fournisseur, à supprimer à la fin
+    case 'register_fournisseur':
+        if (!INSCRIPTION_FOURNISSEUR_TEST) {
+            http_response_code(404);
+            require __DIR__ . '/IHM/404.php';
+            break;
+        }
+        $erreurs = [];
+        $v = ['nom' => '', 'prenom' => '', 'email' => ''];
+        if ($post) {
+            foreach ($v as $cle => $_) {
+                $v[$cle] = trim($_POST[$cle] ?? '');
+            }
+            $erreurs = inscrireFournisseur($v['nom'], $v['prenom'], $v['email'],
+                                           $_POST['password'] ?? '', $_POST['password2'] ?? '');
+            if (!$erreurs) {
+                $_SESSION['message'] = 'Fournisseur créé. Vous pouvez vous connecter.';
+                header('Location: index.php?page=login');
+                exit;
+            }
+        }
+        require __DIR__ . '/IHM/auth/register_fournisseur.php';
+        break;   
         
     default:
         http_response_code(404);
