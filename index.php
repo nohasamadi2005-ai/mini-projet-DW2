@@ -35,9 +35,11 @@ switch ($page) {
         header('Location: index.php?page=saisie');
         exit;
 
-    case 'fournisseur':
+   case 'fournisseur':
+    case 'gestion_client': // On peut regrouper les deux ou créer le cas dédié
         exigerRole('fournisseur');
-        require __DIR__ . '/IHM/fournisseur/index.php';
+        // On charge ton fichier de gestion des clients et compteurs à la place de l'index de test
+        require __DIR__ . '/IHM/fournisseur/gestion_client.php'; 
         break;
     
     case 'logout':

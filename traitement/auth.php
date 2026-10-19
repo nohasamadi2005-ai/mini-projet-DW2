@@ -157,7 +157,8 @@ function changerMotDePasse($ancien, $nouveau, $nouveau2)
 }
 function pageAccueil($role)
 {
-    return $role === 'fournisseur' ? 'fournisseur' : 'saisie';
+    // Au lieu de renvoyer 'fournisseur', on renvoie directement ta page de gestion des clients
+    return $role === 'fournisseur' ? 'gestion_client' : 'saisie';
 }
 
 
