@@ -221,7 +221,7 @@ function icone($nom)
     <nav>
       <a href="index.php?page=client"><?= icone('accueil') ?> Accueil</a>
       <a href="index.php?page=saisie" class="actif"><?= icone('saisie') ?> Saisie mensuelle</a>
-      <a href="#"><?= icone('facture') ?> Mes factures</a>
+     <a href="index.php?page=factures"><?= icone('facture') ?> Mes factures</a>
       <a href="#"><?= icone('message') ?> Mes réclamations</a>
       <a href="#"><?= icone('cloche') ?> Notifications <span class="badge">3</span></a>
     </nav>

@@ -85,13 +85,35 @@ switch ($page) {
 
        case 'saisie':
     exigerRole('client');
-    require_once __DIR__ . '/Traitement/Saisie.php';
+    require_once __DIR__ . '/traitement/Saisie.php';
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         traiterSaisie();            // bouton « Valider ma saisie »
     }
     $d = preparerPageSaisie();
     require __DIR__ . '/IHM/client/saisie.php';
     break; 
+
+        case 'factures':
+        exigerRole('client');
+        require_once __DIR__ . '/traitement/Saisie.php';   // pour periodeFr(), formaterMontant()...
+        $d = preparerPageFactures();
+        require __DIR__ . '/IHM/client/factures.php';
+        break;
+        case 'facture':
+    exigerRole('client');
+
+    $idFacture = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+
+    if (!$idFacture || $idFacture <= 0) {
+        http_response_code(404);
+        require __DIR__ . '/IHM/404.php';
+        break;
+    }
+
+    // La récupération et la vérification de la facture
+    // seront ajoutées à l'étape suivante.
+
+    break;
          // TEST : inscription fournisseur, à supprimer à la fin
     case 'register_fournisseur':
         if (!INSCRIPTION_FOURNISSEUR_TEST) {

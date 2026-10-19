@@ -1,8 +1,9 @@
 <?php
 
-require_once __DIR__ . '/Auth.php';
+require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/Regles.php';
 require_once __DIR__ . '/../BD/Consommation.php';
+require_once __DIR__ . '/Facture.php';
 
 const PHOTOS_DOSSIER   = __DIR__ . '/../uploads/compteurs/';
 const PHOTOS_URL       = 'uploads/compteurs/';

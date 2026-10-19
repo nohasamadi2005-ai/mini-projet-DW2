@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/Connexion.php';
+require_once __DIR__ . '/connexion.php';
 
 function trouverFournisseurParEmail($email)
 {
