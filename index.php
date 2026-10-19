@@ -1,6 +1,6 @@
 <?php
 const INSCRIPTION_FOURNISSEUR_TEST = true;   // TEST : mettre false (ou supprimer) à la fin
-require_once __DIR__ . '/Traitement/Auth.php';
+require_once __DIR__ . '/traitement/auth.php';
 $post = $_SERVER['REQUEST_METHOD'] === 'POST';
 
 $page = $_GET['page'] ?? 'login';
