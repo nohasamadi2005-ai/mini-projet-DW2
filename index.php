@@ -136,6 +136,11 @@ switch ($page) {
             }
         }
         require __DIR__ . '/IHM/auth/register_fournisseur.php';
+        break;
+        case 'clientcompteur':
+        exigerRole('fournisseur');
+        // On inclut le fichier de traitement
+        require_once __DIR__ . '/traitement/clientcompteur.php';
         break;   
         
     default:

@@ -1,5 +1,4 @@
 <?php
-// Traitement/ClientTraitement.php
 require_once __DIR__ . '/auth.php';
 exigerRole('fournisseur');
 require_once __DIR__ . '/../BD/Client.php';
@@ -22,11 +21,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ajouterClientAvecCompteur($nom, $prenom, $adresse, $telephone, $email, $password, $numeroCompteur, $typeCompteur);
         }
 
-        header('Location: ../index.php?page=gestion_client');
+        // Redirection gérée par le routeur racine index.php
+        header('Location: index.php?page=gestion_client');
         exit;
     }
     
-   elseif ($action === 'modifier') {
+    elseif ($action === 'modifier') {
         $idClient     = $_POST['id_client'] ?? null;
         $nom          = trim($_POST['nom'] ?? '');
         $prenom       = trim($_POST['prenom'] ?? '');
@@ -48,7 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mettreAJourCompteurClient($idClient, 'Electricite', $compteurElec);
         }
 
-        header('Location: ../index.php?page=gestion_client');
+        // Redirection gérée par le routeur racine index.php
+        header('Location: index.php?page=gestion_client');
         exit;
     }
 }

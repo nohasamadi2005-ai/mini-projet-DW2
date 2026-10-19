@@ -25,10 +25,10 @@ if ($pageActuelle > $totalPages) $pageActuelle = $totalPages;
 if ($pageActuelle < 1) $pageActuelle = 1;
 $debut = ($pageActuelle - 1) * $parPage;
 
-// 2. Récupérer les clients de la page courante avec leurs compteurs
+// 2. Récupérer les clients de la page courante avec leurs compteurs (Correction de l'alias en _ids)
 $sql = "SELECT c.*, 
-        MAX(CASE WHEN cp.Type_Compteur = 'Eau' THEN cp.ID_Compteur END) as compteur_eau_id,
-        MAX(CASE WHEN cp.Type_Compteur = 'Electricite' THEN cp.ID_Compteur END) as compteur_elec_id
+        GROUP_CONCAT(DISTINCT CASE WHEN cp.Type_Compteur = 'Eau' THEN cp.ID_Compteur END SEPARATOR ', ') as compteur_eau_ids,
+        GROUP_CONCAT(DISTINCT CASE WHEN cp.Type_Compteur = 'Electricite' THEN cp.ID_Compteur END) as compteur_elec_ids
         FROM client c
         LEFT JOIN compteur cp ON c.ID_Client = cp.ID_Client";
         
@@ -63,7 +63,6 @@ $finAffichage = min($debut + $parPage, $totalClients);
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
         body { background-color: #f4f7f6; display: flex; height: 100vh; overflow: hidden; }
         
-        /* Sidebar Fluxio style d'origine (Bleu) */
         .sidebar { width: 270px; background-color: #0F2137; color: #fff; display: flex; flex-direction: column; }
         .sidebar-brand { padding: 25px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .sidebar-brand .logo-icon { width: 38px; height: 38px; background: #1890FF; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; }
@@ -74,13 +73,11 @@ $finAffichage = min($debut + $parPage, $totalClients);
         .sidebar-menu li a { display: flex; align-items: center; gap: 12px; padding: 12px 15px; color: #A0AEC0; text-decoration: none; font-weight: 500; font-size: 14px; border-radius: 8px; transition: 0.2s; }
         .sidebar-menu li.active a, .sidebar-menu li a:hover { background-color: #1A3353; color: #fff; border-left: 4px solid #1890FF; font-weight: 600; }
         
-        /* Espace Fournisseur badge style box dans le menu */
         .sidebar-card-box { margin: 15px; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; display: flex; align-items: center; gap: 10px; }
         .sidebar-card-box i { color: #1890FF; font-size: 18px; }
         .sidebar-card-box .box-title { font-size: 13px; font-weight: 600; color: #ffffff; }
         .sidebar-card-box .box-sub { font-size: 11px; color: #94A3B8; }
 
-        /* Sidebar Footer (Profil & Déconnexion) */
         .sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 15px; }
         .user-profile { display: flex; align-items: center; gap: 12px; }
         .user-avatar { width: 36px; height: 36px; background: #1A3353; color: #38BDF8; font-weight: 600; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
@@ -89,14 +86,12 @@ $finAffichage = min($debut + $parPage, $totalClients);
         .logout-btn { display: flex; align-items: center; gap: 8px; color: #F87171; text-decoration: none; font-size: 13px; font-weight: 500; padding: 5px 0; transition: 0.2s; }
         .logout-btn:hover { color: #EF4444; }
 
-        /* Main Content */
         .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; background-color: #F8FAFC; }
         .header { background: #fff; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #E2E8F0; }
         .header h1 { font-size: 18px; color: #1E293B; font-weight: 600; }
         
         .container { padding: 30px; }
         
-        /* Actions Bar */
         .action-bar { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 15px; }
         .search-box { display: flex; background: #fff; border: 1px solid #CBD5E1; border-radius: 8px; overflow: hidden; width: 350px; }
         .search-box input { border: none; padding: 10px 15px; outline: none; width: 100%; font-size: 14px; }
@@ -105,7 +100,6 @@ $finAffichage = min($debut + $parPage, $totalClients);
         .btn-primary { background-color: #1890FF; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
         .btn-primary:hover { background-color: #0284C7; }
 
-        /* Table Card */
         .table-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #E2E8F0; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 380px; }
         table { width: 100%; border-collapse: collapse; text-align: left; }
         th { background: #F8FAFC; color: #475569; font-weight: 600; padding: 14px 20px; font-size: 13px; border-bottom: 1px solid #E2E8F0; }
@@ -118,14 +112,12 @@ $finAffichage = min($debut + $parPage, $totalClients);
         .btn-action { background: #EEF2F6; border: none; padding: 6px 12px; border-radius: 6px; color: #475569; cursor: pointer; font-weight: 500; transition: 0.2s; }
         .btn-action:hover { background: #1890FF; color: #fff; }
 
-        /* Pagination Footer (Boutons actifs) */
         .pagination-footer { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-top: 1px solid #E2E8F0; background: #fff; font-size: 13px; color: #64748B; }
         .pagination-buttons { display: flex; gap: 10px; }
         .page-btn { background: #1890FF; border: 1px solid #1890FF; padding: 6px 14px; border-radius: 6px; color: #ffffff; font-size: 13px; font-weight: 500; text-decoration: none; transition: 0.2s; cursor: pointer; display: inline-block; }
         .page-btn:hover:not(.disabled) { background: #0284C7; border-color: #0284C7; }
         .page-btn.disabled { opacity: 0.4; cursor: not-allowed; background: #94A3B8; border-color: #94A3B8; }
 
-        /* Modal style */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: #fff; padding: 30px; border-radius: 12px; width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         .modal-content h2 { margin-bottom: 20px; font-size: 18px; color: #0F2137; }
@@ -138,7 +130,6 @@ $finAffichage = min($debut + $parPage, $totalClients);
 </head>
 <body>
 
-    <!-- Sidebar Bleue d'origine -->
     <div class="sidebar">
         <div class="sidebar-brand">
             <div class="logo-icon"><i class="fa-solid fa-droplet"></i></div>
@@ -174,7 +165,6 @@ $finAffichage = min($debut + $parPage, $totalClients);
         </div>
     </div>
 
-    <!-- Main Content Area -->
     <div class="main-content">
         <div class="header">
             <h1>Administration des Clients et Compteurs</h1>
@@ -182,7 +172,6 @@ $finAffichage = min($debut + $parPage, $totalClients);
         </div>
 
         <div class="container">
-            <!-- Barre d'action et recherche rapide -->
             <div class="action-bar">
                 <form method="GET" action="index.php" class="search-box">
                     <input type="hidden" name="page" value="gestion_client">
@@ -192,7 +181,6 @@ $finAffichage = min($debut + $parPage, $totalClients);
                 <button class="btn-primary" onclick="openModal('addModal')"><i class="fa-solid fa-user-plus"></i> Ajouter un client</button>
             </div>
 
-            <!-- Table des clients avec Pagination -->
             <div class="table-card">
                 <table>
                     <thead>
@@ -217,32 +205,29 @@ $finAffichage = min($debut + $parPage, $totalClients);
                                 <td><?php echo htmlspecialchars($client['Nom'] . ' ' . $client['Prenom']); ?></td>
                                 <td><?php echo htmlspecialchars($client['Adresse']); ?></td>
                                 <td><?php echo htmlspecialchars($client['Telephone']); ?><br><small style="color: #64748B;"><?php echo htmlspecialchars($client['Email']); ?></small></td>
-                                <!-- Colonne Compteur Eau -->
-<td>
-    <span style="font-size: 12px; font-weight: 600; color: #0284C7;">
-        <?php echo !empty($client['compteur_eau_ids']) ? htmlspecialchars($client['compteur_eau_ids']) : 'Aucun'; ?>
-    </span>
-</td>
-
-<!-- Colonne Compteur Électricité -->
-<td>
-    <span style="font-size: 12px; font-weight: 600; color: #D97706;">
-        <?php echo !empty($client['compteur_elec_ids']) ? htmlspecialchars($client['compteur_elec_ids']) : 'Aucun'; ?>
-    </span>
-</td>
+                                <td>
+                                    <span style="font-size: 12px; font-weight: 600; color: #0284C7;">
+                                        <?php echo !empty($client['compteur_eau_ids']) ? htmlspecialchars($client['compteur_eau_ids']) : 'Aucun'; ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span style="font-size: 12px; font-weight: 600; color: #D97706;">
+                                        <?php echo !empty($client['compteur_elec_ids']) ? htmlspecialchars($client['compteur_elec_ids']) : 'Aucun'; ?>
+                                    </span>
+                                </td>
                                 <td>
                                     <span class="badge badge-actif">Actif</span>
                                 </td>
                                 <td>
                                     <button class="btn-action" onclick="openEditModal(
-                                      '<?php echo $client['ID_Client']; ?>',
-    '<?php echo addslashes($client['Nom']); ?>',
-    '<?php echo addslashes($client['Prenom']); ?>',
-    '<?php echo addslashes($client['Adresse']); ?>',
-    '<?php echo addslashes($client['Telephone']); ?>',
-    '<?php echo addslashes($client['Email']); ?>',
-    '<?php echo addslashes($client['compteur_eau_ids'] ?? ''); ?>',
-    '<?php echo addslashes($client['compteur_elec_ids'] ?? ''); ?>'
+                                        '<?php echo $client['ID_Client']; ?>',
+                                        '<?php echo addslashes($client['Nom']); ?>',
+                                        '<?php echo addslashes($client['Prenom']); ?>',
+                                        '<?php echo addslashes($client['Adresse']); ?>',
+                                        '<?php echo addslashes($client['Telephone']); ?>',
+                                        '<?php echo addslashes($client['Email']); ?>',
+                                        '<?php echo addslashes($client['compteur_eau_ids'] ?? ''); ?>',
+                                        '<?php echo addslashes($client['compteur_elec_ids'] ?? ''); ?>'
                                     )"><i class="fa-solid fa-pen"></i> Modifier</button>
                                 </td>
                             </tr>
@@ -251,7 +236,6 @@ $finAffichage = min($debut + $parPage, $totalClients);
                     </tbody>
                 </table>
 
-                <!-- Footer Pagination -->
                 <div class="pagination-footer">
                     <div>
                         Affichage de <?php echo $debutAffichage; ?> à <?php echo $finAffichage; ?> sur <?php echo $totalClients; ?> clients
@@ -274,11 +258,11 @@ $finAffichage = min($debut + $parPage, $totalClients);
         </div>
     </div>
 
-   <!-- Modale d'Ajout -->
+    <!-- Modale d'Ajout -->
     <div id="addModal" class="modal">
         <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
             <h2>Ajouter un nouveau client</h2>
-            <form action="/mini-projet-DW2/traitement/client-compteur.php" method="POST">
+            <form method="POST" action="index.php?page=clientcompteur">
                 <input type="hidden" name="action" value="ajouter">
                 <div class="form-group"><label>Nom</label><input type="text" name="nom" required></div>
                 <div class="form-group"><label>Prénom</label><input type="text" name="prenom" required></div>
@@ -306,11 +290,11 @@ $finAffichage = min($debut + $parPage, $totalClients);
         </div>
     </div>
 
-   <!-- Modale de Modification -->
+    <!-- Modale de Modification -->
     <div id="editModal" class="modal">
         <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
             <h2>Modifier le client et ses compteurs</h2>
-            <form action="/mini-projet-DW2/traitement/client-compteur.php" method="POST">
+            <form method="POST" action="index.php?page=clientcompteur">
                 <input type="hidden" name="action" value="modifier">
                 <input type="hidden" name="id_client" id="edit_id">
                 
