@@ -81,11 +81,15 @@ switch ($page) {
         require __DIR__ . '/IHM/auth/motdepasse.php';
         break;
 
-        case 'saisie':
-        exigerRole('client');
-        require __DIR__ . '/IHM/client/saisie.php';
-        break;
-
+       case 'saisie':
+    exigerRole('client');
+    require_once __DIR__ . '/Traitement/Saisie.php';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        traiterSaisie();            // bouton « Valider ma saisie »
+    }
+    $d = preparerPageSaisie();
+    require __DIR__ . '/IHM/client/saisie.php';
+    break; 
          // TEST : inscription fournisseur, à supprimer à la fin
     case 'register_fournisseur':
         if (!INSCRIPTION_FOURNISSEUR_TEST) {

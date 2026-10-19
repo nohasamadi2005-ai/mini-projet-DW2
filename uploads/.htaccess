@@ -1,0 +1,4 @@
+# Les photos sont affichables, mais aucun script ne doit jamais s'exécuter ici
+<FilesMatch "\.(php|phtml|phar|php5|php7)$">
+    Require all denied
+</FilesMatch>
