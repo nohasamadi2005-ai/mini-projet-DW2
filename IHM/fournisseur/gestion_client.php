@@ -45,6 +45,7 @@ $result = mysqli_query($cnx, $sql);
 $clients = [];
 while ($row = mysqli_fetch_assoc($result)) {
     $clients[] = $row;
+
 }
 mysqli_close($cnx);
 
@@ -148,10 +149,11 @@ $finAffichage = min($debut + $parPage, $totalClients);
         </div>
 
         <ul class="sidebar-menu">
-            <li class="active"><a href="index.php?page=gestion_client"><i class="fa-solid fa-users"></i> Gestion Clients</a></li>
-            <li><a href="#"><i class="fa-solid fa-triangle-exclamation"></i> Traitement des Anomalies</a></li>
-            <li><a href="#"><i class="fa-solid fa-file-invoice-dollar"></i> Gestion des Réclamations</a></li>
-        </ul>
+    <li class="active"><a href="index.php?page=gestion_client"><i class="fa-solid fa-users"></i> Gestion Clients</a></li>
+    <li><a href="index.php?page=historique_paiements"><i class="fa-solid fa-receipt"></i> Historique des Paiements</a></li>
+    <li><a href="#"><i class="fa-solid fa-triangle-exclamation"></i> Traitement des Anomalies</a></li>
+    <li><a href="#"><i class="fa-solid fa-file-invoice-dollar"></i> Gestion des Réclamations</a></li>
+</ul>
 
         <div class="sidebar-footer">
             <div class="user-profile">

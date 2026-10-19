@@ -2,24 +2,29 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
 require_once __DIR__ . '/../BD/Client.php';
 require_once __DIR__ . '/../BD/Fournisseur.php';
-function seConnecter($role,$email,$motDePasse){
-    $email=trim($email);
 
-    if($role == 'client'){
+function seConnecter($role, $email, $motDePasse) {
+    $email = trim($email);
+
+    if ($role === 'client') {
         $user = trouverClientParEmail($email);
-    }elseif($role == 'fournisseur'){
+    } elseif ($role === 'fournisseur') {
         $user = trouverFournisseurParEmail($email);
-
-    }else{
+    } else {
         return false;
     }
 
     if ($user && password_verify($motDePasse, $user['mdp'])) {
         session_regenerate_id(true);
+
+        // Récupération dynamique de l'ID selon le nom de la colonne dans la BDD
+        $idUser = $user['id'] ?? $user['ID_Client'] ?? $user['ID_Admin'] ?? $user['ID_Fournisseur'] ?? null;
+
         $_SESSION['user'] = [
-            'id'     => $user['id'],
+            'id'     => $idUser,
             'role'   => $role,
             'nom'    => $user['Nom'],
             'prenom' => $user['Prenom'],
@@ -28,9 +33,7 @@ function seConnecter($role,$email,$motDePasse){
         return true;
     }
     return false;
-
 }
-
 
 function estConnecte()
 {
@@ -91,13 +94,27 @@ function inscrireClient($nom, $prenom, $adresse, $telephone, $email, $mdp, $mdp2
     }
 
     if (!$erreurs) {
-        creerClient($nom, $prenom, $adresse, $telephone, $email,
-                    password_hash($mdp, PASSWORD_DEFAULT));
+        // 1. Création de l'utilisateur en BDD
+        creerClient($nom, $prenom, $adresse, $telephone, $email, password_hash($mdp, PASSWORD_DEFAULT));
+
+        // 2. Connexion automatique immédiate sous le rôle 'client'
+        $user = trouverClientParEmail($email);
+        if ($user) {
+            session_regenerate_id(true);
+            $idUser = $user['id'] ?? $user['ID_Client'] ?? null;
+
+            $_SESSION['user'] = [
+                'id'     => $idUser,
+                'role'   => 'client', // Forcé explicitement à client
+                'nom'    => $user['Nom'],
+                'prenom' => $user['Prenom'],
+                'email'  => $user['Email'],
+            ];
+        }
     }
-    return $erreurs;   // tableau vide = succès
+    return $erreurs; // Tableau vide = succès
 }
 
-// TEST : à supprimer avec l'inscription fournisseur
 function inscrireFournisseur($nom, $prenom, $email, $mdp, $mdp2)
 {
     $erreurs = [];
@@ -118,6 +135,21 @@ function inscrireFournisseur($nom, $prenom, $email, $mdp, $mdp2)
     }
     if (!$erreurs) {
         creerFournisseur($nom, $prenom, $email, password_hash($mdp, PASSWORD_DEFAULT));
+
+        // Connexion automatique après inscription du fournisseur
+        $user = trouverFournisseurParEmail($email);
+        if ($user) {
+            session_regenerate_id(true);
+            $idUser = $user['id'] ?? $user['ID_Admin'] ?? $user['ID_Fournisseur'] ?? null;
+
+            $_SESSION['user'] = [
+                'id'     => $idUser,
+                'role'   => 'fournisseur',
+                'nom'    => $user['Nom'],
+                'prenom' => $user['Prenom'],
+                'email'  => $user['Email'],
+            ];
+        }
     }
     return $erreurs;
 }
@@ -155,10 +187,9 @@ function changerMotDePasse($ancien, $nouveau, $nouveau2)
     }
     return $erreurs;
 }
+
 function pageAccueil($role)
 {
-    // Au lieu de renvoyer 'fournisseur', on renvoie directement ta page de gestion des clients
     return $role === 'fournisseur' ? 'gestion_client' : 'saisie';
 }
-
-
+?>

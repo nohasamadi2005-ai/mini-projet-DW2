@@ -25,6 +25,7 @@ function insererFacture($idConso, $dateFacture, $debut, $fin, $ht, $tva, $ttc)
         'isssddd', [$idConso, $dateFacture, $debut, $fin, $ht, $tva, $ttc]
     );
 }
+
 // Toutes les factures d'un client (le filtre est sur le propriétaire de la saisie)
 function getFacturesDuClient($idClient)
 {
@@ -72,3 +73,51 @@ function getFactureDuClient($idFacture, $idClient)
 
     return $r[0] ?? null;
 }
+
+/**
+ * Récupère l'historique complet des factures payées pour l'espace Fournisseur
+ */
+/**
+ * Récupère l'historique complet des factures payées pour l'espace Fournisseur
+ */
+function obtenirHistoriquePaiementsFournisseur()
+{
+    $cnx = Connexion();
+    
+    $sql = "SELECT f.ID_Facture,
+                   f.Date_Facture,
+                   f.Date_paiement,
+                   f.Montant_HT,
+                   f.TVA,
+                   f.Montant_TTC,
+                   f.Statut_Paiement,
+                   cm.Mois,
+                   cm.Annee,
+                   c.Type_Compteur,
+                   cl.Nom,
+                   cl.Prenom,
+                   cl.Email,
+                   cl.Telephone
+              FROM facture f
+              JOIN consommation_mensuelle cm 
+                ON cm.ID_Consommation_Mensuelle = f.ID_Consommation_Mensuelle
+              JOIN client cl 
+                ON cl.ID_Client = cm.ID_Client
+              JOIN compteur c 
+                ON c.ID_Compteur = cm.ID_Compteur
+             WHERE f.Statut_Paiement LIKE 'Paye%'
+             ORDER BY f.Date_Facture DESC, f.ID_Facture DESC";
+
+    $resultat = mysqli_query($cnx, $sql);
+    $historique = [];
+
+    if ($resultat) {
+        while ($ligne = mysqli_fetch_assoc($resultat)) {
+            $historique[] = $ligne;
+        }
+    }
+
+    mysqli_close($cnx);
+    return $historique;
+}
+?>

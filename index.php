@@ -114,6 +114,20 @@ switch ($page) {
     // seront ajoutées à l'étape suivante.
 
     break;
+    case 'payer_facture':
+        exigerRole('client');
+        require_once __DIR__ . '/BD/Facture.php';
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $idFacture = filter_input(INPUT_POST, 'id_facture', FILTER_VALIDATE_INT);
+            $idClient = $_SESSION['user']['id'];
+            
+            if ($idFacture && $idFacture > 0) {
+                payerFactureClient($idFacture, $idClient);
+            }
+        }
+        header('Location: index.php?page=factures');
+        exit;
          // TEST : inscription fournisseur, à supprimer à la fin
     case 'register_fournisseur':
         if (!INSCRIPTION_FOURNISSEUR_TEST) {
@@ -142,6 +156,10 @@ switch ($page) {
         // On inclut le fichier de traitement
         require_once __DIR__ . '/traitement/clientcompteur.php';
         break;   
+        case 'historique_paiements':
+        exigerRole('fournisseur');
+        require __DIR__ . '/IHM/fournisseur/historique_paiements.php';
+        break;
         case 'logout':
         // On détruit la session à chaque appel de la déconnexion
         seDeconnecter();

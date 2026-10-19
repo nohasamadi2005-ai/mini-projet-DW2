@@ -5,38 +5,63 @@ require_once __DIR__ . '/connexion.php';
 /* ---------- Petits utilitaires internes ---------- */
 
 // Une SEULE connexion MySQL par requête HTTP, réutilisée par toutes les fonctions.
-// (PHP la ferme tout seul à la fin du script.)
 function consoConnexion()
 {
     static $cnx = null;
-    if ($cnx === null) {
+    if ($cnx === null || !mysqli_ping($cnx)) {
         $cnx = Connexion();
     }
     return $cnx;
 }
 
 // SELECT préparé -> tableau de lignes
-function consoSelect($sql, $types = '', $params = [])
+function consoSelect($sql, $types = null, $params = [])
 {
-    $stmt = mysqli_prepare(consoConnexion(), $sql);
-    if ($types !== '') {
+    $cnx = consoConnexion();
+    $stmt = mysqli_prepare($cnx, $sql);
+
+    if (!$stmt) {
+        error_log("Erreur SQL dans consoSelect: " . mysqli_error($cnx) . " | Requête: " . $sql);
+        return [];
+    }
+
+    if ($types && !empty($params)) {
         mysqli_stmt_bind_param($stmt, $types, ...$params);
     }
+
     mysqli_stmt_execute($stmt);
-    $lignes = mysqli_fetch_all(mysqli_stmt_get_result($stmt), MYSQLI_ASSOC);
+    $resultat = mysqli_stmt_get_result($stmt);
+
+    $donnees = [];
+    if ($resultat) {
+        while ($ligne = mysqli_fetch_assoc($resultat)) {
+            $donnees[] = $ligne;
+        }
+    }
+
     mysqli_stmt_close($stmt);
-    return $lignes;
+
+    return $donnees;
 }
 
 // INSERT / UPDATE préparé -> id inséré (INSERT) ou nb de lignes modifiées (UPDATE)
-// Lance une mysqli_sql_exception en cas d'erreur (ex. code 1062 = doublon).
 function consoExecuter($sql, $types, $params)
 {
-    $stmt = mysqli_prepare(consoConnexion(), $sql);
+    $cnx = consoConnexion();
+    $stmt = mysqli_prepare($cnx, $sql);
+
+    // Vérification de la préparation de la requête
+    if (!$stmt) {
+        error_log("Erreur SQL dans consoExecuter: " . mysqli_error($cnx) . " | Requête: " . $sql);
+        die("Erreur de préparation SQL : " . mysqli_error($cnx));
+    }
+
     mysqli_stmt_bind_param($stmt, $types, ...$params);
     mysqli_stmt_execute($stmt);
+
     $retour = mysqli_stmt_insert_id($stmt) ?: mysqli_stmt_affected_rows($stmt);
     mysqli_stmt_close($stmt);
+
     return $retour;
 }
 
@@ -65,8 +90,6 @@ function getCompteurDuClient($idCompteur, $idClient)
 
 /* ---------- Référence (index et photo précédents) ---------- */
 
-// Dernière saisie 'Verifie' du compteur AVANT la période visée ($mois/$annee) ;
-// à défaut (première saisie), l'index initial du compteur, sans photo.
 function getReferencePrecedente($compteur, $mois, $annee)
 {
     $r = consoSelect(
@@ -90,8 +113,10 @@ function getReferencePrecedente($compteur, $mois, $annee)
     return [
         'premiere' => true,
         'index'    => (float) $compteur['Index_Initial'],
-        'photo'    => null, 'date' => null,             // première saisie : pas de photo avant
-        'mois'     => null, 'annee' => null,
+        'photo'    => null, 
+        'date'     => null,
+        'mois'     => null, 
+        'annee'    => null,
     ];
 }
 
@@ -108,14 +133,16 @@ function getSaisie($idCompteur, $mois, $annee)
     return $r[0] ?? null;
 }
 
-// Saisie pour laquelle le fournisseur a demandé une resaisie (quel que soit le mois)
+// Saisie pour laquelle le fournisseur a demandé une resaisie
 function getSaisieEnResaisie($idCompteur)
 {
     $r = consoSelect(
-        "SELECT * FROM consommation_mensuelle
-          WHERE ID_Compteur = ? AND Statut_Traitement = 'Resaisie demandee'
-          ORDER BY Annee DESC, Mois DESC LIMIT 1",
-        'i', [$idCompteur]
+        "SELECT * FROM consommation_mensuelle 
+          WHERE ID_Compteur = ? 
+            AND Statut_Traitement = 'Resaisie' 
+          LIMIT 1",
+        'i',
+        [$idCompteur]
     );
     return $r[0] ?? null;
 }
@@ -149,8 +176,6 @@ function modifierSaisie($idConso, $indexPrec, $indexActuel, $consommation,
     );
 }
 
-
-
 function creerAnomalie($idConso, $type, $description)
 {
     return consoExecuter(
@@ -160,8 +185,7 @@ function creerAnomalie($idConso, $type, $description)
     );
 }
 
-// Lecture seule : la facture (si elle existe) liée à une saisie, pour la modale.
-
+// Lecture seule : la facture liée à une saisie
 function getFactureDeSaisie($idConso)
 {
     $r = consoSelect(

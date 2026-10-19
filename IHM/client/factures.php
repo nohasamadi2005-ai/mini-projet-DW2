@@ -57,7 +57,7 @@ function icone($nom)
   .user small { display:block; color:var(--mut); font-weight:400; font-size:10px; }
   .avatar { width:34px; height:34px; border-radius:8px; background:var(--blue); color:#fff; display:grid; place-items:center; font-size:12px; font-weight:700; }
 
-  .page { max-width:980px; margin:0 auto; padding:34px 24px 50px; }
+  .page { max-width:1050px; margin:0 auto; padding:34px 24px 50px; }
   .eyebrow { font-size:10px; letter-spacing:.14em; font-weight:700; color:var(--blue-d); }
   h1 { font-size:28px; margin:6px 0 4px; }
   .sous { color:var(--mut); margin:0 0 22px; }
@@ -78,16 +78,22 @@ function icone($nom)
   .statut.impaye { background:#fdecec; color:#9b1c1c; }
   .statut.paye { background:#eafaf1; color:#14653a; }
   .statut.partiel { background:#fff4e5; color:#8a5300; }
-  .btn-voir { display:inline-block; color:var(--blue-d); border:1px solid var(--blue); border-radius:8px; padding:7px 12px; font-weight:700; font-size:12px; text-decoration:none; white-space:nowrap; }
+  
+  .btn-voir { display:inline-block; color:var(--blue-d); border:1px solid var(--blue); border-radius:8px; padding:6px 10px; font-weight:700; font-size:12px; text-decoration:none; white-space:nowrap; }
   .btn-voir:hover { background:var(--soft); }
+  
+  .btn-payer { background:#16a34a; color:#fff; border:none; border-radius:8px; padding:7px 12px; font-weight:700; font-size:12px; transition:0.2s; white-space:nowrap; }
+  .btn-payer:hover { background:#15803d; }
 
   .vide { text-align:center; padding:50px 20px; color:var(--mut); }
   .vide .i { width:34px; height:34px; margin-bottom:10px; color:#b6c3d4; }
   .vide b { display:block; color:var(--txt); font-size:15px; margin-bottom:4px; }
 
+  .actions-cell { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+
   @media (max-width:900px) {
     .app { grid-template-columns:1fr; } .side { position:static; height:auto; }
-    .carte { overflow-x:auto; } table.hist { min-width:720px; }
+    .carte { overflow-x:auto; } table.hist { min-width:780px; }
   }
 </style>
 </head>
@@ -138,7 +144,7 @@ function icone($nom)
           <thead>
             <tr>
               <th>N° FACTURE</th><th>DATE</th><th>PÉRIODE</th><th>TYPE</th>
-              <th>CONSOMMATION</th><th class="r">MONTANT TTC</th><th>STATUT</th><th></th>
+              <th>CONSOMMATION</th><th class="r">MONTANT TTC</th><th>STATUT</th><th class="r">ACTIONS</th>
             </tr>
           </thead>
           <tbody>
@@ -153,16 +159,27 @@ function icone($nom)
               <td class="ttc r"><?= h($f['ttc']) ?> DH</td>
               <td><span class="statut <?= h($f['classe']) ?>"><?= h($f['statut']) ?></span></td>
 
-<td>
-    <a
-        href="index.php?page=voir_facture&id=<?= (int)$f['id'] ?>"
-        target="_blank"
-        class="btn-voir"
-    >
-        Voir / imprimer
-    </a>
-</td>
-           </tr>
+              <td class="r">
+                <div class="actions-cell">
+                  <?php if (!$f['paye']): ?>
+                    <form method="POST" action="index.php?page=payer_facture" style="margin:0;">
+                      <input type="hidden" name="id_facture" value="<?= (int)($f['id'] ?? 0) ?>">
+                      <button type="submit" class="btn-payer">
+                        💳 Payer
+                      </button>
+                    </form>
+                  <?php endif; ?>
+
+                  <a
+                    href="index.php?page=voir_facture&id=<?= (int)$f['id'] ?>"
+                    target="_blank"
+                    class="btn-voir"
+                  >
+                    Voir
+                  </a>
+                </div>
+              </td>
+            </tr>
           <?php endforeach; ?>
           </tbody>
         </table>
