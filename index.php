@@ -142,7 +142,12 @@ switch ($page) {
         // On inclut le fichier de traitement
         require_once __DIR__ . '/traitement/clientcompteur.php';
         break;   
-        
+        case 'logout':
+        // On détruit la session à chaque appel de la déconnexion
+        seDeconnecter();
+        // Redirection vers la page d'inscription / création de fournisseur
+        header('Location: index.php?page=register_fournisseur');
+        exit;
     default:
         http_response_code(404);
         require __DIR__ . '/IHM/404.php';
