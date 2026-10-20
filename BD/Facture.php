@@ -46,34 +46,24 @@ function getFacturesDuClient($idClient)
 function getFactureDuClient($idFacture, $idClient)
 {
     $r = consoSelect(
-        "SELECT f.ID_Facture,
-                f.Date_Facture,
-                f.Periode_Debut,
-                f.Periode_Fin,
-                f.Montant_HT,
-                f.TVA,
-                f.Montant_TTC,
-                f.Statut_Paiement,
-                cm.Mois,
-                cm.Annee,
-                cm.Consommation,
-                c.Type_Compteur
+        "SELECT f.ID_Facture, f.Date_Facture, f.Periode_Debut, f.Periode_Fin,
+                f.Montant_HT, f.TVA, f.Montant_TTC, f.Statut_Paiement, f.Date_paiement,
+                cm.ID_Compteur, cm.Mois, cm.Annee,
+                cm.Index_Precedent, cm.Index_Actuel, cm.Consommation,
+                c.Type_Compteur,
+                cl.Nom, cl.Prenom, cl.Adresse, cl.Email, cl.Telephone,
+                cm.Ancien_photo, cm.Photo_Actuelle
            FROM facture f
            JOIN consommation_mensuelle cm
-             ON cm.ID_Consommation_Mensuelle =
-                f.ID_Consommation_Mensuelle
-           JOIN compteur c
-             ON c.ID_Compteur = cm.ID_Compteur
-          WHERE f.ID_Facture = ?
-            AND cm.ID_Client = ?
+             ON cm.ID_Consommation_Mensuelle = f.ID_Consommation_Mensuelle
+           JOIN compteur c ON c.ID_Compteur = cm.ID_Compteur
+           JOIN client cl ON cl.ID_Client = cm.ID_Client
+          WHERE f.ID_Facture = ? AND cm.ID_Client = ?
           LIMIT 1",
-        'ii',
-        [$idFacture, $idClient]
+        'ii', [$idFacture, $idClient]
     );
-
-    return $r[0] ?? null;
+    return $r[0] ?? null; // null si la facture n'appartient pas au client
 }
-
 /**
  * Récupère l'historique complet des factures payées pour l'espace Fournisseur
  */
@@ -119,5 +109,17 @@ function obtenirHistoriquePaiementsFournisseur()
 
     mysqli_close($cnx);
     return $historique;
+}
+
+function payerFactureClient($idFacture, $idClient)
+{
+    return consoExecuter(
+        "UPDATE facture f
+           JOIN consommation_mensuelle cm
+             ON cm.ID_Consommation_Mensuelle = f.ID_Consommation_Mensuelle
+            SET f.Statut_Paiement = 'Payee', f.Date_paiement = CURDATE()
+          WHERE f.ID_Facture = ? AND cm.ID_Client = ? AND f.Statut_Paiement <> 'Payee'",
+        'ii', [$idFacture, $idClient]
+    );
 }
 ?>

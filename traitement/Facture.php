@@ -50,7 +50,44 @@ function preparerPageFactures()
             'ttc'       => formaterMontant($f['Montant_TTC']),
             'statut'    => $statutLabel,
             'classe'    => $statutClasse,
+            'paye'      => $f['Statut_Paiement'] === 'Payee',   // <-- AJOUTE CETTE LIGNE
+
         ];
     }
     return compact('factures');
+}
+// Données pour la page « Voir / imprimer ». Retourne null si la facture n'appartient pas au client.
+function preparerFactureImprimable($idFacture, $idClient)
+{
+    $f = getFactureDuClient($idFacture, $idClient);
+    if (!$f) {
+        return null;
+    }
+    $eau   = $f['Type_Compteur'] === 'Eau';
+    $unite = $eau ? 'm³' : 'kWh';
+    $paye  = $f['Statut_Paiement'] === 'Payee';
+
+    return [
+        'numero'       => 'FAC-' . $f['Annee'] . '-' . ($eau ? 'EAU' : 'ELEC')
+                        . '-' . str_pad($f['ID_Facture'], 4, '0', STR_PAD_LEFT),
+        'date'         => dateFr($f['Date_Facture']),
+        'periode'      => periodeFr($f['Periode_Debut'], $f['Periode_Fin'], $f['Mois'], $f['Annee']),
+        'client'       => $f['Prenom'] . ' ' . $f['Nom'],
+        'adresse'      => $f['Adresse'],
+        'compteur'     => $f['ID_Compteur'],
+        'typeLabel'    => $eau ? 'Eau' : 'Électricité',
+        'indexPrec'    => formaterIndex($f['Index_Precedent']) . ' ' . $unite,
+        'indexAct'     => formaterIndex($f['Index_Actuel']) . ' ' . $unite,
+        'conso'        => formaterIndex($f['Consommation']) . ' ' . $unite,
+        'ht'           => formaterMontant($f['Montant_HT']),
+        'tva'          => formaterMontant($f['TVA']),
+        'ttc'          => formaterMontant($f['Montant_TTC']),
+        'paye'         => $paye,
+        'statut'       => $paye ? 'Payée' : 'Impayée',
+        'datePaiement' => $f['Date_paiement'] ? dateFr($f['Date_paiement']) : null,
+        'type'         => $eau ? 'eau' : 'elec',
+        'contact'      => $f['Email'] . ' · ' . $f['Telephone'],
+        'photoAvant'   => $f['Ancien_photo'],
+        'photoApres'   => $f['Photo_Actuelle'],
+    ];
 }

@@ -75,3 +75,28 @@ if (!function_exists('dateFr')) {
         return date('j', $t) . ' ' . mb_strtolower(nomMois(date('n', $t))) . ' ' . date('Y', $t);
     }
 }
+if (!function_exists('calculerMontants')) {
+    // Tarifs de l'énoncé, calcul progressif par tranches. Retourne [HT, TVA, TTC].
+    function calculerMontants($consommation, $typeCompteur)
+    {
+        $tranches = ($typeCompteur === 'Eau')
+            ? [[6, 2.37], [20, 7.39], [35, 10.98], [INF, 11.03]]   // m³ (bornes hautes cumulées)
+            : [[100, 0.82], [150, 0.92], [INF, 1.10]];             // kWh
+
+        $ht = 0.0;
+        $borneBasse = 0;
+        foreach ($tranches as [$borneHaute, $prix]) {
+            if ($consommation <= $borneBasse) {
+                break;
+            }
+            $quantite = min($consommation, $borneHaute) - $borneBasse;
+            $ht += $quantite * $prix;
+            $borneBasse = $borneHaute;
+        }
+
+        $ht  = round($ht, 2);
+        $tva = round($ht * 0.18, 2);
+        $ttc = round($ht + $tva, 2);
+        return [$ht, $tva, $ttc];
+    }
+}

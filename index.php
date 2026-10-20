@@ -128,6 +128,23 @@ switch ($page) {
         }
         header('Location: index.php?page=factures');
         exit;
+            case 'voir_facture':
+        exigerRole('client');
+        require_once __DIR__ . '/traitement/Saisie.php';
+        require_once __DIR__ . '/traitement/Facture.php';
+
+        $idFacture = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+        $facture = $idFacture
+            ? preparerFactureImprimable($idFacture, (int) $_SESSION['user']['id'])
+            : null;
+
+        if (!$facture) {               // id invalide, inexistant ou facture d'un autre client
+            http_response_code(404);
+            require __DIR__ . '/IHM/404.php';
+            break;
+        }
+        require __DIR__ . '/IHM/client/voir_facture.php';
+        break;
          // TEST : inscription fournisseur, à supprimer à la fin
     case 'register_fournisseur':
         if (!INSCRIPTION_FOURNISSEUR_TEST) {
