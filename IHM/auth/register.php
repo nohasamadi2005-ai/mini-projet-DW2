@@ -1,6 +1,7 @@
 <?php
 $erreurs = $erreurs ?? [];
 $v = $v ?? ['nom' => '', 'prenom' => '', 'adresse' => '', 'telephone' => '', 'email' => ''];
+$roleSaisi = $roleSaisi ?? 'client';
 ?>
 <!doctype html>
 <html lang="fr">
@@ -21,6 +22,13 @@ $v = $v ?? ['nom' => '', 'prenom' => '', 'adresse' => '', 'telephone' => '', 'em
   <section class="right">
     <form method="post" action="index.php?page=register">
       <h1>Créer un compte</h1>
+             <?php if (INSCRIPTION_FOURNISSEUR_TEST): ?>
+        <label>Je suis</label>
+        <select name="role" id="role">
+          <option value="client"      <?= $roleSaisi === 'client' ? 'selected' : '' ?>>Client</option>
+          <option value="fournisseur" <?= $roleSaisi === 'fournisseur' ? 'selected' : '' ?>>Fournisseur (TEST)</option>
+        </select>
+      <?php endif; ?>
 
       <?php foreach ($erreurs as $e): ?>
         <div class="erreur"><?= htmlspecialchars($e) ?></div>
@@ -41,7 +49,13 @@ $v = $v ?? ['nom' => '', 'prenom' => '', 'adresse' => '', 'telephone' => '', 'em
 
       <label>Adresse e-mail</label>
       <input type="email" name="email" value="<?= htmlspecialchars($v['email']) ?>" required>
+             <div id="champsClient">
+        <label>Adresse</label>
+        <input name="adresse" value="<?= htmlspecialchars($v['adresse']) ?>">
 
+        <label>Téléphone</label>
+        <input name="telephone" value="<?= htmlspecialchars($v['telephone']) ?>">
+      </div>
       <div class="row2">
         <div><label>Mot de passe</label>
           <input type="password" name="password" required></div>
@@ -58,4 +72,11 @@ $v = $v ?? ['nom' => '', 'prenom' => '', 'adresse' => '', 'telephone' => '', 'em
   </section>
 </div>
 </body>
+
+<script>
+  const role = document.getElementById('role');
+  const champs = document.getElementById('champsClient');
+  function maj() { champs.style.display = (role && role.value === 'fournisseur') ? 'none' : 'block'; }
+  if (role) { role.addEventListener('change', maj); maj(); }
+</script>
 </html>

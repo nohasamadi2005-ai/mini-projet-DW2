@@ -49,16 +49,27 @@ switch ($page) {
         header('Location: index.php?page=login');
         exit;
     
-        case 'register':
-        $erreurs = [];
+                case 'register':
+        $erreurs   = [];
+        $roleSaisi = 'client';
         $v = ['nom' => '', 'prenom' => '', 'adresse' => '', 'telephone' => '', 'email' => ''];
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($v as $cle => $_) {
                 $v[$cle] = trim($_POST[$cle] ?? '');
             }
-            $erreurs = inscrireClient($v['nom'], $v['prenom'], $v['adresse'], $v['telephone'],
-                                      $v['email'], $_POST['password'] ?? '', $_POST['password2'] ?? '');
+            // Le serveur décide : "fournisseur" n'est accepté que si le mode TEST est actif
+            $roleSaisi = (($_POST['role'] ?? '') === 'fournisseur' && INSCRIPTION_FOURNISSEUR_TEST)
+                         ? 'fournisseur' : 'client';
+
+            if ($roleSaisi === 'fournisseur') {
+                $erreurs = inscrireFournisseur($v['nom'], $v['prenom'], $v['email'],
+                                               $_POST['password'] ?? '', $_POST['password2'] ?? '');
+            } else {
+                $erreurs = inscrireClient($v['nom'], $v['prenom'], $v['adresse'], $v['telephone'],
+                                          $v['email'], $_POST['password'] ?? '', $_POST['password2'] ?? '');
+            }
+
             if (!$erreurs) {
                 $_SESSION['message'] = 'Compte créé. Vous pouvez maintenant vous connecter.';
                 header('Location: index.php?page=login');
