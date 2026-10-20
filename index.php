@@ -4,6 +4,11 @@ require_once __DIR__ . '/traitement/auth.php';
 $post = $_SERVER['REQUEST_METHOD'] === 'POST';
 
 $page = $_GET['page'] ?? 'login';
+if ($page === 'logout') {
+    seDeconnecter();
+    header('Location: index.php?page=login');
+    exit;
+}
 
 switch ($page) {
 
@@ -188,12 +193,10 @@ switch ($page) {
         exigerRole('fournisseur');
         require __DIR__ . '/IHM/fournisseur/historique_paiements.php';
         break;
-        case 'logout':
-        // On détruit la session à chaque appel de la déconnexion
-        seDeconnecter();
-        // Redirection vers la page d'inscription / création de fournisseur
-        header('Location: index.php?page=register_fournisseur');
-        exit;
+      case 'logout':
+    seDeconnecter();
+    header('Location: index.php?page=login');
+    exit;
     default:
         http_response_code(404);
         require __DIR__ . '/IHM/404.php';
