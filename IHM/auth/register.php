@@ -50,11 +50,7 @@ $roleSaisi = $roleSaisi ?? 'client';
       <label>Adresse e-mail</label>
       <input type="email" name="email" value="<?= htmlspecialchars($v['email']) ?>" required>
              <div id="champsClient">
-        <label>Adresse</label>
-        <input name="adresse" value="<?= htmlspecialchars($v['adresse']) ?>">
-
-        <label>Téléphone</label>
-        <input name="telephone" value="<?= htmlspecialchars($v['telephone']) ?>">
+       
       </div>
       <div class="row2">
         <div><label>Mot de passe</label>
