@@ -20,7 +20,7 @@ function seConnecter($role, $email, $motDePasse) {
     if ($user && password_verify($motDePasse, $user['mdp'])) {
         session_regenerate_id(true);
 
-        // Récupération dynamique de l'ID selon le nom de la colonne dans la BDD
+       
         $idUser = $user['id'] ?? $user['ID_Client'] ?? $user['ID_Admin'] ?? $user['ID_Fournisseur'] ?? null;
 
         $_SESSION['user'] = [
@@ -97,10 +97,10 @@ function inscrireClient($nom, $prenom, $adresse, $telephone, $email, $mdp, $mdp2
     }
 
     if (!$erreurs) {
-        // 1. Création de l'utilisateur en BDD
+     
         creerClient($nom, $prenom, $adresse, $telephone, $email, password_hash($mdp, PASSWORD_DEFAULT));
 
-        // 2. Connexion automatique immédiate sous le rôle 'client'
+     
         $user = trouverClientParEmail($email);
         if ($user) {
             session_regenerate_id(true);
@@ -108,14 +108,14 @@ function inscrireClient($nom, $prenom, $adresse, $telephone, $email, $mdp, $mdp2
 
             $_SESSION['user'] = [
                 'id'     => $idUser,
-                'role'   => 'client', // Forcé explicitement à client
+                'role'   => 'client', 
                 'nom'    => $user['Nom'],
                 'prenom' => $user['Prenom'],
                 'email'  => $user['Email'],
             ];
         }
     }
-    return $erreurs; // Tableau vide = succès
+    return $erreurs; 
 }
 
 function inscrireFournisseur($nom, $prenom, $email, $mdp, $mdp2)
@@ -139,7 +139,7 @@ function inscrireFournisseur($nom, $prenom, $email, $mdp, $mdp2)
     if (!$erreurs) {
         creerFournisseur($nom, $prenom, $email, password_hash($mdp, PASSWORD_DEFAULT));
 
-        // Connexion automatique après inscription du fournisseur
+      
         $user = trouverFournisseurParEmail($email);
         if ($user) {
             session_regenerate_id(true);

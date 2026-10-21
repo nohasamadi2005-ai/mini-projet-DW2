@@ -1,5 +1,5 @@
 <?php
-// Les données viennent de preparerPageSaisie() (appelée dans index.php) : $d
+
 $u = $_SESSION['user'];
 $initiales = mb_strtoupper(mb_substr($u['prenom'], 0, 1) . mb_substr($u['nom'], 0, 1));
 
@@ -44,7 +44,7 @@ function icone($nom)
   button { font:inherit; cursor:pointer; }
   [hidden] { display:none !important; }
 
-  /* ---------- Menu latéral ---------- */
+  
   .app { display:grid; grid-template-columns:230px 1fr; min-height:100vh; }
   .side { background:var(--navy); color:#c9d8ec; padding:20px 14px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; }
   .brand { display:flex; align-items:center; gap:10px; color:#fff; font-weight:700; font-size:18px; margin:0 6px 20px; }
@@ -61,7 +61,7 @@ function icone($nom)
   .quit { margin-top:14px; border-top:1px solid rgba(255,255,255,.1); padding-top:12px; }
   .quit button { background:none; border:0; color:#c9d8ec; display:flex; align-items:center; gap:10px; padding:8px 12px; width:100%; }
 
-  /* ---------- Contenu ---------- */
+
   .top { background:#fff; border-bottom:1px solid var(--line); height:58px; display:flex; align-items:center; justify-content:flex-end; gap:18px; padding:0 28px; }
   .cloche { position:relative; border:1px solid var(--line); background:#fff; border-radius:8px; width:34px; height:34px; display:grid; place-items:center; color:var(--mut); }
   .cloche::after { content:""; position:absolute; top:6px; right:7px; width:7px; height:7px; background:#ef4444; border-radius:50%; }
@@ -83,7 +83,7 @@ function icone($nom)
   .pastille { margin-left:auto; background:#fff; border:1px solid #cfe9f8; border-radius:20px; padding:3px 10px; font-size:11px; font-weight:600; white-space:nowrap; }
   .banniere.ferme .pastille { border-color:#f6d9a8; }
 
-  /* Messages : succès (vert) / anomalie (orange) / erreur (rouge) / info (bleu) */
+ 
   .alerte { display:flex; gap:12px; align-items:flex-start; border-radius:12px; padding:14px 18px; margin-bottom:18px; border:1px solid; }
   .alerte b { display:block; margin-bottom:2px; }
   .alerte span, .alerte div { font-size:13px; }
@@ -158,7 +158,7 @@ function icone($nom)
   .conseil { margin-top:16px; color:var(--mut); font-size:11px; display:flex; gap:8px; align-items:center; }
   .conseil i { width:16px; height:16px; border-radius:50%; background:#dbeefa; color:var(--blue-d); font-style:normal; font-size:10px; font-weight:700; display:grid; place-items:center; }
 
-  /* ---------- Fenêtres modales ---------- */
+
   .modale { position:fixed; inset:0; background:rgba(11,35,64,.7); display:grid; place-items:center; z-index:50; padding:20px; }
   .modale .boite { background:#fff; border-radius:14px; padding:26px; width:100%; max-width:560px; max-height:92vh; overflow:auto; position:relative; }
   .modale .x { position:absolute; top:12px; right:14px; border:0; background:none; font-size:24px; color:var(--mut); line-height:1; }
@@ -175,7 +175,7 @@ function icone($nom)
   .photos figcaption { font-size:10px; color:var(--mut); margin-top:4px; }
   .modale-photo img { max-width:92vw; max-height:90vh; border-radius:10px; }
 
-  /* Facture (modale) */
+
   .boite.facture { max-width:720px; }
   .f-entete { display:flex; align-items:center; gap:10px; margin-bottom:12px; padding-right:30px; flex-wrap:wrap; }
   .f-badge { font-size:10px; font-weight:700; border-radius:6px; padding:4px 9px; }
@@ -213,7 +213,6 @@ function icone($nom)
 <body>
 <div class="app">
 
-  <!-- ============ MENU LATÉRAL ============ -->
   <aside class="side">
     <div class="brand"><span class="logo"><?= icone('goutte') ?></span>
       <div>Fluxio<small>ÉNERGIE &amp; EAU</small></div></div>
@@ -239,7 +238,6 @@ function icone($nom)
     </form>
   </aside>
 
-  <!-- ============ CONTENU ============ -->
   <div>
     <header class="top">
       <span class="cloche"><?= icone('cloche') ?></span>
@@ -262,7 +260,7 @@ function icone($nom)
         </div>
       <?php endif; ?>
 
-      <!-- Fenêtre de saisie -->
+
       <div class="banniere <?= $d['ouverte'] ? '' : 'ferme' ?>">
         <?= icone('agenda') ?>
         <div><b><?= $d['ouverte'] ? 'Fenêtre de saisie ouverte' : 'Saisie fermée' ?></b>
@@ -277,7 +275,7 @@ function icone($nom)
 
       <form method="post" action="index.php?page=saisie" enctype="multipart/form-data" id="formSaisie">
 
-        <!-- 1. Choix du compteur -->
+        
         <section class="carte">
           <div class="titre"><span class="num">1</span>
             <div><b>Choisissez votre compteur</b><span>Sélectionnez le type de consommation à relever</span></div></div>
@@ -294,7 +292,7 @@ function icone($nom)
         </section>
 
         <div class="deux">
-          <!-- 2. Mois précédent (rempli en JS selon le compteur choisi) -->
+      
           <section class="carte gris">
             <div class="mois">
               <div style="display:flex;gap:12px;align-items:center">
@@ -316,7 +314,7 @@ function icone($nom)
             </div>
           </section>
 
-          <!-- 3. Mois actuel -->
+  
           <section class="carte">
             <div class="mois">
               <div style="display:flex;gap:12px;align-items:center">
@@ -325,7 +323,7 @@ function icone($nom)
               </div>
             </div>
 
-            <!-- État de la saisie du compteur choisi -->
+       
             <div class="alerte interne" id="etat" hidden>
               <span id="etatIcOk"><?= icone('valider') ?></span><span id="etatIcAl"><?= icone('alerte') ?></span>
               <div><b id="etatTitre"></b><span id="etatTexte"></span></div>
@@ -352,7 +350,7 @@ function icone($nom)
               <button type="submit" class="valider" id="btnValider"><?= icone('valider') ?> Valider ma saisie</button>
             </fieldset>
 
-            <!-- Facture : active seulement si elle existe (jamais en cas d'anomalie) -->
+        
             <div class="facture-zone">
               <button type="button" class="btn-sec" id="btnFacture" disabled><?= icone('facture') ?> Voir ma facture</button>
               <p class="note-facture" id="noteFacture"></p>
@@ -367,10 +365,10 @@ function icone($nom)
   </div>
 </div>
 
-<!-- Modale : photo agrandie -->
+
 <div class="modale modale-photo" id="modalePhoto" hidden><img id="modalePhotoImg" alt="Photo du compteur"></div>
 
-<!-- Modale : facture (d'après la maquette Fig. 5, adaptée aux données de la base) -->
+
 <div class="modale" id="modaleFacture" hidden>
   <div class="boite facture">
     <button type="button" class="x" data-fermer aria-label="Fermer">&times;</button>
@@ -469,15 +467,13 @@ function icone($nom)
     }
     $('champs').disabled = ['ferme', 'verifie', 'anomalie'].includes(c.etat);
 
-    // Facture
-    // « Voir ma facture » : actif seulement si la facture existe (générée automatiquement si saisie valide)
+    
     $('btnFacture').disabled = !c.facture;
     let note = 'Votre facture sera disponible après une saisie valide.';
     if (c.etat === 'anomalie') note = 'Facture bloquée tant que l\'anomalie n\'est pas traitée.';
     else if (c.etat === 'verifie') note = c.facture ? '' : 'Votre facture est en cours de génération.';
     $('noteFacture').textContent = note;
 
-    // Remise à zéro de la saisie en cours
     $('nouvel_index').value = '';
     $('avert').hidden = true;
   }
@@ -487,13 +483,13 @@ function icone($nom)
   const coche = document.querySelector('input[name="compteur"]:checked');
   if (coche) afficher(coche.value);
 
-  // Avertissement discret (n'empêche pas l'envoi : l'anomalie est traitée côté serveur)
+  
   $('nouvel_index')?.addEventListener('input', ev => {
     const v = parseFloat(ev.target.value);
     $('avert').hidden = !(courant && !isNaN(v) && v < courant.indexPrecedentNum);
   });
 
-  // Aperçu de la photo choisie (le vrai contrôle se fait côté serveur)
+
   const fichier = $('photo'), zone = $('zone'), apercu = $('apercu');
   fichier?.addEventListener('change', () => {
     const f = fichier.files[0];
@@ -509,11 +505,11 @@ function icone($nom)
   ['dragenter', 'dragover'].forEach(e => zone?.addEventListener(e, () => zone.classList.add('survol')));
   ['dragleave', 'drop'].forEach(e => zone?.addEventListener(e, () => zone.classList.remove('survol')));
 
-  // Anti double-clic
+
   const formSaisie = $('formSaisie');
   if (formSaisie) formSaisie.addEventListener('submit', () => { $('btnValider').disabled = true; });
 
-  // Modale photo agrandie
+
   function ouvrirPhoto(src) {
     if (!src) return;
     $('modalePhotoImg').src = src;
@@ -522,7 +518,7 @@ function icone($nom)
   $('agrandir')?.addEventListener('click', () => ouvrirPhoto(courant && courant.photo));
   $('agrandir')?.addEventListener('keydown', e => { if (e.key === 'Enter') ouvrirPhoto(courant && courant.photo); });
 
-  // Modale facture
+
   $('btnFacture')?.addEventListener('click', () => {
     const f = courant && courant.facture;
     if (!f) return;
@@ -548,7 +544,7 @@ function icone($nom)
     $('modaleFacture').hidden = false;
   });
 
-  // Fermeture des modales : clic sur le fond, bouton ×, touche Échap
+
   document.querySelectorAll('.modale').forEach(mo => mo.addEventListener('click', e => {
     if (e.target === mo || e.target.hasAttribute('data-fermer')) mo.hidden = true;
   }));

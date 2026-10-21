@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/Consommation.php';
 
-// La saisie + le type de compteur, pour calculer la facture
+
 function getSaisiePourFacture($idConso)
 {
     $r = consoSelect(
@@ -26,7 +26,7 @@ function insererFacture($idConso, $dateFacture, $debut, $fin, $ht, $tva, $ttc)
     );
 }
 
-// Toutes les factures d'un client (le filtre est sur le propriétaire de la saisie)
+
 function getFacturesDuClient($idClient)
 {
     return consoSelect(
@@ -62,14 +62,9 @@ function getFactureDuClient($idFacture, $idClient)
           LIMIT 1",
         'ii', [$idFacture, $idClient]
     );
-    return $r[0] ?? null; // null si la facture n'appartient pas au client
+    return $r[0] ?? null; 
 }
-/**
- * Récupère l'historique complet des factures payées pour l'espace Fournisseur
- */
-/**
- * Récupère l'historique complet des factures payées pour l'espace Fournisseur
- */
+
 function obtenirHistoriquePaiementsFournisseur()
 {
     $cnx = Connexion();

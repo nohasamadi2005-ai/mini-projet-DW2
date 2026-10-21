@@ -46,23 +46,20 @@ function formaterMontant($v)
     return number_format((float) $v, 2, ',', ' ');
 }
 
-/* ------------------------------------------------------------------ */
-/*  Réception du formulaire                                            */
-/* ------------------------------------------------------------------ */
+
 
 function traiterSaisie()
 {
-    // L'identité vient TOUJOURS de la session, jamais du formulaire.
+
     $idClient   = (int) $_SESSION['user']['id'];
     $idCompteur = (int) ($_POST['compteur'] ?? 0);
 
-    // 1. Le compteur appartient bien à ce client
+  
     $compteur = getCompteurDuClient($idCompteur, $idClient);
     if (!$compteur) {
         retourSaisie('erreur', 'Compteur invalide.');
     }
 
-    // 2. Quelle saisie vise-t-on ? Resaisie demandée (peut concerner un mois passé) ou mois courant
     $existante = getSaisieEnResaisie($idCompteur);
     $resaisie  = $existante !== null;
     if ($resaisie) {
@@ -74,24 +71,23 @@ function traiterSaisie()
         $existante = getSaisie($idCompteur, $mois, $annee);
     }
 
-    // 3. Fenêtre 18 -> fin du mois (sauf resaisie demandée par le fournisseur)
+  
     if (!$resaisie && !fenetreOuverte()) {
         retourSaisie('erreur', 'La saisie est fermée. Elle est ouverte du 18 à la fin de chaque mois.', $idCompteur);
     }
 
-    // 4. Doublon
     if ($existante && !$resaisie) {
         retourSaisie('erreur', 'Vous avez déjà saisi ce compteur pour ce mois.', $idCompteur);
     }
 
-    // 5. Index
+ 
     $brut = str_replace(',', '.', trim($_POST['nouvel_index'] ?? ''));
     if ($brut === '' || !is_numeric($brut) || (float) $brut < 0 || (float) $brut > 9999999999) {
         retourSaisie('erreur', 'Index invalide : saisissez un nombre positif.', $idCompteur);
     }
     $indexActuel = round((float) $brut, 2);
 
-    // 6. Photo (obligatoire, JPEG/PNG, 5 Mo max, type réel vérifié)
+    
     $f = $_FILES['photo'] ?? null;
     if (!$f || $f['error'] === UPLOAD_ERR_NO_FILE) {
         retourSaisie('erreur', 'La photo du compteur est obligatoire.', $idCompteur);
@@ -108,15 +104,15 @@ function traiterSaisie()
         retourSaisie('erreur', 'La photo doit être une image JPG ou PNG valide.', $idCompteur);
     }
 
-    // 7. Référence relue EN BASE (jamais depuis le formulaire) + calcul
+
     $ref   = getReferencePrecedente($compteur, $mois, $annee);
     $delta = round($indexActuel - $ref['index'], 2);
 
-    // 8. Valide ou anomalie ? (une anomalie est ENREGISTRÉE, jamais refusée)
+
     $typeAnomalie = detecterAnomalie($delta, $compteur['Type_Compteur']);
     $statut       = $typeAnomalie ? 'Anomalie' : 'Verifie';
 
-    // 9. Stockage de la photo (nom aléatoire) puis enregistrement
+   
     if (!is_dir(PHOTOS_DOSSIER)) {
         mkdir(PHOTOS_DOSSIER, 0775, true);
     }
@@ -137,24 +133,24 @@ function traiterSaisie()
         }
     } catch (mysqli_sql_exception $e) {
         @unlink($chemin);
-        if ((int) $e->getCode() === 1062) {   // contrainte UNIQUE : double clic, etc.
+        if ((int) $e->getCode() === 1062) {   
             retourSaisie('erreur', 'Vous avez déjà saisi ce compteur pour ce mois.', $idCompteur);
         }
         retourSaisie('erreur', 'Une erreur est survenue. Veuillez réessayer.', $idCompteur);
     }
 
-    // 10. Suite selon le résultat
+   
     if ($typeAnomalie) {
         creerAnomalie($idConso, $typeAnomalie,
             'Index précédent ' . $ref['index'] . ', index saisi ' . $indexActuel . ', écart ' . $delta);
-        // Aucune génération de facture : elle reste bloquée jusqu'au traitement par le fournisseur.
+       
         retourSaisie('anomalie',
             'Votre saisie a bien été enregistrée et est actuellement en cours de traitement. '
             . 'Une anomalie a été détectée : le fournisseur va la vérifier. '
             . 'Votre facture sera disponible après cette vérification.', $idCompteur);
     }
 
-   /*genere facture appel si elle existe */
+   
     $texte = 'Votre saisie a été enregistrée et vérifiée, aucun problème détecté.';
     if (function_exists('genererFacture')) {
         try {
@@ -169,9 +165,7 @@ function traiterSaisie()
     retourSaisie('succes', $texte, $idCompteur);
 }
 
-/* ------------------------------------------------------------------ */
-/*  Données pour la vue                                                */
-/* ------------------------------------------------------------------ */
+
 
 function preparerPageSaisie()
 {
@@ -192,7 +186,7 @@ function preparerPageSaisie()
         $saisie   = $resaisie ?: getSaisie($id, $moisNow, $anneeNow);
         $mc = $resaisie ? (int) $resaisie['Mois']  : $moisNow;
         $ac = $resaisie ? (int) $resaisie['Annee'] : $anneeNow;
-        $ref = getReferencePrecedente($c, $mc, $ac);   // période strictement antérieure
+        $ref = getReferencePrecedente($c, $mc, $ac);   
 
         if ($resaisie) {
             $etat = 'resaisie';
@@ -258,7 +252,7 @@ function preparerPageSaisie()
         ];
     }
 
-    // Compteur affiché : celui du retour de formulaire (?c=), sinon le premier
+  
     $choisi = (int) ($_GET['c'] ?? 0);
     if (!isset($payload[$choisi])) {
         $choisi = $compteurs ? $compteurs[0]['id'] : 0;

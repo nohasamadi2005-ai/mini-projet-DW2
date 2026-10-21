@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ajouterClientAvecCompteur($nom, $prenom, $adresse, $telephone, $email, $password, $numeroCompteur, $typeCompteur);
         }
 
-        // Redirection gérée par le routeur racine index.php
+
         header('Location: index.php?page=gestion_client');
         exit;
     }
@@ -38,17 +38,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $compteurElec = trim($_POST['compteur_elec'] ?? '');
 
         if ($idClient) {
-            // 1. Modifier les infos du client
+  
             modifierClient($idClient, $nom, $prenom, $adresse, $telephone, $email);
 
-            // 2. Mettre à jour ou insérer le compteur d'eau
+         
             mettreAJourCompteurClient($idClient, 'Eau', $compteurEau);
 
-            // 3. Mettre à jour ou insérer le compteur d'électricité
             mettreAJourCompteurClient($idClient, 'Electricite', $compteurElec);
         }
 
-        // Redirection gérée par le routeur racine index.php
+        
         header('Location: index.php?page=gestion_client');
         exit;
     }

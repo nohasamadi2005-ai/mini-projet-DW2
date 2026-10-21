@@ -2,9 +2,9 @@
 
 require_once __DIR__ . '/connexion.php';
 
-/* ---------- Petits utilitaires internes ---------- */
 
-// Une SEULE connexion MySQL par requête HTTP, réutilisée par toutes les fonctions.
+
+
 function consoConnexion()
 {
     static $cnx = null;
@@ -14,7 +14,7 @@ function consoConnexion()
     return $cnx;
 }
 
-// SELECT préparé -> tableau de lignes
+
 function consoSelect($sql, $types = null, $params = [])
 {
     $cnx = consoConnexion();
@@ -44,7 +44,7 @@ function consoSelect($sql, $types = null, $params = [])
     return $donnees;
 }
 
-// INSERT / UPDATE préparé -> id inséré (INSERT) ou nb de lignes modifiées (UPDATE)
+
 function consoExecuter($sql, $types, $params)
 {
     $cnx = consoConnexion();
@@ -65,9 +65,9 @@ function consoExecuter($sql, $types, $params)
     return $retour;
 }
 
-/* ---------- Compteurs ---------- */
 
-// Les compteurs (Eau puis Electricite) d'un client
+
+
 function getCompteursDuClient($idClient)
 {
     return consoSelect(
@@ -77,7 +77,7 @@ function getCompteursDuClient($idClient)
     );
 }
 
-// Un compteur, SEULEMENT s'il appartient à ce client (sinon null)
+
 function getCompteurDuClient($idCompteur, $idClient)
 {
     $r = consoSelect(
@@ -88,7 +88,7 @@ function getCompteurDuClient($idCompteur, $idClient)
     return $r[0] ?? null;
 }
 
-/* ---------- Référence (index et photo précédents) ---------- */
+
 
 function getReferencePrecedente($compteur, $mois, $annee)
 {
@@ -120,9 +120,8 @@ function getReferencePrecedente($compteur, $mois, $annee)
     ];
 }
 
-/* ---------- Saisies ---------- */
 
-// La saisie d'un compteur pour un mois donné (ou null)
+
 function getSaisie($idCompteur, $mois, $annee)
 {
     $r = consoSelect(
@@ -133,7 +132,7 @@ function getSaisie($idCompteur, $mois, $annee)
     return $r[0] ?? null;
 }
 
-// Saisie pour laquelle le fournisseur a demandé une resaisie
+
 function getSaisieEnResaisie($idCompteur)
 {
     $r = consoSelect(
@@ -161,7 +160,7 @@ function insererSaisie($idClient, $idCompteur, $mois, $annee, $indexPrec, $index
     );
 }
 
-// Correction d'une saisie existante (cas de la resaisie demandée)
+
 function modifierSaisie($idConso, $indexPrec, $indexActuel, $consommation,
                         $anciennePhoto, $photoActuelle, $statut)
 {
@@ -185,7 +184,7 @@ function creerAnomalie($idConso, $type, $description)
     );
 }
 
-// Lecture seule : la facture liée à une saisie
+
 function getFactureDeSaisie($idConso)
 {
     $r = consoSelect(

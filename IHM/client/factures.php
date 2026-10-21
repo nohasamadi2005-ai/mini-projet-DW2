@@ -1,5 +1,5 @@
 <?php
-// Données venant de preparerPageFactures() : $d['factures']
+
 $u = $_SESSION['user'];
 $initiales = mb_strtoupper(mb_substr($u['prenom'], 0, 1) . mb_substr($u['nom'], 0, 1));
 

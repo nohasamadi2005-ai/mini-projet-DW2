@@ -10,7 +10,7 @@ function trouverFournisseurParEmail($email)
     mysqli_stmt_bind_param($stmt, "s", $email);
     mysqli_stmt_execute($stmt);
     $res = mysqli_stmt_get_result($stmt);
-    return mysqli_fetch_assoc($res);   // une ligne (tableau) ou null si introuvable
+    return mysqli_fetch_assoc($res);  
 }
 
 function modifierMotDePasseFournisseur($id, $hash)

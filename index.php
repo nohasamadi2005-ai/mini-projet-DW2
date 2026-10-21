@@ -1,5 +1,5 @@
 <?php
-const INSCRIPTION_FOURNISSEUR_TEST = true;   // TEST : mettre false (ou supprimer) à la fin
+const INSCRIPTION_FOURNISSEUR_TEST = true;   
 require_once __DIR__ . '/traitement/auth.php';
 $post = $_SERVER['REQUEST_METHOD'] === 'POST';
 
@@ -41,9 +41,9 @@ switch ($page) {
         exit;
 
    case 'fournisseur':
-    case 'gestion_client': // On peut regrouper les deux ou créer le cas dédié
+    case 'gestion_client': 
         exigerRole('fournisseur');
-        // On charge ton fichier de gestion des clients et compteurs à la place de l'index de test
+       
         require __DIR__ . '/IHM/fournisseur/gestion_client.php'; 
         break;
     
@@ -63,7 +63,7 @@ switch ($page) {
             foreach ($v as $cle => $_) {
                 $v[$cle] = trim($_POST[$cle] ?? '');
             }
-            // Le serveur décide : "fournisseur" n'est accepté que si le mode TEST est actif
+            
             $roleSaisi = (($_POST['role'] ?? '') === 'fournisseur' && INSCRIPTION_FOURNISSEUR_TEST)
                          ? 'fournisseur' : 'client';
 
@@ -103,7 +103,7 @@ switch ($page) {
     exigerRole('client');
     require_once __DIR__ . '/traitement/Saisie.php';
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        traiterSaisie();            // bouton « Valider ma saisie »
+        traiterSaisie();            
     }
     $d = preparerPageSaisie();
     require __DIR__ . '/IHM/client/saisie.php';
@@ -111,7 +111,7 @@ switch ($page) {
 
         case 'factures':
         exigerRole('client');
-        require_once __DIR__ . '/traitement/Saisie.php';   // pour periodeFr(), formaterMontant()...
+        require_once __DIR__ . '/traitement/Saisie.php';   
         $d = preparerPageFactures();
         require __DIR__ . '/IHM/client/factures.php';
         break;
@@ -126,8 +126,7 @@ switch ($page) {
         break;
     }
 
-    // La récupération et la vérification de la facture
-    // seront ajoutées à l'étape suivante.
+   
 
     break;
     case 'payer_facture':
@@ -154,14 +153,14 @@ switch ($page) {
             ? preparerFactureImprimable($idFacture, (int) $_SESSION['user']['id'])
             : null;
 
-        if (!$facture) {               // id invalide, inexistant ou facture d'un autre client
+        if (!$facture) {              
             http_response_code(404);
             require __DIR__ . '/IHM/404.php';
             break;
         }
         require __DIR__ . '/IHM/client/voir_facture.php';
         break;
-         // TEST : inscription fournisseur, à supprimer à la fin
+      
     case 'register_fournisseur':
         if (!INSCRIPTION_FOURNISSEUR_TEST) {
             http_response_code(404);

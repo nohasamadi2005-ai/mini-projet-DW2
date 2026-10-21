@@ -2,13 +2,13 @@
 require_once __DIR__ . '/../../traitement/auth.php';
 require_once __DIR__ . '/../../BD/Facture.php';
 
-// Sécurité : Accès réservé au fournisseur
+
 exigerRole('fournisseur');
 
-// Récupération de l'historique
+
 $paiements = obtenirHistoriquePaiementsFournisseur();
 
-// Calcul des statistiques KPI
+
 $totalEncaisse = 0;
 $nbTransactions = count($paiements);
 
@@ -84,7 +84,7 @@ foreach ($paiements as $p) {
 </head>
 <body>
 
-    <!-- Sidebar -->
+
     <div class="sidebar">
         <div class="sidebar-brand">
             <div class="logo-icon"><i class="fa-solid fa-droplet"></i></div>
@@ -121,7 +121,7 @@ foreach ($paiements as $p) {
         </div>
     </div>
 
-    <!-- Main Content -->
+    
     <div class="main-content">
         <div class="header">
             <h1>Historique et Journal des Règlements Encaissés</h1>
@@ -129,7 +129,7 @@ foreach ($paiements as $p) {
         </div>
 
         <div class="container">
-            <!-- KPIs -->
+        
             <div class="stats-grid">
                 <div class="card-kpi">
                     <div>
@@ -152,7 +152,7 @@ foreach ($paiements as $p) {
                 </div>
             </div>
 
-            <!-- Table Card -->
+          
             <div class="table-card">
                 <div class="action-bar">
                     <div class="search-box">

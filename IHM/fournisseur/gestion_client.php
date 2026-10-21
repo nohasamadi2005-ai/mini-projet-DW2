@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../traitement/auth.php';
 exigerRole('fournisseur');
 require_once __DIR__ . '/../../BD/Client.php';
 
-// Gestion de la recherche et de la pagination
+
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $pageActuelle = isset($_GET['p']) ? (int)$_GET['p'] : 1;
 $parPage = 5; 
@@ -12,7 +12,7 @@ $debut = ($pageActuelle - 1) * $parPage;
 $cnx = Connexion();
 $searchEsc = mysqli_real_escape_string($cnx, $search);
 
-// 1. Compter le nombre total de clients pour la pagination
+
 $sqlCount = "SELECT COUNT(DISTINCT c.ID_Client) as total FROM client c LEFT JOIN compteur cp ON c.ID_Client = cp.ID_Client";
 if (!empty($search)) {
     $sqlCount .= " WHERE c.ID_Client LIKE '%$searchEsc%' OR c.Nom LIKE '%$searchEsc%' OR c.Prenom LIKE '%$searchEsc%' OR cp.ID_Compteur LIKE '%$searchEsc%'";
@@ -25,7 +25,7 @@ if ($pageActuelle > $totalPages) $pageActuelle = $totalPages;
 if ($pageActuelle < 1) $pageActuelle = 1;
 $debut = ($pageActuelle - 1) * $parPage;
 
-// 2. Récupérer les clients de la page courante avec leurs compteurs (Correction de l'alias en _ids)
+
 $sql = "SELECT c.*, 
         GROUP_CONCAT(DISTINCT CASE WHEN cp.Type_Compteur = 'Eau' THEN cp.ID_Compteur END SEPARATOR ', ') as compteur_eau_ids,
         GROUP_CONCAT(DISTINCT CASE WHEN cp.Type_Compteur = 'Electricite' THEN cp.ID_Compteur END) as compteur_elec_ids

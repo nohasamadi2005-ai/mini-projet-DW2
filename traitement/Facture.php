@@ -2,12 +2,12 @@
 require_once __DIR__ . '/Regles.php';
 require_once __DIR__ . '/../BD/Facture.php';
 
-// Génère la facture d'une saisie vérifiée. Retourne l'id de la facture, ou null si rien à faire.
+
 function genererFacture($idConso)
 {
     $s = getSaisiePourFacture($idConso);
     if (!$s || $s['Statut_Traitement'] !== 'Verifie') {
-        return null;                       // pas de facture pour une anomalie
+        return null;                    
     }
     if (getFactureDeSaisie($idConso)) {
         return null;                       // déjà facturée
@@ -17,13 +17,12 @@ function genererFacture($idConso)
 
     $debut = sprintf('%04d-%02d-01', (int) $s['Annee'], (int) $s['Mois']);
     $fin   = date('Y-m-t', strtotime($debut));
-    $date  = date('Y-m-d', maintenant());  // respecte DATE_SIMULEE
+    $date  = date('Y-m-d', maintenant());  
 
     return insererFacture($idConso, $date, $debut, $fin, $ht, $tva, $ttc);
 }
 
-// Données pour la page « Mes factures »
-// (utilise periodeFr(), formaterIndex(), formaterMontant() de Saisie.php et dateFr() de Regles.php)
+
 function preparerPageFactures()
 {
     $idClient = (int) $_SESSION['user']['id'];
@@ -56,7 +55,7 @@ function preparerPageFactures()
     }
     return compact('factures');
 }
-// Données pour la page « Voir / imprimer ». Retourne null si la facture n'appartient pas au client.
+
 function preparerFactureImprimable($idFacture, $idClient)
 {
     $f = getFactureDuClient($idFacture, $idClient);
