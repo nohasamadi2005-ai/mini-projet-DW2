@@ -27,6 +27,7 @@ $roleSaisi = $roleSaisi ?? 'client';
         <select name="role" id="role">
           <option value="client"      <?= $roleSaisi === 'client' ? 'selected' : '' ?>>Client</option>
           <option value="fournisseur" <?= $roleSaisi === 'fournisseur' ? 'selected' : '' ?>>Fournisseur (TEST)</option>
+          <option value="agent"       <?= $roleSaisi === 'agent' ? 'selected' : '' ?>>Agent</option>
         </select>
       <?php endif; ?>
 
@@ -72,7 +73,7 @@ $roleSaisi = $roleSaisi ?? 'client';
 <script>
   const role = document.getElementById('role');
   const champs = document.getElementById('champsClient');
-  function maj() { champs.style.display = (role && role.value === 'fournisseur') ? 'none' : 'block'; }
+  function maj() { champs.style.display = (role && role.value === 'fournisseur'|| role.value === 'agent') ? 'none' : 'block'; }
   if (role) { role.addEventListener('change', maj); maj(); }
 </script>
 </html>

@@ -44,6 +44,7 @@ $roleSaisi  = $roleSaisi ?? 'client';
       <select id="role" name="role">
         <option value="client"      <?= $roleSaisi === 'client' ? 'selected' : '' ?>>Particulier</option>
         <option value="fournisseur" <?= $roleSaisi === 'fournisseur' ? 'selected' : '' ?>>Fournisseur</option>
+        <option value="agent"       <?= $roleSaisi === 'agent' ? 'selected' : '' ?>>Agent</option>
       </select>
 
       <button type="submit">Se connecter</button>

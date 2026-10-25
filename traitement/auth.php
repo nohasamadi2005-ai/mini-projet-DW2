@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../BD/Client.php';
 require_once __DIR__ . '/../BD/Fournisseur.php';
+require_once __DIR__ . '/../BD/Agent.php';
 
 function seConnecter($role, $email, $motDePasse) {
     $email = trim($email);
@@ -13,6 +14,8 @@ function seConnecter($role, $email, $motDePasse) {
         $user = trouverClientParEmail($email);
     } elseif ($role === 'fournisseur') {
         $user = trouverFournisseurParEmail($email);
+    } elseif ($role === 'agent') { // <--- AJOUTÉ
+        $user = trouverAgentParEmail($email);
     } else {
         return false;
     }
@@ -20,8 +23,7 @@ function seConnecter($role, $email, $motDePasse) {
     if ($user && password_verify($motDePasse, $user['mdp'])) {
         session_regenerate_id(true);
 
-       
-        $idUser = $user['id'] ?? $user['ID_Client'] ?? $user['ID_Admin'] ?? $user['ID_Fournisseur'] ?? null;
+        $idUser = $user['id'] ?? $user['ID_Client'] ?? $user['ID_Admin'] ?? $user['ID_Fournisseur'] ?? $user['ID_Agent'] ?? null; // <--- ID_Agent ajouté
 
         $_SESSION['user'] = [
             'id'     => $idUser,
@@ -157,14 +159,56 @@ function inscrireFournisseur($nom, $prenom, $email, $mdp, $mdp2)
     return $erreurs;
 }
 
+function inscrireAgent($nom, $prenom, $email, $mdp, $mdp2)
+{
+    $erreurs = [];
+    if ($nom === '' || $prenom === '') {
+        $erreurs[] = 'Le nom et le prénom sont obligatoires.';
+    }
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $erreurs[] = 'Adresse e-mail invalide.';
+    }
+    if ($e = erreurMotDePasse($mdp)) {
+        $erreurs[] = $e;
+    }
+    if ($mdp !== $mdp2) {
+        $erreurs[] = 'Les deux mots de passe ne correspondent pas.';
+    }
+    if (!$erreurs && trouverAgentParEmail($email)) {
+        $erreurs[] = 'Cette adresse e-mail est déjà utilisée.';
+    }
+    if (!$erreurs) {
+        creerAgent($nom, $prenom, $email, password_hash($mdp, PASSWORD_DEFAULT));
+
+        $user = trouverAgentParEmail($email);
+        if ($user) {
+            session_regenerate_id(true);
+            $idUser = $user['id'] ?? $user['ID_Agent'] ?? null;
+
+            $_SESSION['user'] = [
+                'id'     => $idUser,
+                'role'   => 'agent',
+                'nom'    => $user['Nom'],
+                'prenom' => $user['Prenom'],
+                'email'  => $user['Email'],
+            ];
+        }
+    }
+    return $erreurs;
+}
+
 function changerMotDePasse($ancien, $nouveau, $nouveau2)
 {
     $u       = $_SESSION['user'];
     $erreurs = [];
 
-    $compte = ($u['role'] === 'client')
-        ? trouverClientParEmail($u['email'])
-        : trouverFournisseurParEmail($u['email']);
+    if ($u['role'] === 'client') {
+        $compte = trouverClientParEmail($u['email']);
+    } elseif ($u['role'] === 'fournisseur') {
+        $compte = trouverFournisseurParEmail($u['email']);
+    } else {
+        $compte = trouverAgentParEmail($u['email']);
+    }
 
     if (!$compte || !password_verify($ancien, $compte['mdp'])) {
         $erreurs[] = 'Le mot de passe actuel est incorrect.';
@@ -183,8 +227,10 @@ function changerMotDePasse($ancien, $nouveau, $nouveau2)
         $hash = password_hash($nouveau, PASSWORD_DEFAULT);
         if ($u['role'] === 'client') {
             modifierMotDePasseClient($u['id'], $hash);
-        } else {
+        } elseif ($u['role'] === 'fournisseur') {
             modifierMotDePasseFournisseur($u['id'], $hash);
+        } else {
+            modifierMotDePasseAgent($u['id'], $hash);
         }
         session_regenerate_id(true);
     }
@@ -193,6 +239,9 @@ function changerMotDePasse($ancien, $nouveau, $nouveau2)
 
 function pageAccueil($role)
 {
-    return $role === 'fournisseur' ? 'gestion_client' : 'saisie';
+    if ($role === 'fournisseur') return 'gestion_client';
+    if ($role === 'agent') return 'saisie_agent'; // Remplacez par la page d'accueil de l'agent
+    return 'saisie';
 }
+
 ?>
