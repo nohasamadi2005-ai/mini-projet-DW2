@@ -332,8 +332,8 @@ function icone($nom)
             <fieldset id="champs">
               <label class="champ" for="nouvel_index">Nouvel index <span style="color:#ef4444">*</span></label>
               <div class="saisie">
-                <input type="number" id="nouvel_index" name="nouvel_index" placeholder="Ex. 4932"
-                       min="0" step="0.01" inputmode="decimal" required>
+               <input type="number" id="nouvel_index" name="nouvel_index" placeholder="Ex. 4932"
+       step="0.01" inputmode="decimal" required>
                 <span class="u" data-unite-texte></span>
               </div>
               <p class="aide-champ">L'index doit être supérieur à celui du mois précédent.</p>

@@ -50,7 +50,6 @@ switch ($page) {
     case 'agent':
     case 'saisie_agent':
         exigerRole('agent');
-        // Vous pouvez créer ce fichier IHM pour l'agent
         require __DIR__ . '/IHM/agent/saisie_agent.php'; 
         break;
     case 'agent_depot':
@@ -219,12 +218,31 @@ switch ($page) {
         exigerRole('fournisseur');
         require __DIR__ . '/IHM/fournisseur/historique_paiements.php';
         break;
+
+    // --- NOUVEAU : Traitement des Anomalies (Fournisseur) ---
+    case 'traitement_anomalies':
+        exigerRole('fournisseur');
+        require __DIR__ . '/IHM/fournisseur/traitement_anomalies.php';
+        break;
+        // --- NOUVEAU : Action de traitement de l'anomalie (POST) ---
+    case 'traiter_anomalie':
+        exigerRole('fournisseur');
+        require __DIR__ . '/traitement/traiter_anomalie.php';
+        break;
+
+    // --- NOUVEAU : Espace Notifications (Client) ---
+    case 'notifications':
+        exigerRole('client');
+        require __DIR__ . '/IHM/client/notifications.php';
+        break;
+
     case 'telecharger_modele':
         exigerRole('agent');
         header('Content-Type: text/plain; charset=utf-8');
         header('Content-Disposition: attachment; filename="modele_releves.txt"');
         echo "1, 0.0, 0.0\n";
         exit;
+
     default:
         http_response_code(404);
         require __DIR__ . '/IHM/404.php';

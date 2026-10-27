@@ -3,7 +3,6 @@ require_once __DIR__ . '/../../traitement/auth.php';
 exigerRole('fournisseur');
 require_once __DIR__ . '/../../BD/Client.php';
 
-
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $pageActuelle = isset($_GET['p']) ? (int)$_GET['p'] : 1;
 $parPage = 5; 
@@ -11,7 +10,6 @@ $debut = ($pageActuelle - 1) * $parPage;
 
 $cnx = Connexion();
 $searchEsc = mysqli_real_escape_string($cnx, $search);
-
 
 $sqlCount = "SELECT COUNT(DISTINCT c.ID_Client) as total FROM client c LEFT JOIN compteur cp ON c.ID_Client = cp.ID_Client";
 if (!empty($search)) {
@@ -24,7 +22,6 @@ if ($totalPages < 1) $totalPages = 1;
 if ($pageActuelle > $totalPages) $pageActuelle = $totalPages;
 if ($pageActuelle < 1) $pageActuelle = 1;
 $debut = ($pageActuelle - 1) * $parPage;
-
 
 $sql = "SELECT c.*, 
         GROUP_CONCAT(DISTINCT CASE WHEN cp.Type_Compteur = 'Eau' THEN cp.ID_Compteur END SEPARATOR ', ') as compteur_eau_ids,
@@ -45,7 +42,6 @@ $result = mysqli_query($cnx, $sql);
 $clients = [];
 while ($row = mysqli_fetch_assoc($result)) {
     $clients[] = $row;
-
 }
 mysqli_close($cnx);
 
@@ -149,11 +145,11 @@ $finAffichage = min($debut + $parPage, $totalClients);
         </div>
 
         <ul class="sidebar-menu">
-    <li class="active"><a href="index.php?page=gestion_client"><i class="fa-solid fa-users"></i> Gestion Clients</a></li>
-    <li><a href="index.php?page=historique_paiements"><i class="fa-solid fa-receipt"></i> Historique des Paiements</a></li>
-    <li><a href="#"><i class="fa-solid fa-triangle-exclamation"></i> Traitement des Anomalies</a></li>
-    <li><a href="#"><i class="fa-solid fa-file-invoice-dollar"></i> Gestion des Réclamations</a></li>
-</ul>
+            <li class="active"><a href="index.php?page=gestion_client"><i class="fa-solid fa-users"></i> Gestion Clients</a></li>
+            <li><a href="index.php?page=historique_paiements"><i class="fa-solid fa-receipt"></i> Historique des Paiements</a></li>
+            <li><a href="index.php?page=traitement_anomalies"><i class="fa-solid fa-triangle-exclamation"></i> Traitement des Anomalies</a></li>
+            <li><a href="#"><i class="fa-solid fa-file-invoice-dollar"></i> Gestion des Réclamations</a></li>
+        </ul>
 
         <div class="sidebar-footer">
             <div class="user-profile">
