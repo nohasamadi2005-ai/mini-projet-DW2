@@ -6,9 +6,13 @@ require_once __DIR__ . '/../BD/Facture.php';
 function genererFacture($idConso)
 {
     $s = getSaisiePourFacture($idConso);
-    if (!$s || $s['Statut_Traitement'] !== 'Verifie') {
-        return null;                    
-    }
+   if (!$s || !in_array($s['Statut_Traitement'], ['Verifie', 'Anomalie'])) {
+    return null;
+}
+if ($s['Statut_Traitement'] === 'Anomalie' && (float) $s['Consommation'] < 0) {
+    return null;
+}
+
     if (getFactureDeSaisie($idConso)) {
         return null;                       // déjà facturée
     }

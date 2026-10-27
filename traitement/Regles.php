@@ -9,7 +9,7 @@ if (!defined('FENETRE_TOUJOURS_OUVERTE')) {
 
 
 if (!defined('DATE_SIMULEE')) {
-    define('DATE_SIMULEE', '2026-12-18');
+    define('DATE_SIMULEE', '2028-05-27');
 
 }
 
@@ -19,7 +19,7 @@ if (!function_exists('maintenant')) {
         return DATE_SIMULEE ? strtotime(DATE_SIMULEE . ' 12:00:00') : time();
     }
 }
-
+ 
 if (!function_exists('fenetreOuverte')) {
     function fenetreOuverte()
     {

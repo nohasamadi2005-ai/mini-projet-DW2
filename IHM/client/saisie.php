@@ -255,7 +255,11 @@ function icone($nom)
       <?php if ($d['flash']): ?>
         <div class="alerte <?= h($d['flash']['type']) ?>" role="alert">
           <?= icone($d['flash']['type'] === 'succes' ? 'valider' : 'alerte') ?>
-          <div><?= h($d['flash']['texte']) ?></div>
+          <div><?= h($d['flash']['texte']) ?>
+        <?php if (strpos($d['flash']['texte'], 'Mes factures') !== false): ?>
+    <br><a href="index.php?page=factures">Voir mes factures</a>
+  <?php endif; ?>
+        </div>
         </div>
       <?php endif; ?>
 
@@ -424,8 +428,13 @@ function icone($nom)
 
   const ETATS = {
     verifie:  ['succes',   'Saisie enregistrée et vérifiée', 'Votre relevé de ce mois a bien été enregistré.'],
-    anomalie: ['anomalie', 'Anomalie détectée', 'Votre saisie est en cours de traitement par le fournisseur. La facture est bloquée jusqu\'à la fin de ce traitement.'],
-    resaisie: ['info',     'Nouvelle saisie demandée', 'Le fournisseur vous demande de saisir à nouveau votre index. Vérifiez votre compteur puis renvoyez votre relevé.']
+anomalie: [
+  'anomalie',
+  'Anomalie détectée',
+  'Votre saisie est en cours de traitement par le fournisseur.'
+],
+    resaisie: ['info',     'Nouvelle saisie demandée', 'Le fournisseur vous demande de saisir à nouveau votre index. Vérifiez votre compteur puis renvoyez votre relevé.'],
+    rejete: ['erreur', 'Saisie rejetée', 'Le nombre maximum de tentatives est atteint. Veuillez contacter le fournisseur.']
   };
   let courant = null;
 
@@ -464,13 +473,16 @@ function icone($nom)
       $('etatIcOk').hidden = e[0] !== 'succes';
       $('etatIcAl').hidden = e[0] === 'succes';
     }
-    $('champs').disabled = ['ferme', 'verifie', 'anomalie'].includes(c.etat);
+    $('champs').disabled = ['ferme', 'verifie', 'anomalie','rejete'].includes(c.etat);
 
     
     $('btnFacture').disabled = !c.facture;
-    let note = 'Votre facture sera disponible après une saisie valide.';
-    if (c.etat === 'anomalie') note = 'Facture bloquée tant que l\'anomalie n\'est pas traitée.';
-    else if (c.etat === 'verifie') note = c.facture ? '' : 'Votre facture est en cours de génération.';
+       let note = 'Votre facture sera disponible après une saisie valide.';
+    if (c.facture) {
+      note = c.etat === 'anomalie' ? 'Votre facture est disponible malgré la vérification en cours.' : '';
+    } else if (c.etat === 'verifie') {
+      note = 'Votre facture est en cours de génération.';
+    }
     $('noteFacture').textContent = note;
 
     $('nouvel_index').value = '';

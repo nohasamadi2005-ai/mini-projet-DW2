@@ -95,8 +95,10 @@ function getReferencePrecedente($compteur, $mois, $annee)
     $r = consoSelect(
         "SELECT Index_Actuel, Photo_Actuelle, Date_saisie, Mois, Annee
            FROM consommation_mensuelle
-          WHERE ID_Compteur = ? AND Statut_Traitement = 'Verifie'
-            AND (Annee < ? OR (Annee = ? AND Mois < ?))
+          WHERE ID_Compteur = ?
+  AND (Statut_Traitement = 'Verifie'
+       OR (Statut_Traitement = 'Anomalie' AND Consommation >= 0))
+  AND (Annee < ? OR (Annee = ? AND Mois < ?))
           ORDER BY Annee DESC, Mois DESC LIMIT 1",
         'iiii', [$compteur['ID_Compteur'], $annee, $annee, $mois]
     );
@@ -138,7 +140,7 @@ function getSaisieEnResaisie($idCompteur)
     $r = consoSelect(
         "SELECT * FROM consommation_mensuelle 
           WHERE ID_Compteur = ? 
-            AND Statut_Traitement = 'Resaisie' 
+            AND Statut_Traitement = 'Resaisie demandee' 
           LIMIT 1",
         'i',
         [$idCompteur]

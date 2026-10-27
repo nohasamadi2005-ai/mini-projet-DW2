@@ -6,7 +6,7 @@ require_once __DIR__ . '/Consommation.php';
 function creerNotification($idClient, $idAdmin, $message)
 {
     return consoExecuter(
-        "INSERT INTO notification (ID_Client, ID_Admin, Message, Date_Envoi) VALUES (?, ?, ?, NOW())",
+        "INSERT INTO notification (ID_Client, ID_Admin, Message, Date_Envoi,lu) VALUES (?, ?, ?, NOW(),0)",
         'iis', [$idClient, $idAdmin, $message]
     );
 }
@@ -14,8 +14,8 @@ function creerNotification($idClient, $idAdmin, $message)
 function getNotificationsClient($idClient)
 {
     return consoSelect(
-                "SELECT Message, COALESCE(Date_Envoi, Date_Notification) AS Date_Envoi FROM notification WHERE ID_Client = ?
-          ORDER BY ID_Notification DESC",
+        "SELECT Message, Date_Envoi FROM notification WHERE ID_Client = ?
+         ORDER BY ID_Notification DESC",
         'i', [$idClient]
     );
 }

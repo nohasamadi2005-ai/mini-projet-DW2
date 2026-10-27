@@ -62,9 +62,12 @@ function traiterSaisie()
 
     $existante = getSaisieEnResaisie($idCompteur);
     $resaisie  = $existante !== null;
+    $texte = 'Votre saisie a été enregistrée et vérifiée, aucun problème détecté.';
     if ($resaisie) {
         $mois  = (int) $existante['Mois'];
         $annee = (int) $existante['Annee'];
+     $texte = 'Votre nouvelle saisie de ' . nomMois($mois) . ' ' . $annee
+           . ' a été vérifiée.';
     } else {
         $mois      = (int) date('n', maintenant());
         $annee     = (int) date('Y', maintenant());
@@ -138,17 +141,38 @@ function traiterSaisie()
         }
         retourSaisie('erreur', 'Une erreur est survenue. Veuillez réessayer.', $idCompteur);
     }
-
-   
-    if ($typeAnomalie) {
-        creerAnomalie($idConso, $typeAnomalie,
-            'Index précédent ' . $ref['index'] . ', index saisi ' . $indexActuel . ', écart ' . $delta);
-       
-        retourSaisie('anomalie',
-            'Votre saisie a bien été enregistrée et est actuellement en cours de traitement. '
-            . 'Une anomalie a été détectée : le fournisseur va la vérifier. '
-            . 'Votre facture sera disponible après cette vérification.', $idCompteur);
+  if ($typeAnomalie) {
+        try {
+            creerAnomalie($idConso, $typeAnomalie, 'Détectée à la saisie');
+        } catch (Throwable $e) {
+            error_log($e->getMessage());
+        }
     }
+   
+if ($typeAnomalie === 'Surconsommation') {
+    if (function_exists('genererFacture') && !getFactureDeSaisie($idConso)) {
+        try {
+            genererFacture($idConso);
+        } catch (Throwable $e) {
+            error_log($e->getMessage());
+        }
+    }
+
+    retourSaisie(
+        'anomalie',
+        'Surconsommation détectée : le fournisseur va vérifier d’éventuelles fuites. '
+        . 'Votre facture a été générée et est disponible dans « Mes factures ».',
+        $idCompteur
+    );
+}
+if ($typeAnomalie) {   // Index négatif
+    retourSaisie(
+        'anomalie',
+        'Anomalie détectée : votre index est inférieur à celui du mois précédent. Le fournisseur va vérifier votre saisie.',
+        $idCompteur
+    );
+}
+
 
    
     $texte = 'Votre saisie a été enregistrée et vérifiée, aucun problème détecté.';
@@ -159,7 +183,9 @@ function traiterSaisie()
             
         }
         if (getFactureDeSaisie($idConso)) {
-            $texte .= ' Votre facture a été générée.';
+            $texte .= $resaisie
+        ? ' Votre facture est disponible dans « Mes factures ».'
+        : ' Votre facture a été générée.';
         }
     }
     retourSaisie('succes', $texte, $idCompteur);
@@ -190,9 +216,10 @@ function preparerPageSaisie()
 
         if ($resaisie) {
             $etat = 'resaisie';
-        } elseif ($saisie) {
-            $etat = $saisie['Statut_Traitement'] === 'Verifie' ? 'verifie' : 'anomalie';
-        } else {
+       } elseif ($saisie) {
+    $s = $saisie['Statut_Traitement'];
+    $etat = $s === 'Verifie' ? 'verifie' : ($s === 'Rejete' ? 'rejete' : 'anomalie');
+      }else {
             $etat = $ouverte ? 'libre' : 'ferme';
         }
 
