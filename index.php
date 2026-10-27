@@ -243,6 +243,15 @@ switch ($page) {
         echo "1, 0.0, 0.0\n";
         exit;
 
+        case 'verification_annuelle':
+        exigerRole('fournisseur');
+        require_once __DIR__ . '/traitement/VerificationAnnuelle.php';
+        $d = preparerPageVerificationAnnuelle();
+        require __DIR__ . '/IHM/fournisseur/verification_annuelle.php';
+        break;
+
+      
+
     default:
         http_response_code(404);
         require __DIR__ . '/IHM/404.php';

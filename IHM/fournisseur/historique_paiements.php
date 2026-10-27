@@ -105,6 +105,7 @@ foreach ($paiements as $p) {
         <ul class="sidebar-menu">
             <li><a href="index.php?page=gestion_client"><i class="fa-solid fa-users"></i> Gestion Clients</a></li>
             <li class="active"><a href="index.php?page=historique_paiements"><i class="fa-solid fa-receipt"></i> Historique Paiements</a></li>
+            <li><a href="index.php?page=verification_annuelle"><i class="fa-solid fa-scale-balanced"></i> Vérification Annuelle</a></li>
            <li>
     <a href="index.php?page=traitement_anomalies">
         <i class="fa-solid fa-triangle-exclamation"></i> Traitement des Anomalies
