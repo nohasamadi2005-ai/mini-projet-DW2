@@ -111,7 +111,7 @@ foreach ($paiements as $p) {
         <i class="fa-solid fa-triangle-exclamation"></i> Traitement des Anomalies
     </a>
 </li>
-            <li><a href="#"><i class="fa-solid fa-file-invoice-dollar"></i> Gestion Réclamations</a></li>
+            <li><a href="index.php?page=reclamations_fournisseur"><i class="fa-solid fa-file-invoice-dollar"></i></li>
         </ul>
 
         <div class="sidebar-footer">

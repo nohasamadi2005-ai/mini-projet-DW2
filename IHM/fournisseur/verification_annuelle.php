@@ -108,7 +108,7 @@ $classes = [
             <li><a href="index.php?page=historique_paiements"><i class="fa-solid fa-receipt"></i> Historique Paiements</a></li>
             <li class="active"><a href="index.php?page=verification_annuelle"><i class="fa-solid fa-scale-balanced"></i> Vérification Annuelle</a></li>
             <li><a href="#"><i class="fa-solid fa-triangle-exclamation"></i> Traitement Anomalies</a></li>
-            <li><a href="#"><i class="fa-solid fa-file-invoice-dollar"></i> Gestion Réclamations</a></li>
+            <li><a href="index.php?page=reclamations_fournisseur"><i class="fa-solid fa-file-invoice-dollar"></i></li>
         </ul>
 
         <div class="sidebar-footer">

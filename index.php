@@ -249,8 +249,26 @@ switch ($page) {
         $d = preparerPageVerificationAnnuelle();
         require __DIR__ . '/IHM/fournisseur/verification_annuelle.php';
         break;
-
-      
+       // --- Réclamations (Client) ---
+    case 'reclamations':
+        exigerRole('client');
+        require_once __DIR__ . '/traitement/Reclamation.php';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            traiterReclamation();
+        }
+        $d = preparerPageReclamations();
+        require __DIR__ . '/IHM/client/reclamations.php';
+        break;
+     // --- Réclamations (Fournisseur) ---
+    case 'reclamations_fournisseur':
+        exigerRole('fournisseur');
+        require_once __DIR__ . '/traitement/reclamationsFournisseur.php';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            traiterReclamationFournisseur();
+        }
+        $d = preparerPageReclamationsFournisseur();
+        require __DIR__ . '/IHM/fournisseur/fournisseurReclamtion.php';
+        break;
 
     default:
         http_response_code(404);
