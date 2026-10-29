@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../../traitement/auth.php';
 exigerRole('fournisseur');
 require_once __DIR__ . '/../../BD/Client.php';
-
+require_once __DIR__ . '/../../BD/CompteurAffectation.php';
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $pageActuelle = isset($_GET['p']) ? (int)$_GET['p'] : 1;
 $parPage = 5; 
@@ -149,7 +149,7 @@ $finAffichage = min($debut + $parPage, $totalClients);
             <li><a href="index.php?page=historique_paiements"><i class="fa-solid fa-receipt"></i> Historique des Paiements</a></li>
             <li><a href="index.php?page=verification_annuelle"><i class="fa-solid fa-scale-balanced"></i> Vérification Annuelle</a></li>
             <li><a href="index.php?page=traitement_anomalies"><i class="fa-solid fa-triangle-exclamation"></i> Traitement des Anomalies</a></li>
-            <li><a href="index.php?page=reclamations_fournisseur"><i class="fa-solid fa-file-invoice-dollar"></i></li>
+            <li><a href="index.php?page=reclamations_fournisseur"><i class="fa-solid fa-file-invoice-dollar"></i>Gestion des Réclamations</li>
         </ul>
 
         <div class="sidebar-footer">
@@ -171,6 +171,11 @@ $finAffichage = min($debut + $parPage, $totalClients);
         </div>
 
         <div class="container">
+            <?php if (!empty($_SESSION['client_msg'])): $m = $_SESSION['client_msg']; unset($_SESSION['client_msg']); ?>
+    <div style="padding:12px 16px; border-radius:8px; margin-bottom:16px; font-weight:600; <?= $m['type'] === 'succes' ? 'background:#DCFCE7; color:#15803D;' : 'background:#FEE2E2; color:#B91C1C;' ?>">
+        <?= htmlspecialchars($m['texte']) ?>
+    </div>
+<?php endif; ?>
             <div class="action-bar">
                 <form method="GET" action="index.php" class="search-box">
                     <input type="hidden" name="page" value="gestion_client">
@@ -305,9 +310,33 @@ $finAffichage = min($debut + $parPage, $totalClients);
 
                 <hr style="margin: 20px 0; border: 0; border-top: 1px solid #E2E8F0;">
                 <h3 style="font-size: 14px; color: #1890FF; margin-bottom: 12px;"><i class="fa-solid fa-gauge"></i> Gestion des Compteurs</h3>
-                <div class="form-group"><label>Numéro Compteur Eau</label><input type="text" name="compteur_eau" id="edit_compteur_eau"></div>
-                <div class="form-group"><label>Numéro Compteur Électricité</label><input type="text" name="compteur_elec" id="edit_compteur_elec"></div>
+                <<div class="form-group"><label>Numéro Compteur Eau</label>
+    <input type="text" name="compteur_eau" id="edit_compteur_eau" list="liste_eau" autocomplete="off" oninput="majIndex('eau')">
+    <div id="bloc_index_eau" style="display:none; margin-top:8px;">
+        <label style="font-size:12px;">Index de départ du nouveau compteur (0 s’il est neuf)</label>
+        <input type="number" name="index_eau" id="index_eau" value="0" min="0" step="0.01">
+    </div>
+    <small id="info_eau" style="color:#64748B;"></small>
+</div>
+<div class="form-group"><label>Numéro Compteur Électricité</label>
+    <input type="text" name="compteur_elec" id="edit_compteur_elec" list="liste_elec" autocomplete="off" oninput="majIndex('elec')">
+    <div id="bloc_index_elec" style="display:none; margin-top:8px;">
+        <label style="font-size:12px;">Index de départ du nouveau compteur (0 s’il est neuf)</label>
+        <input type="number" name="index_elec" id="index_elec" value="0" min="0" step="0.01">
+    </div>
+    <small id="info_elec" style="color:#64748B;"></small>
+</div>
 
+<datalist id="liste_eau">
+    <?php foreach (getCompteursLibres('Eau') as $c): ?>
+        <option value="<?= (int) $c['numero'] ?>" label="Libre — index actuel : <?= number_format($c['index'], 2, ',', ' ') ?>"></option>
+    <?php endforeach; ?>
+</datalist>
+<datalist id="liste_elec">
+    <?php foreach (getCompteursLibres('Electricite') as $c): ?>
+        <option value="<?= (int) $c['numero'] ?>" label="Libre — index actuel : <?= number_format($c['index'], 2, ',', ' ') ?>"></option>
+    <?php endforeach; ?>
+</datalist>
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary" onclick="closeModal('editModal')">Annuler</button>
                     <button type="submit" class="btn-primary">Mettre à jour</button>
@@ -318,6 +347,25 @@ $finAffichage = min($debut + $parPage, $totalClients);
 
     <script>
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        const compteursActuels = { eau: '', elec: '' };
+function majIndex(t) {
+    const champ = document.getElementById(t === 'eau' ? 'edit_compteur_eau' : 'edit_compteur_elec');
+    const bloc  = document.getElementById('bloc_index_' + t);
+    const info  = document.getElementById('info_' + t);
+    const v = champ.value.trim();
+    const libre = Array.from(document.querySelectorAll('#liste_' + t + ' option')).some(o => o.value === v);
+    bloc.style.display = 'none';
+    if (v === compteursActuels[t] || v.indexOf(',') !== -1) {
+        info.textContent = '';
+    } else if (v === '') {
+        info.textContent = 'Le compteur actuel sera libéré.';
+    } else if (libre) {
+        info.textContent = 'Compteur existant : son index actuel est conservé.';
+    } else {
+        bloc.style.display = 'block';
+        info.textContent = "Nouveau compteur : indiquez son index de départ (0 s’il est neuf).";
+    }
+}
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         
         function openEditModal(id, nom, prenom, adresse, telephone, email, compteurEau, compteurElec) {
@@ -329,6 +377,10 @@ $finAffichage = min($debut + $parPage, $totalClients);
             document.getElementById('edit_email').value = email;
             document.getElementById('edit_compteur_eau').value = compteurEau;
             document.getElementById('edit_compteur_elec').value = compteurElec;
+            compteursActuels.eau = compteurEau; compteursActuels.elec = compteurElec;
+            document.getElementById('index_eau').value = 0;
+            document.getElementById('index_elec').value = 0;
+            majIndex('eau'); majIndex('elec');
             openModal('editModal');
         }
     </script>

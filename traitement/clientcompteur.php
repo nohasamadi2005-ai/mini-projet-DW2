@@ -2,6 +2,7 @@
 require_once __DIR__ . '/auth.php';
 exigerRole('fournisseur');
 require_once __DIR__ . '/../BD/Client.php';
+require_once __DIR__ . '/../BD/CompteurAffectation.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -42,9 +43,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             modifierClient($idClient, $nom, $prenom, $adresse, $telephone, $email);
 
          
-            mettreAJourCompteurClient($idClient, 'Eau', $compteurEau);
+            // Nouvelle gestion des compteurs (affectation avec conservation de l'index)
+            $erreurs = [];
+            $e = changerCompteurClient($idClient, 'Eau', $compteurEau, $_POST['index_eau'] ?? 0);
+            if ($e) { $erreurs[] = "Compteur eau : $e"; }
+            $e = changerCompteurClient($idClient, 'Electricite', $compteurElec, $_POST['index_elec'] ?? 0);
+            if ($e) { $erreurs[] = "Compteur électricité : $e"; }
 
-            mettreAJourCompteurClient($idClient, 'Electricite', $compteurElec);
+            $_SESSION['client_msg'] = $erreurs
+                ? ['type' => 'erreur', 'texte' => implode(' ', $erreurs)]
+                : ['type' => 'succes', 'texte' => 'Client et compteurs mis à jour.'];
         }
 
         

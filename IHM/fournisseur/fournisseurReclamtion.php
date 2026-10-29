@@ -225,16 +225,12 @@ $total = array_sum($c);
                         <div class="bloc-desc mb-3" id="mDesc"></div>
 
                         <div id="zoneTraitement">
-                            <label class="form-label fw-semibold" for="mStatut">Nouveau statut</label>
-                            <select name="statut" id="mStatut" class="form-select mb-3">
-                                <option value="En cours">En cours de traitement</option>
-                                <option value="Traitee">Traitée (clôturer)</option>
-                                <option value="Rejetee">Rejetée (clôturer)</option>
-                            </select>
-                            <label class="form-label fw-semibold" for="mReponse">Réponse au client</label>
-                            <textarea name="reponse" id="mReponse" class="form-control" rows="4" maxlength="1000"
-                                      placeholder="Obligatoire pour clôturer (Traitée ou Rejetée)"></textarea>
-                            <small class="text-muted">Le client sera notifié automatiquement.</small>
+                            <label class="form-label fw-semibold" for="mAction">Décision</label>
+                            <select name="action" id="mAction" class="form-select mb-2"></select>
+                            <label class="form-label fw-semibold mb-1" for="mReponse" id="mReponseLabel">Message complémentaire (optionnel)</label>
+                            <textarea name="reponse" id="mReponse" class="form-control" rows="2" maxlength="500"
+                                      style="resize:none;" placeholder="Précision ajoutée à la notification..."></textarea>
+                            <small class="text-muted">Le client sera notifié automatiquement selon la décision choisie.</small>
                         </div>
 
                         <div id="zoneLecture" style="display:none;">
@@ -253,6 +249,19 @@ $total = array_sum($c);
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const ACTIONS = <?= json_encode($d['actionsJs'], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        const selAction = document.getElementById('mAction');
+        const txtRep    = document.getElementById('mReponse');
+        const lblRep    = document.getElementById('mReponseLabel');
+
+        function majNote() {
+            const o = selAction.options[selAction.selectedIndex];
+            const obligatoire = o && o.dataset.note === '1';
+            txtRep.required = obligatoire;
+            lblRep.textContent = obligatoire ? 'Message au client (obligatoire)' : 'Message complémentaire (optionnel)';
+        }
+        selAction.addEventListener('change', majNote);
+
         document.querySelectorAll('.btn-ouvrir').forEach(btn => {
             btn.addEventListener('click', () => {
                 const d = btn.dataset;
@@ -268,10 +277,21 @@ $total = array_sum($c);
                 document.getElementById('zoneTraitement').style.display = cloturee ? 'none' : 'block';
                 document.getElementById('zoneLecture').style.display    = cloturee ? 'block' : 'none';
                 document.getElementById('mEnvoyer').style.display       = cloturee ? 'none' : 'inline-block';
-                document.getElementById('mReponse').value = d.reponse || '';
-                document.getElementById('mStatut').value  = 'En cours';
-                document.getElementById('mRepLue').textContent = d.reponse || '—';
+                document.getElementById('mRepLue').textContent  = d.reponse || '—';
                 document.getElementById('mDateRep').textContent = d.datereponse ? '— ' + d.datereponse : '';
+
+                // Décisions possibles selon le type de réclamation
+                const cat = d.type.indexOf('Autre') === 0 ? 'Autre' : d.type;
+                selAction.innerHTML = '';
+                (ACTIONS[cat] || ACTIONS['Autre']).forEach(a => {
+                    const o = document.createElement('option');
+                    o.value = a.code;
+                    o.textContent = a.libelle;
+                    o.dataset.note = a.note ? '1' : '0';
+                    selAction.appendChild(o);
+                });
+                txtRep.value = '';
+                majNote();
             });
         });
     </script>
