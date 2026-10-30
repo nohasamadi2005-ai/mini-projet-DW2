@@ -9,7 +9,7 @@ if (!defined('FENETRE_TOUJOURS_OUVERTE')) {
 
 
 if (!defined('DATE_SIMULEE')) {
-    define('DATE_SIMULEE', '2028-05-27');
+    define('DATE_SIMULEE', '2028-06-27');
 
 }
 

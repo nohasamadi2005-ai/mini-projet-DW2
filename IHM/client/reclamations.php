@@ -123,6 +123,8 @@ function icone($nom)
   .statut.encours { background:#e8f4fd; color:var(--blue-d); }
   .statut.traitee { background:#eafaf1; color:#14653a; }
   .statut.rejetee { background:#fdecec; color:#9b1c1c; }
+  .photo-rec { max-width:160px; border-radius:8px; margin-top:8px; display:block; }
+  [hidden] { display:none !important; }
   @media (max-width:900px) { .grille { grid-template-columns:1fr; } }
 </style>
 </head>
@@ -176,34 +178,54 @@ function icone($nom)
               Vous pourrez faire une réclamation dès que vous aurez une facture.
             </div>
           <?php else: ?>
-          <form method="POST" action="index.php?page=reclamations" id="formRec">
-            <label for="id_facture">Facture concernée</label>
-            <select name="id_facture" id="id_facture" required>
-              <option value="">— Choisir une facture —</option>
-              <?php foreach ($d['factures'] as $f): ?>
-                <option value="<?= (int) $f['id'] ?>" <?= $f['id'] === $d['preselection'] ? 'selected' : '' ?>>
-                  <?= h($f['label']) ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-
+          <form method="POST" action="index.php?page=reclamations" id="formRec" enctype="multipart/form-data">
             <label for="type">Type de réclamation</label>
             <select name="type" id="type" required>
               <option value="">— Choisir un type —</option>
               <?php foreach ($d['types'] as $t): ?>
-                <option value="<?= h($t) ?>"><?= h($t) ?></option>
+                <option value="<?= h($t) ?>" <?= ($t === 'Facture' && $d['preselection']) ? 'selected' : '' ?>><?= h($t) ?></option>
               <?php endforeach; ?>
             </select>
 
-            <div id="blocPrecision" style="display:none;">
+            <div class="bloc" id="bloc_Fuite_externe" hidden>
+              <label for="lieu">Lieu de la fuite</label>
+              <input type="text" name="lieu" id="lieu" maxlength="255" placeholder="Ex : rue Hassan II, devant le n° 12">
+            </div>
+
+            <div class="bloc" id="bloc_Facture" hidden>
+              <label for="id_facture">Facture concernée</label>
+              <select name="id_facture" id="id_facture">
+                <option value="">— Choisir une facture —</option>
+                <?php foreach ($d['factures'] as $f): ?>
+                  <option value="<?= (int) $f['id'] ?>" <?= $f['id'] === $d['preselection'] ? 'selected' : '' ?>>
+                    <?= h($f['label']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+              <label for="sous_type">Type de problème</label>
+              <select name="sous_type" id="sous_type">
+                <option value="">— Choisir —</option>
+                <?php foreach ($d['sousTypes'] as $st): ?>
+                  <option value="<?= h($st) ?>"><?= h($st) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+
+            <div class="bloc" id="bloc_Autre" hidden>
               <label for="precision">Précisez le type</label>
               <input type="text" name="precision" id="precision" maxlength="80" placeholder="Ex : erreur de relevé, coupure...">
             </div>
 
-            <label for="description">Description</label>
-            <textarea name="description" id="description" maxlength="1000" required
-                      placeholder="Décrivez votre problème le plus précisément possible..."></textarea>
-            <div class="compteur"><span id="nbCar">0</span> / 1000</div>
+            <div id="blocDescription" hidden>
+              <label for="description" id="labelDescription">Description</label>
+              <textarea name="description" id="description" maxlength="1000"></textarea>
+              <div class="compteur"><span id="nbCar">0</span> / 1000</div>
+            </div>
+
+            <div class="bloc" id="bloc_Fuite_externe_photo" hidden>
+              <label for="photo">Photo de la fuite (facultative, JPG ou PNG, 5 Mo max)</label>
+              <input type="file" name="photo" id="photo" accept="image/jpeg,image/png">
+            </div>
 
             <button type="submit" class="btn-envoyer">Envoyer la réclamation</button>
           </form>
@@ -226,8 +248,17 @@ function icone($nom)
                   <b><?= h($r['numero']) ?> — <?= h($r['type']) ?></b>
                   <span class="statut <?= h($r['classe']) ?>"><?= h($r['statut']) ?></span>
                 </div>
-                <div class="rec-meta">Le <?= h($r['date']) ?> · Facture <?= h($r['facture']) ?></div>
+                <div class="rec-meta">Le <?= h($r['date']) ?><?= $r['facture'] ? ' · Facture ' . h($r['facture']) : '' ?></div>
+                <?php if (!empty($r['sousType'])): ?>
+                  <div class="rec-meta" style="margin-top:-4px;">Problème : <?= h($r['sousType']) ?></div>
+                <?php endif; ?>
+                <?php if (!empty($r['lieu'])): ?>
+                  <div class="rec-meta" style="margin-top:-4px;">Lieu de la fuite : <?= h($r['lieu']) ?></div>
+                <?php endif; ?>
                 <p><?= h($r['description']) ?></p>
+                <?php if (!empty($r['photo'])): ?>
+                  <a href="<?= h($r['photo']) ?>" target="_blank"><img src="<?= h($r['photo']) ?>" alt="Photo de la fuite" class="photo-rec"></a>
+                <?php endif; ?>
                 <?php if (!empty($r['reponse'])): ?>
                   <div class="reponse">
                     <small>Réponse du fournisseur<?= $r['dateReponse'] ? ' — ' . h($r['dateReponse']) : '' ?></small>
@@ -246,22 +277,58 @@ function icone($nom)
 </div>
 
 <script>
-  const type = document.getElementById('type');
-  const bloc = document.getElementById('blocPrecision');
-  const prec = document.getElementById('precision');
-  const desc = document.getElementById('description');
-  const nb   = document.getElementById('nbCar');
-  if (type) {
-    type.addEventListener('change', () => {
-      const autre = type.value === 'Autre';
-      bloc.style.display = autre ? 'block' : 'none';
-      prec.required = autre;
-      if (!autre) prec.value = '';
+  const type  = document.getElementById('type');
+  const desc  = document.getElementById('description');
+  const nb    = document.getElementById('nbCar');
+  const label = document.getElementById('labelDescription');
+
+  // Champs affichés selon le type choisi
+  const BLOCS = {
+    'Fuite externe': ['bloc_Fuite_externe', 'bloc_Fuite_externe_photo'],
+    'Facture':       ['bloc_Facture'],
+    'Autre':         ['bloc_Autre']
+  };
+  const TEXTES = {
+    'Fuite externe':  ['Description du problème', 'Décrivez la fuite (débit, depuis quand...)'],
+    'Facture':        ['Description', 'Expliquez le problème constaté sur la facture...'],
+    'Déménagement':   ['Votre déménagement', 'Indiquez que vous avez déménagé de la maison qui contient votre compteur, et écrivez votre nouvelle adresse.'],
+    'Saisie bloquée': ['Explication du problème', 'Expliquez pourquoi votre saisie est bloquée suite au rejet d’une saisie...'],
+    'Autre':          ['Description', 'Décrivez votre réclamation...']
+  };
+  const TOUS = ['bloc_Fuite_externe', 'bloc_Fuite_externe_photo', 'bloc_Facture', 'bloc_Autre'];
+
+  function majFormulaire() {
+    const t = type ? type.value : '';
+    const visibles = BLOCS[t] || [];
+    TOUS.forEach(id => {
+      const bloc = document.getElementById(id);
+      const actif = visibles.indexOf(id) !== -1;
+      bloc.hidden = !actif;
+      // un champ désactivé n'est ni envoyé ni contrôlé
+      bloc.querySelectorAll('input, select').forEach(c => { c.disabled = !actif; });
     });
+    const ok = t !== '';
+    document.getElementById('blocDescription').hidden = !ok;
+    desc.disabled = !ok;
+    if (ok) {
+      label.textContent = TEXTES[t][0];
+      desc.placeholder  = TEXTES[t][1];
+    }
+    const req = (id, v) => { const e = document.getElementById(id); if (e) e.required = v; };
+    req('lieu', t === 'Fuite externe');
+    req('id_facture', t === 'Facture');
+    req('sous_type', t === 'Facture');
+    req('precision', t === 'Autre');
+    desc.required = ok;
+  }
+
+  if (type) {
+    type.addEventListener('change', majFormulaire);
     desc.addEventListener('input', () => { nb.textContent = desc.value.length; });
     document.getElementById('formRec').addEventListener('submit', e => {
       e.target.querySelector('button[type=submit]').disabled = true;
     });
+    majFormulaire();
   }
 </script>
 </body>

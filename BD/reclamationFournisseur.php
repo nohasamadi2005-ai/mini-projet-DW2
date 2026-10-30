@@ -6,14 +6,15 @@ function getToutesReclamations($statut = '')
 {
     $sql = "SELECT r.ID_Reclamation, r.ID_Client, r.ID_Facture, r.Date_Reclamation, r.Type_Reclamation,
                    r.Description, r.Statut, r.Reponse, r.Date_Reponse,
+                   r.Sous_Type, r.Lieu_Fuite, r.Photo,
                    cl.Nom, cl.Prenom, cl.Email, cl.Telephone,
                    cm.Mois, cm.Annee, cm.Consommation, c.Type_Compteur,
                    f.Montant_TTC
               FROM reclamation r
               JOIN client cl ON cl.ID_Client = r.ID_Client
-              JOIN facture f ON f.ID_Facture = r.ID_Facture
-              JOIN consommation_mensuelle cm ON cm.ID_Consommation_Mensuelle = f.ID_Consommation_Mensuelle
-              JOIN compteur c ON c.ID_Compteur = cm.ID_Compteur";
+              LEFT JOIN facture f ON f.ID_Facture = r.ID_Facture
+              LEFT JOIN consommation_mensuelle cm ON cm.ID_Consommation_Mensuelle = f.ID_Consommation_Mensuelle
+              LEFT JOIN compteur c ON c.ID_Compteur = cm.ID_Compteur";
     if ($statut !== '') {
         return consoSelect($sql . " WHERE r.Statut = ? ORDER BY r.Date_Reclamation DESC, r.ID_Reclamation DESC",
                            's', [$statut]);
@@ -24,7 +25,7 @@ function getToutesReclamations($statut = '')
 function getReclamationParId($id)
 {
     $r = consoSelect(
-        "SELECT ID_Reclamation, ID_Client, ID_Facture, Type_Reclamation, Statut
+        "SELECT ID_Reclamation, ID_Client, ID_Facture, Type_Reclamation, Sous_Type, Statut
            FROM reclamation WHERE ID_Reclamation = ?",
         'i', [$id]
     );

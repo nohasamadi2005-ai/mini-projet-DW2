@@ -174,9 +174,15 @@ $total = array_sum($c);
                                 <td class="fw-bold"><?= h($r['numero']) ?></td>
                                 <td><?= h($r['date']) ?></td>
                                 <td><?= h($r['client']) ?><br><small class="text-muted"><?= h($r['email']) ?></small></td>
-                                <td><?= h($r['facture']) ?><br>
-                                    <span class="<?= $r['compteur'] === 'Eau' ? 'badge-eau' : 'badge-elec' ?>"><?= $r['compteur'] === 'Eau' ? 'Eau' : 'Électricité' ?></span></td>
-                                <td><?= h($r['type']) ?></td>
+                                <td>
+                                <?php if ($r['facture']): ?>
+                                    <?= h($r['facture']) ?><br>
+                                    <span class="<?= $r['compteur'] === 'Eau' ? 'badge-eau' : 'badge-elec' ?>"><?= $r['compteur'] === 'Eau' ? 'Eau' : 'Électricité' ?></span>
+                                <?php else: ?>
+                                    <span class="text-muted">—</span>
+                                <?php endif; ?>
+                                </td>
+                                <td><?= h($r['type']) ?><?= $r['sousType'] ? '<br><small class="text-muted">' . h($r['sousType']) . '</small>' : '' ?></td>
                                 <td><div class="desc-court" title="<?= h($r['description']) ?>"><?= h($r['description']) ?></div></td>
                                 <td><span class="badge-st st-<?= h(str_replace(' ', '', strtolower($r['statutCode']))) ?>"><?= h($r['statut']) ?></span></td>
                                 <td class="text-end">
@@ -186,7 +192,11 @@ $total = array_sum($c);
                                         data-numero="<?= h($r['numero']) ?>"
                                         data-client="<?= h($r['client']) ?>"
                                         data-contact="<?= h($r['email'] . ' · ' . $r['tel']) ?>"
-                                        data-facture="<?= h($r['facture'] . ' — ' . $r['periode'] . ' — ' . $r['ttc'] . ' DH') ?>"
+                                        data-facture="<?= $r['facture'] ? h($r['facture'] . ' — ' . $r['periode'] . ' — ' . $r['ttc'] . ' DH') : '' ?>"
+                                        data-categorie="<?= h($r['categorie']) ?>"
+                                        data-soustype="<?= h($r['sousType']) ?>"
+                                        data-lieu="<?= h($r['lieu']) ?>"
+                                        data-photo="<?= h($r['photo']) ?>"
                                         data-type="<?= h($r['type']) ?>"
                                         data-description="<?= h($r['description']) ?>"
                                         data-statut="<?= h($r['statutCode']) ?>"
@@ -218,8 +228,11 @@ $total = array_sum($c);
                         <input type="hidden" name="id_reclamation" id="mId">
                         <div class="row g-3 mb-3">
                             <div class="col-md-6"><small class="text-muted d-block">Client</small><b id="mClient"></b><br><small id="mContact" class="text-muted"></small></div>
-                            <div class="col-md-6"><small class="text-muted d-block">Facture concernée</small><b id="mFacture"></b></div>
+                            <div class="col-md-6" id="mBlocFacture"><small class="text-muted d-block">Facture concernée</small><b id="mFacture"></b></div>
                             <div class="col-md-12"><small class="text-muted d-block">Type</small><b id="mType"></b></div>
+                            <div class="col-md-12" id="mBlocLieu" style="display:none;"><small class="text-muted d-block">Lieu de la fuite</small><b id="mLieu"></b></div>
+                            <div class="col-md-12" id="mBlocPhoto" style="display:none;"><small class="text-muted d-block mb-1">Photo jointe</small>
+                                <a id="mPhotoLien" href="#" target="_blank"><img id="mPhoto" alt="Photo de la fuite" style="max-height:170px; border-radius:8px;"></a></div>
                         </div>
                         <small class="text-muted">Description du client</small>
                         <div class="bloc-desc mb-3" id="mDesc"></div>
@@ -270,7 +283,13 @@ $total = array_sum($c);
                 document.getElementById('mClient').textContent  = d.client;
                 document.getElementById('mContact').textContent = d.contact;
                 document.getElementById('mFacture').textContent = d.facture;
-                document.getElementById('mType').textContent    = d.type;
+                document.getElementById('mBlocFacture').style.display = d.facture ? 'block' : 'none';
+                document.getElementById('mType').textContent    = d.type + (d.soustype ? ' — ' + d.soustype : '');
+                document.getElementById('mLieu').textContent    = d.lieu || '';
+                document.getElementById('mBlocLieu').style.display = d.lieu ? 'block' : 'none';
+                document.getElementById('mPhoto').src           = d.photo || '';
+                document.getElementById('mPhotoLien').href      = d.photo || '#';
+                document.getElementById('mBlocPhoto').style.display = d.photo ? 'block' : 'none';
                 document.getElementById('mDesc').textContent    = d.description;
 
                 const cloturee = d.cloturee === '1';
@@ -281,7 +300,7 @@ $total = array_sum($c);
                 document.getElementById('mDateRep').textContent = d.datereponse ? '— ' + d.datereponse : '';
 
                 // Décisions possibles selon le type de réclamation
-                const cat = d.type.indexOf('Autre') === 0 ? 'Autre' : d.type;
+                const cat = d.categorie;
                 selAction.innerHTML = '';
                 (ACTIONS[cat] || ACTIONS['Autre']).forEach(a => {
                     const o = document.createElement('option');

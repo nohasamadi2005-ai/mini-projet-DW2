@@ -11,10 +11,19 @@ function flashReclamationFournisseur($type, $texte)
     exit;
 }
 
-// Catégorie de la réclamation : Fuite externe, Fuite interne, Facture ou Autre
-function categorieReclamation($type)
+// Catégorie de décisions de la réclamation (dépend du type et, pour une facture, du type de problème)
+function categorieReclamation($type, $sousType = null)
 {
-    if (in_array($type, ['Fuite externe', 'Fuite interne', 'Facture'], true)) {
+    if ($type === 'Facture') {
+        if ($sousType === 'Fuite interne') {
+            return 'Fuite interne';
+        }
+        if ($sousType === 'Autre') {
+            return 'Autre';
+        }
+        return 'Facture';                       // "Prix dans la facture" (ou ancienne réclamation sans sous-type)
+    }
+    if (in_array($type, ['Fuite externe', 'Fuite interne', 'Déménagement', 'Saisie bloquée'], true)) {
         return $type;
     }
     return 'Autre';
@@ -71,6 +80,34 @@ function actionsReclamation()
                 'msg'     => "Après vérification, votre facture est conforme : aucune erreur n'a été constatée.",
             ],
         ],
+        'Déménagement' => [
+            'encours' => $encours,
+            'traitee' => [
+                'libelle' => 'Déménagement traité (compteur réaffecté)',
+                'statut'  => 'Traitee',
+                'msg'     => "Votre déménagement a été pris en compte. Votre compteur a été mis à jour pour votre nouvelle adresse.",
+            ],
+            'rejetee' => [
+                'libelle' => 'Rejetée',
+                'statut'  => 'Rejetee',
+                'msg'     => 'Votre demande de déménagement a été rejetée.',
+                'note'    => true,
+            ],
+        ],
+        'Saisie bloquée' => [
+            'encours'   => $encours,
+            'debloquee' => [
+                'libelle' => 'Saisie débloquée',
+                'statut'  => 'Traitee',
+                'msg'     => "Votre saisie a été débloquée. Vous pouvez saisir à nouveau votre consommation.",
+            ],
+            'rejetee'   => [
+                'libelle' => 'Rejetée',
+                'statut'  => 'Rejetee',
+                'msg'     => 'Votre demande de déblocage a été rejetée.',
+                'note'    => true,
+            ],
+        ],
         'Autre' => [
             'encours' => $encours,
             'traitee' => [
@@ -92,7 +129,7 @@ function actionsReclamation()
 function traiterReclamationFournisseur()
 {
     $idAdmin = (int) $_SESSION['user']['id'];
-    $id      = filter_input(INPUT_POST, 'id_reclamation', FILTER_VALIDATE_INT);
+    $id      = filter_var($_POST['id_reclamation'] ?? null, FILTER_VALIDATE_INT);
     $code    = trim($_POST['action'] ?? '');
     $note    = trim($_POST['reponse'] ?? '');
 
@@ -104,7 +141,7 @@ function traiterReclamationFournisseur()
         flashReclamationFournisseur('erreur', 'Cette réclamation est déjà clôturée.');
     }
 
-    $actions = actionsReclamation()[categorieReclamation($rec['Type_Reclamation'])];
+    $actions = actionsReclamation()[categorieReclamation($rec['Type_Reclamation'], $rec['Sous_Type'])];
     if (!isset($actions[$code])) {
         flashReclamationFournisseur('erreur', 'Décision invalide pour ce type de réclamation.');
     }
@@ -121,7 +158,7 @@ function traiterReclamationFournisseur()
     $texte = $a['msg'] . ($note !== '' ? ' Précision : ' . $note : '');
 
     repondreReclamation($id, $a['statut'], $texte);
-    notifierClientReclamation((int) $rec['ID_Client'], $idAdmin, $id, (int) $rec['ID_Facture'],
+    notifierClientReclamation((int) $rec['ID_Client'], $idAdmin, $id, $rec['ID_Facture'] !== null ? (int) $rec['ID_Facture'] : null,
                               "Réclamation $num — " . $texte);
 
     flashReclamationFournisseur('succes', "Réclamation $num mise à jour et client notifié.");
@@ -146,11 +183,15 @@ function preparerPageReclamationsFournisseur()
             'client'      => trim($r['Prenom'] . ' ' . $r['Nom']),
             'email'       => $r['Email'],
             'tel'         => $r['Telephone'],
-            'facture'     => numeroFacture($r['ID_Facture'], $r['Annee'], $r['Type_Compteur']),
-            'periode'     => nomMois($r['Mois']) . ' ' . $r['Annee'],
+            'facture'     => $r['ID_Facture'] ? numeroFacture($r['ID_Facture'], $r['Annee'], $r['Type_Compteur']) : null,
+            'periode'     => $r['ID_Facture'] ? nomMois($r['Mois']) . ' ' . $r['Annee'] : null,
             'compteur'    => $r['Type_Compteur'],
-            'ttc'         => number_format((float) $r['Montant_TTC'], 2, ',', ' '),
+            'ttc'         => $r['ID_Facture'] ? number_format((float) $r['Montant_TTC'], 2, ',', ' ') : null,
             'type'        => $r['Type_Reclamation'],
+            'sousType'    => $r['Sous_Type'],
+            'categorie'   => categorieReclamation($r['Type_Reclamation'], $r['Sous_Type']),
+            'lieu'        => $r['Lieu_Fuite'],
+            'photo'       => $r['Photo'],
             'description' => $r['Description'],
             'statutCode'  => $statut,
             'statut'      => $libelles[$statut] ?? $statut,
