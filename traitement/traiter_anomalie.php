@@ -18,6 +18,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $motif = trim($_POST['motif'] ?? 'Index non conforme');
             demanderResaisie($idConsommation, $idClient, $motif);
             $_SESSION['message_alerte'] = "La demande de resaisie a été transmise au client.";
+        } elseif ($action === 'corriger_saisie') {
+            // NOUVEAU : Traitement de la correction d'index effectuée par le fournisseur
+            $indexCorrige = filter_input(INPUT_POST, 'index_corrige', FILTER_VALIDATE_FLOAT);
+            if ($indexCorrige !== false && $indexCorrige !== null) {
+                corrigerEtFacturerParFournisseur($idConsommation, $idClient, $indexCorrige);
+                $_SESSION['message_succes'] = "L'index a été corrigé par vos soins, la facture a été générée et transmise au client.";
+            } else {
+                $_SESSION['message_erreur'] = "Veuillez saisir un index valide.";
+            }
         }
     }
 }

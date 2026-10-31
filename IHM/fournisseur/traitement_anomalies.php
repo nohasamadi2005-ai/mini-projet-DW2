@@ -10,7 +10,7 @@ $nbIndexNegatifs = 0;
 $nbSurconso = 0;
 
 foreach ($anomalies as $a) {
-    if ($a['Type_Anomalie'] === 'Surconsommation') {
+    if (($a['Type_Anomalie'] ?? '') === 'Surconsommation') {
         $nbSurconso++;
     } else {
         $nbIndexNegatifs++;
@@ -69,6 +69,7 @@ foreach ($anomalies as $a) {
         .badge-elec { background-color: #FEF3C7; color: #D97706; font-weight: 600; padding: 4px 10px; border-radius: 12px; font-size: 12px; }
         .badge-anomalie-neg { background-color: #FEE2E2; color: #DC2626; font-weight: 600; padding: 4px 10px; border-radius: 12px; font-size: 12px; }
         .badge-anomalie-sur { background-color: #FEF3C7; color: #B45309; font-weight: 600; padding: 4px 10px; border-radius: 12px; font-size: 12px; }
+        .badge-saisie-fournisseur { background-color: #E0F2FE; color: #0369A1; font-weight: 600; padding: 4px 10px; border-radius: 12px; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -94,7 +95,7 @@ foreach ($anomalies as $a) {
             <li><a href="index.php?page=gestion_client"><i class="fa-solid fa-users"></i> Gestion Clients</a></li>
             <li><a href="index.php?page=historique_paiements"><i class="fa-solid fa-receipt"></i> Historique Paiements</a></li>
             <li class="active"><a href="index.php?page=traitement_anomalies"><i class="fa-solid fa-triangle-exclamation"></i> Traitement des Anomalies</a></li>
-            <li><a href="index.php?page=reclamations_fournisseur"><i class="fa-solid fa-file-invoice-dollar"></i>Gestion des Réclamations</a></li>
+            <li><a href="index.php?page=reclamations_fournisseur"><i class="fa-solid fa-file-invoice-dollar"></i> Gestion des Réclamations</a></li>
         </ul>
 
         <div class="sidebar-footer">
@@ -117,6 +118,22 @@ foreach ($anomalies as $a) {
 
         <div class="container-fluid">
             
+            <?php if (!empty($_SESSION['message_succes'])): ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fa-solid fa-circle-check me-2"></i><?= htmlspecialchars($_SESSION['message_succes']) ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                <?php unset($_SESSION['message_succes']); ?>
+            <?php endif; ?>
+
+            <?php if (!empty($_SESSION['message_erreur'])): ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fa-solid fa-circle-exclamation me-2"></i><?= htmlspecialchars($_SESSION['message_erreur']) ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                <?php unset($_SESSION['message_erreur']); ?>
+            <?php endif; ?>
+
             <div class="row g-4 mb-4">
                 <div class="col-md-6">
                     <div class="stat-card">
@@ -176,22 +193,29 @@ foreach ($anomalies as $a) {
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($anomalies as $a): ?>
+                                    <?php 
+                                        $nbRefus = intval($a['Nb_Refus'] ?? 0);
+                                        // RÈGLE MÉTIER : Corriger & Facturer apparaît STRICTEMENT après 2 échecs du client
+                                        $peutCorrigerDirectement = ($nbRefus >= 2);
+                                    ?>
                                     <tr>
-                                        <td><strong><?= htmlspecialchars($a['Nom'] . ' ' . $a['Prenom']) ?></strong></td>
-                                        <td><small><?= htmlspecialchars($a['Email']) ?></small></td>
+                                        <td><strong><?= htmlspecialchars(($a['Nom'] ?? '') . ' ' . ($a['Prenom'] ?? '')) ?></strong></td>
+                                        <td><small><?= htmlspecialchars($a['Email'] ?? '') ?></small></td>
                                         <td>
-                                            <?php if (strtolower($a['Type_Compteur']) === 'eau'): ?>
+                                            <?php if (strtolower($a['Type_Compteur'] ?? '') === 'eau'): ?>
                                                 <span class="badge-eau">Eau</span>
                                             <?php else: ?>
                                                 <span class="badge-elec">Électricité</span>
                                             <?php endif; ?>
-                                            <br><small class="text-muted">#<?= htmlspecialchars($a['ID_Compteur']) ?></small>
+                                            <br><small class="text-muted">#<?= htmlspecialchars($a['ID_Compteur'] ?? '') ?></small>
                                         </td>
-                                        <td><?= htmlspecialchars($a['Index_Precedent']) ?></td>
-                                        <td><strong class="text-primary"><?= htmlspecialchars($a['Index_Actuel']) ?></strong></td>
-                                        <td><strong><?= htmlspecialchars($a['Consommation']) ?></strong></td>
+                                        <td><?= htmlspecialchars($a['Index_Precedent'] ?? '0') ?></td>
+                                        <td><strong class="text-primary"><?= htmlspecialchars($a['Index_Actuel'] ?? '0') ?></strong></td>
+                                        <td><strong><?= htmlspecialchars($a['Consommation'] ?? '0') ?></strong></td>
                                         <td>
-                                            <?php if ($a['Type_Anomalie'] === 'Surconsommation'): ?>
+                                            <?php if ($peutCorrigerDirectement): ?>
+                                                <span class="badge-saisie-fournisseur"><i class="fa-solid fa-user-pen me-1"></i> Correction Fournisseur</span>
+                                            <?php elseif (($a['Type_Anomalie'] ?? '') === 'Surconsommation'): ?>
                                                 <span class="badge-anomalie-sur"><i class="fa-solid fa-bolt me-1"></i> Surconsommation</span>
                                             <?php else: ?>
                                                 <span class="badge-anomalie-neg"><i class="fa-solid fa-arrow-down me-1"></i> Index Négatif</span>
@@ -207,17 +231,81 @@ foreach ($anomalies as $a) {
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-end pe-4">
-                                            <?php if ($a['Type_Anomalie'] === 'Surconsommation'): ?>
+                                            <?php if ($peutCorrigerDirectement): ?>
+                                                <!-- Affiché UNIQUEMENT si Nb_Refus >= 2 -->
+                                                <button type="button" class="btn btn-sm btn-primary font-weight-bold" data-bs-toggle="modal" data-bs-target="#modalCorrection<?= $a['ID_Consommation_Mensuelle'] ?>">
+                                                    <i class="fa-solid fa-pen-to-square me-1"></i> Corriger & Facturer
+                                                </button>
+
+                                                <div class="modal fade text-start" id="modalCorrection<?= $a['ID_Consommation_Mensuelle'] ?>" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog modal-lg">
+                                                        <div class="modal-content">
+                                                            <form method="POST" action="index.php?page=traiter_anomalie">
+                                                                <div class="modal-header">
+                                                                    <h5 class="modal-title fs-6 font-weight-bold"><i class="fa-solid fa-magnifying-glass me-2 text-primary"></i>Correction d'index par le fournisseur</h5>
+                                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                                </div>
+                                                                <div class="modal-body row">
+                                                                    <input type="hidden" name="id_consommation" value="<?= $a['ID_Consommation_Mensuelle'] ?>">
+                                                                    <input type="hidden" name="id_client" value="<?= $a['ID_Client'] ?>">
+                                                                    <input type="hidden" name="action" value="corriger_saisie">
+
+                                                                    <div class="col-md-6 text-center border-end">
+                                                                        <label class="form-label font-weight-bold d-block text-start mb-2">Photo de compteur transmise :</label>
+                                                                        <?php if (!empty($a['Photo_Actuelle'])): ?>
+                                                                            <img src="<?= htmlspecialchars($a['Photo_Actuelle']) ?>" class="img-fluid rounded border shadow-sm" style="max-height: 240px; object-fit: contain;">
+                                                                            <div class="mt-2">
+                                                                                <a href="<?= htmlspecialchars($a['Photo_Actuelle']) ?>" target="_blank" class="btn btn-sm btn-link text-decoration-none"><i class="fa-solid fa-up-right-from-square me-1"></i>Ouvrir en grand</a>
+                                                                            </div>
+                                                                        <?php else: ?>
+                                                                            <div class="p-4 bg-light rounded text-muted"><em>Aucune photo disponible</em></div>
+                                                                        <?php endif; ?>
+                                                                    </div>
+
+                                                                    <div class="col-md-6 ps-4">
+                                                                        <div class="mb-3">
+                                                                            <span class="text-muted small d-block">Client :</span>
+                                                                            <strong><?= htmlspecialchars(($a['Nom'] ?? '') . ' ' . ($a['Prenom'] ?? '')) ?></strong>
+                                                                        </div>
+                                                                        <div class="mb-3">
+                                                                            <span class="text-muted small d-block">Ancien Index relevé :</span>
+                                                                            <span class="badge bg-secondary"><?= htmlspecialchars($a['Index_Precedent'] ?? '0') ?></span>
+                                                                        </div>
+                                                                        <div class="mb-3">
+                                                                            <span class="text-muted small d-block">Dernier Index erroné saisi par le client :</span>
+                                                                            <span class="text-danger font-weight-bold"><?= htmlspecialchars($a['Index_Actuel'] ?? '0') ?></span>
+                                                                        </div>
+                                                                        
+                                                                        <div class="mb-3 mt-4">
+                                                                            <label for="index_corrige" class="form-label font-weight-bold text-dark">Nouvel Index lisible sur la photo :</label>
+                                                                            <input type="number" step="0.01" name="index_corrige" class="form-control form-control-lg border-primary" required placeholder="Ex: 120.00">
+                                                                            <small class="text-muted">Saisissez la valeur exacte lue sur la photo.</small>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="modal-footer">
+                                                                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                                                    <button type="submit" class="btn btn-sm btn-success font-weight-bold"><i class="fa-solid fa-check me-1"></i> Valider & Générer Facture</button>
+                                                                </div>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                            <?php elseif (($a['Type_Anomalie'] ?? '') === 'Surconsommation'): ?>
+                                                <!-- Action Surconsommation : Alerter le client -->
                                                 <form method="POST" action="index.php?page=traiter_anomalie" class="d-inline">
                                                     <input type="hidden" name="id_consommation" value="<?= $a['ID_Consommation_Mensuelle'] ?>">
                                                     <input type="hidden" name="id_client" value="<?= $a['ID_Client'] ?>">
                                                     <input type="hidden" name="action" value="traiter_surconsommation">
                                                     <button type="submit" class="btn btn-sm btn-warning font-weight-bold">
-                                                        <i class="fa-solid fa-user-gear me-1"></i> Programmer Technicien
+                                                        <i class="fa-solid fa-bell me-1"></i> Alerter le Client
                                                     </button>
                                                 </form>
+
                                             <?php else: ?>
-                                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalResaisie<?= $a['ID_Consommation_Mensuelle'] ?>">
+                                                <!-- Affiché pour la 1ère et 2ème tentative (Nb_Refus < 2) -->
+                                                <button type="button" class="btn btn-sm btn-danger font-weight-bold" data-bs-toggle="modal" data-bs-target="#modalResaisie<?= $a['ID_Consommation_Mensuelle'] ?>">
                                                     <i class="fa-solid fa-rotate-left me-1"></i> Demander Resaisie
                                                 </button>
 
@@ -234,7 +322,7 @@ foreach ($anomalies as $a) {
                                                                     <input type="hidden" name="id_client" value="<?= $a['ID_Client'] ?>">
                                                                     <input type="hidden" name="action" value="demander_resaisie">
                                                                     
-                                                                    <p class="mb-2">Client : <strong><?= htmlspecialchars($a['Nom'] . ' ' . $a['Prenom']) ?></strong></p>
+                                                                    <p class="mb-2">Client : <strong><?= htmlspecialchars(($a['Nom'] ?? '') . ' ' . ($a['Prenom'] ?? '')) ?></strong></p>
                                                                     
                                                                     <div class="mb-3">
                                                                         <label for="motif" class="form-label font-weight-bold">Motif du refus :</label>
@@ -244,6 +332,9 @@ foreach ($anomalies as $a) {
                                                                             <option value="Incohérence des chiffres">Incohérence des chiffres</option>
                                                                         </select>
                                                                     </div>
+                                                                    <p class="small text-muted mb-0">
+                                                                        Tentative actuelle : <?= $nbRefus + 1 ?> / 2.
+                                                                    </p>
                                                                 </div>
                                                                 <div class="modal-footer">
                                                                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annuler</button>

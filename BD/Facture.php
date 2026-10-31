@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/Consommation.php';
 
-
 function getSaisiePourFacture($idConso)
 {
     $r = consoSelect(
@@ -25,7 +24,6 @@ function insererFacture($idConso, $dateFacture, $debut, $fin, $ht, $tva, $ttc)
         'isssddd', [$idConso, $dateFacture, $debut, $fin, $ht, $tva, $ttc]
     );
 }
-
 
 function getFacturesDuClient($idClient)
 {

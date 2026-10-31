@@ -46,12 +46,13 @@ switch ($page) {
         require __DIR__ . '/IHM/fournisseur/gestion_client.php'; 
         break;
     
-    // --- NOUVEAU : Route pour l'espace Agent ---
+    // --- Espace Agent ---
     case 'agent':
     case 'saisie_agent':
         exigerRole('agent');
         require __DIR__ . '/IHM/agent/saisie_agent.php'; 
         break;
+
     case 'agent_depot':
         exigerRole('agent');
         require_once __DIR__ . '/traitement/agent.php';
@@ -138,7 +139,7 @@ switch ($page) {
 
     case 'factures':
         exigerRole('client');
-        require_once __DIR__ . '/traitement/Saisie.php';   
+        require_once __DIR__ . '/traitement/Facture.php'; // CORRECTION : Charger Facture.php et non Saisie.php
         $d = preparerPageFactures();
         require __DIR__ . '/IHM/client/factures.php';
         break;
@@ -219,18 +220,16 @@ switch ($page) {
         require __DIR__ . '/IHM/fournisseur/historique_paiements.php';
         break;
 
-    // --- NOUVEAU : Traitement des Anomalies (Fournisseur) ---
     case 'traitement_anomalies':
         exigerRole('fournisseur');
         require __DIR__ . '/IHM/fournisseur/traitement_anomalies.php';
         break;
-        // --- NOUVEAU : Action de traitement de l'anomalie (POST) ---
+
     case 'traiter_anomalie':
         exigerRole('fournisseur');
         require __DIR__ . '/traitement/traiter_anomalie.php';
         break;
 
-    // --- NOUVEAU : Espace Notifications (Client) ---
     case 'notifications':
         exigerRole('client');
         require __DIR__ . '/IHM/client/notifications.php';
@@ -243,13 +242,13 @@ switch ($page) {
         echo "1, 0.0, 0.0\n";
         exit;
 
-        case 'verification_annuelle':
+    case 'verification_annuelle':
         exigerRole('fournisseur');
         require_once __DIR__ . '/traitement/VerificationAnnuelle.php';
         $d = preparerPageVerificationAnnuelle();
         require __DIR__ . '/IHM/fournisseur/verification_annuelle.php';
         break;
-       // --- Réclamations (Client) ---
+
     case 'reclamations':
         exigerRole('client');
         require_once __DIR__ . '/traitement/Reclamation.php';
@@ -259,7 +258,7 @@ switch ($page) {
         $d = preparerPageReclamations();
         require __DIR__ . '/IHM/client/reclamations.php';
         break;
-     // --- Réclamations (Fournisseur) ---
+
     case 'reclamations_fournisseur':
         exigerRole('fournisseur');
         require_once __DIR__ . '/traitement/reclamationsFournisseur.php';

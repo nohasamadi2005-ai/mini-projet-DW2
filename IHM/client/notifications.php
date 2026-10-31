@@ -5,9 +5,9 @@ require_once __DIR__ . '/../../BD/connexion.php';
 
 $idClient = $_SESSION['user']['id'];
 
-// Récupération des notifications destinées au client
+// Récupération des notifications destinées au client (avec l'ID_Facture si présent)
 $cnx = Connexion();
-$sql = "SELECT ID_Notification, Message, Date_Envoi, Lu 
+$sql = "SELECT ID_Notification, ID_Facture, Message, Date_Envoi, Lu 
         FROM notification 
         WHERE ID_Client = ? AND (Destinataire = 'client' OR Destinataire IS NULL)
         ORDER BY Date_Envoi DESC";
@@ -48,10 +48,10 @@ mysqli_close($cnx);
                         <div class="list-group-item list-group-item-action flex-column align-items-start p-3 mb-2 rounded border">
                             <div class="d-flex w-100 justify-content-between align-items-center mb-2">
                                 <h6 class="mb-1 text-primary">
-                                    <?php if (strpos($n['Message'], 'refusée') !== false || strpos($n['Message'], 'bloqué') !== false): ?>
+                                    <?php if (strpos($n['Message'], 'refusé') !== false || strpos($n['Message'], 'refusée') !== false || strpos($n['Message'], 'bloqué') !== false): ?>
                                         <i class="fa-solid fa-triangle-exclamation text-danger me-2"></i><strong>Action requise : Resaisie</strong>
-                                    <?php elseif (strpos($n['Message'], 'surconsommation') !== false): ?>
-                                        <i class="fa-solid fa-circle-info text-warning me-2"></i><strong>Information : Intervention Technicien</strong>
+                                    <?php elseif (mb_stripos($n['Message'], 'surconsommation') !== false): ?>
+                                        <i class="fa-solid fa-triangle-exclamation text-warning me-2"></i><strong>Alerte : Surconsommation détectée</strong>
                                     <?php else: ?>
                                         <i class="fa-solid fa-bell text-info me-2"></i><strong>Notification</strong>
                                     <?php endif; ?>
@@ -62,10 +62,18 @@ mysqli_close($cnx);
                             <p class="mb-2 text-dark fs-6"><?= htmlspecialchars($n['Message']) ?></p>
 
                             <!-- Bouton d'action si la notification concerne une resaisie -->
-                            <?php if (strpos($n['Message'], 'refusée') !== false): ?>
+                            <?php if (strpos($n['Message'], 'refusé') !== false || strpos($n['Message'], 'refusée') !== false): ?>
                                 <div class="mt-2">
                                     <a href="index.php?page=saisie" class="btn btn-sm btn-danger">
-                                        <i class="fa-solid fa-rotate-right"></i> Effectuer la resaisie maintenant
+                                        <i class="fa-solid fa-rotate-right me-1"></i> Effectuer la resaisie maintenant
+                                    </a>
+                                </div>
+                            
+                            <!-- Bouton d'action si la notification concerne une surconsommation (Lien vers Réclamations) -->
+                            <?php elseif (mb_stripos($n['Message'], 'surconsommation') !== false || !empty($n['ID_Facture'])): ?>
+                                <div class="mt-2">
+                                    <a href="index.php?page=reclamations<?= !empty($n['ID_Facture']) ? '&id_facture=' . $n['ID_Facture'] : '' ?>" class="btn btn-sm btn-outline-danger">
+                                        <i class="fa-solid fa-file-circle-exclamation me-1"></i> Déposer une réclamation pour justifier
                                     </a>
                                 </div>
                             <?php endif; ?>
@@ -76,5 +84,3 @@ mysqli_close($cnx);
         </div>
     </div>
 </div>
-
-
