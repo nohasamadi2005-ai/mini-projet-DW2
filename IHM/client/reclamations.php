@@ -161,7 +161,7 @@ function icone($nom)
     <main class="page">
       <div class="eyebrow">ESPACE CLIENT</div>
       <h1>Mes réclamations</h1>
-      <p class="sous">Signalez un problème sur une facture (fuite, montant, autre) et suivez la réponse du fournisseur.</p>
+      <p class="sous">Signalez un problème (fuite, facture, déménagement, saisie bloquée...) et suivez la réponse du fournisseur.</p>
 
       <?php if (!empty($d['message'])): ?>
         <div class="alerte <?= h($d['message']['type']) ?>"><?= h($d['message']['texte']) ?></div>
@@ -171,13 +171,6 @@ function icone($nom)
 
         <div class="carte form-carte">
           <h2>Nouvelle réclamation</h2>
-          <?php if (empty($d['factures'])): ?>
-            <div class="vide" style="padding:20px 0;">
-              <?= icone('facture') ?>
-              <b>Aucune facture</b>
-              Vous pourrez faire une réclamation dès que vous aurez une facture.
-            </div>
-          <?php else: ?>
           <form method="POST" action="index.php?page=reclamations" id="formRec" enctype="multipart/form-data">
             <label for="type">Type de réclamation</label>
             <select name="type" id="type" required>
@@ -193,6 +186,9 @@ function icone($nom)
             </div>
 
             <div class="bloc" id="bloc_Facture" hidden>
+              <?php if (empty($d['factures'])): ?>
+                <p class="rec-meta" style="margin:14px 0 0;">Vous n’avez pas encore de facture : choisissez un autre type de réclamation.</p>
+              <?php endif; ?>
               <label for="id_facture">Facture concernée</label>
               <select name="id_facture" id="id_facture">
                 <option value="">— Choisir une facture —</option>
@@ -229,7 +225,6 @@ function icone($nom)
 
             <button type="submit" class="btn-envoyer">Envoyer la réclamation</button>
           </form>
-          <?php endif; ?>
         </div>
 
         <div>

@@ -310,7 +310,7 @@ $finAffichage = min($debut + $parPage, $totalClients);
 
                 <hr style="margin: 20px 0; border: 0; border-top: 1px solid #E2E8F0;">
                 <h3 style="font-size: 14px; color: #1890FF; margin-bottom: 12px;"><i class="fa-solid fa-gauge"></i> Gestion des Compteurs</h3>
-                <<div class="form-group"><label>Numéro Compteur Eau</label>
+                <div class="form-group"><label>Numéro Compteur Eau</label>
     <input type="text" name="compteur_eau" id="edit_compteur_eau" list="liste_eau" autocomplete="off" oninput="majIndex('eau')">
     <div id="bloc_index_eau" style="display:none; margin-top:8px;">
         <label style="font-size:12px;">Index de départ du nouveau compteur (0 s’il est neuf)</label>
@@ -348,24 +348,21 @@ $finAffichage = min($debut + $parPage, $totalClients);
     <script>
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
         const compteursActuels = { eau: '', elec: '' };
-function majIndex(t) {
-    const champ = document.getElementById(t === 'eau' ? 'edit_compteur_eau' : 'edit_compteur_elec');
-    const bloc  = document.getElementById('bloc_index_' + t);
-    const info  = document.getElementById('info_' + t);
-    const v = champ.value.trim();
-    const libre = Array.from(document.querySelectorAll('#liste_' + t + ' option')).some(o => o.value === v);
-    bloc.style.display = 'none';
-    if (v === compteursActuels[t] || v.indexOf(',') !== -1) {
-        info.textContent = '';
-    } else if (v === '') {
-        info.textContent = 'Le compteur actuel sera libéré.';
-    } else if (libre) {
-        info.textContent = 'Compteur existant : son index actuel est conservé.';
-    } else {
-        bloc.style.display = 'block';
-        info.textContent = "Nouveau compteur : indiquez son index de départ (0 s’il est neuf).";
-    }
-}
+        function majIndex(t) {
+            const champ = document.getElementById(t === 'eau' ? 'edit_compteur_eau' : 'edit_compteur_elec');
+            const info  = document.getElementById('info_' + t);
+            const v = champ.value.trim();
+            const libre = Array.from(document.querySelectorAll('#liste_' + t + ' option')).some(o => o.value === v);
+            if (v === compteursActuels[t] || v.indexOf(',') !== -1) {
+                info.textContent = '';
+            } else if (v === '') {
+                info.textContent = 'Le compteur actuel sera libéré.';
+            } else if (libre) {
+                info.textContent = 'Compteur existant : son index actuel est conservé.';
+            } else {
+                info.textContent = 'Nouveau compteur : il sera créé avec un index initial de 0.';
+            }
+        }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         
         function openEditModal(id, nom, prenom, adresse, telephone, email, compteurEau, compteurElec) {
@@ -378,8 +375,6 @@ function majIndex(t) {
             document.getElementById('edit_compteur_eau').value = compteurEau;
             document.getElementById('edit_compteur_elec').value = compteurElec;
             compteursActuels.eau = compteurEau; compteursActuels.elec = compteurElec;
-            document.getElementById('index_eau').value = 0;
-            document.getElementById('index_elec').value = 0;
             majIndex('eau'); majIndex('elec');
             openModal('editModal');
         }
