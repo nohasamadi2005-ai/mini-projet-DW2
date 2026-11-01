@@ -195,8 +195,9 @@ foreach ($anomalies as $a) {
                                 <?php foreach ($anomalies as $a): ?>
                                     <?php 
                                         $nbRefus = intval($a['Nb_Refus'] ?? 0);
-                                        // RÈGLE MÉTIER : Corriger & Facturer apparaît STRICTEMENT après 2 échecs du client
-                                        $peutCorrigerDirectement = ($nbRefus >= 2);
+                                        // RÈGLE MÉTIER : Corriger & Facturer apparaît dès que la 2e saisie du client
+                                        // est encore négative (statut 'Saisie_Fournisseur' posé par Saisie.php)
+                                        $peutCorrigerDirectement = (($a['Statut_Traitement'] ?? '') === 'Saisie_Fournisseur');
                                     ?>
                                     <tr>
                                         <td><strong><?= htmlspecialchars(($a['Nom'] ?? '') . ' ' . ($a['Prenom'] ?? '')) ?></strong></td>
@@ -232,7 +233,7 @@ foreach ($anomalies as $a) {
                                         </td>
                                         <td class="text-end pe-4">
                                             <?php if ($peutCorrigerDirectement): ?>
-                                                <!-- Affiché UNIQUEMENT si Nb_Refus >= 2 -->
+                                                <!-- Affiché UNIQUEMENT si Statut = Saisie_Fournisseur -->
                                                 <button type="button" class="btn btn-sm btn-primary font-weight-bold" data-bs-toggle="modal" data-bs-target="#modalCorrection<?= $a['ID_Consommation_Mensuelle'] ?>">
                                                     <i class="fa-solid fa-pen-to-square me-1"></i> Corriger & Facturer
                                                 </button>
@@ -304,7 +305,7 @@ foreach ($anomalies as $a) {
                                                 </form>
 
                                             <?php else: ?>
-                                                <!-- Affiché pour la 1ère et 2ème tentative (Nb_Refus < 2) -->
+                                                <!-- Affiché uniquement après la 1ère saisie erronée (une seule resaisie possible) -->
                                                 <button type="button" class="btn btn-sm btn-danger font-weight-bold" data-bs-toggle="modal" data-bs-target="#modalResaisie<?= $a['ID_Consommation_Mensuelle'] ?>">
                                                     <i class="fa-solid fa-rotate-left me-1"></i> Demander Resaisie
                                                 </button>
@@ -333,7 +334,7 @@ foreach ($anomalies as $a) {
                                                                         </select>
                                                                     </div>
                                                                     <p class="small text-muted mb-0">
-                                                                        Tentative actuelle : <?= $nbRefus + 1 ?> / 2.
+                                                                        Le client dispose d'une seule resaisie : en cas de nouvel échec, vous corrigerez l'index vous-même.
                                                                     </p>
                                                                 </div>
                                                                 <div class="modal-footer">
