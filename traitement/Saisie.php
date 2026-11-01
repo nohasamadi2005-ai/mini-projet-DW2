@@ -114,10 +114,7 @@ function traiterSaisie()
 
     $typeAnomalie = detecterAnomalie($delta, $compteur['Type_Compteur']);
     $statut       = $typeAnomalie ? 'Anomalie' : 'Verifie';
-    if ($resaisie && $typeAnomalie === 'Index negatif') {
-    $statut = 'Saisie_Fournisseur';
-}
-
+    
    
     if (!is_dir(PHOTOS_DOSSIER)) {
         mkdir(PHOTOS_DOSSIER, 0775, true);
@@ -162,13 +159,7 @@ if ($typeAnomalie === 'Surconsommation') {
         $idCompteur
     );
 }
- if ($statut === 'Saisie_Fournisseur') {
-    retourSaisie(
-        'erreur',
-        'Le nombre maximum de tentatives est atteint. Veuillez contacter le fournisseur.',
-        $idCompteur
-    );
-}
+ 
 if ($typeAnomalie) {   // Index négatif
     retourSaisie(
         'anomalie',
@@ -226,7 +217,7 @@ if ($s === 'Verifie') {
     $etat = 'verifie';
 } elseif ($s === 'Rejete' || $s === 'Saisie_Fournisseur') {
     $etat = 'rejete';
-} else {
+    } else {
     $etat = 'anomalie';
 }
       }else {

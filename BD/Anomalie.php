@@ -123,9 +123,8 @@ function demanderResaisie($idConsommation, $idClient, $motif) {
     $row = mysqli_fetch_assoc($r);
     $tentatives = intval($row['n'] ?? 1);
 
-    // 3. Choix du statut et du message
-    $statut = ($tentatives >= 2) ? 'Saisie_Fournisseur' : 'Resaisie demandee';
-    
+        $statut = ($tentatives >= 2) ? 'Saisie_Fournisseur' : 'Resaisie demandee';
+
     if ($tentatives >= 2) {
         $message = "Vos 2 tentatives de resaisie n'ont pas été validées. Le fournisseur va analyser la photo de votre compteur et corriger lui-même l'index.";
     } else {
