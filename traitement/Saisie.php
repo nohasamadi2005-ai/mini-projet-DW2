@@ -114,6 +114,9 @@ function traiterSaisie()
 
     $typeAnomalie = detecterAnomalie($delta, $compteur['Type_Compteur']);
     $statut       = $typeAnomalie ? 'Anomalie' : 'Verifie';
+    if ($resaisie && $typeAnomalie === 'Index negatif') {
+    $statut = 'Saisie_Fournisseur';
+}
 
    
     if (!is_dir(PHOTOS_DOSSIER)) {
@@ -156,6 +159,13 @@ if ($typeAnomalie === 'Surconsommation') {
         'anomalie',
         'Surconsommation détectée : le fournisseur va vérifier d’éventuelles fuites. '
         . 'Votre facture a été générée et est disponible dans « Mes factures ».',
+        $idCompteur
+    );
+}
+ if ($statut === 'Saisie_Fournisseur') {
+    retourSaisie(
+        'erreur',
+        'Le nombre maximum de tentatives est atteint. Veuillez contacter le fournisseur.',
         $idCompteur
     );
 }
