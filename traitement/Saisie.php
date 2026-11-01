@@ -211,8 +211,14 @@ function preparerPageSaisie()
         if ($resaisie) {
             $etat = 'resaisie';
        } elseif ($saisie) {
-    $s = $saisie['Statut_Traitement'];
-    $etat = $s === 'Verifie' ? 'verifie' : ($s === 'Rejete' ? 'rejete' : 'anomalie');
+   $s = $saisie['Statut_Traitement'];
+if ($s === 'Verifie') {
+    $etat = 'verifie';
+} elseif ($s === 'Rejete' || $s === 'Saisie_Fournisseur') {
+    $etat = 'rejete';
+} else {
+    $etat = 'anomalie';
+}
       }else {
             $etat = $ouverte ? 'libre' : 'ferme';
         }
