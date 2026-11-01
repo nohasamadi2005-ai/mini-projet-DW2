@@ -238,7 +238,7 @@ function icone($nom)
 
   <div>
     <header class="top">
-      <span class="cloche"><?= icone('cloche') ?></span>
+     
       <div class="user">
         <span class="avatar"><?= h($initiales) ?></span>
         <div><?= h($u['prenom'] . ' ' . $u['nom']) ?><small>Espace client</small></div>

@@ -141,13 +141,7 @@ function traiterSaisie()
         }
         retourSaisie('erreur', 'Une erreur est survenue. Veuillez réessayer.', $idCompteur);
     }
-  if ($typeAnomalie) {
-        try {
-            creerAnomalie($idConso, $typeAnomalie, 'Détectée à la saisie');
-        } catch (Throwable $e) {
-            error_log($e->getMessage());
-        }
-    }
+  
    
 if ($typeAnomalie === 'Surconsommation') {
     if (function_exists('genererFacture') && !getFactureDeSaisie($idConso)) {
