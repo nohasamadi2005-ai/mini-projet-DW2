@@ -5,7 +5,7 @@ require_once __DIR__ . '/../BD/Facture.php';
 require_once __DIR__ . '/../BD/Reclamation.php';
 
 const TYPES_RECLAMATION     = ['Fuite externe', 'Facture', 'Déménagement', 'Saisie bloquée', 'Autre'];
-const SOUS_TYPES_FACTURE    = ['Fuite interne', 'Prix dans la facture', 'Autre'];
+const SOUS_TYPES_FACTURE    = ['Fuite interne', 'Surconsommation', 'Autre'];
 const RECL_PHOTO_MAX        = 5 * 1024 * 1024;                       // 5 Mo
 const RECL_PHOTOS_DOSSIER   = __DIR__ . '/../uploads/reclamations/';
 const RECL_PHOTOS_URL       = 'uploads/reclamations/';
@@ -180,7 +180,9 @@ function preparerPageReclamations()
         'factures'     => $factures,
         'reclamations' => $reclamations,
         'message'      => $msg,
-        'preselection' => (int) ($_GET['facture'] ?? 0),
+        // facture (et type de problème) présélectionnés, par exemple depuis une notification
+        'preselection' => (int) ($_GET['facture'] ?? $_GET['id_facture'] ?? 0),
+        'preSousType'  => in_array($_GET['sous_type'] ?? '', SOUS_TYPES_FACTURE, true) ? $_GET['sous_type'] : '',
         'types'        => TYPES_RECLAMATION,
         'sousTypes'    => SOUS_TYPES_FACTURE,
     ];

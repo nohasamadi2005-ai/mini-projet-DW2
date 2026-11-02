@@ -195,6 +195,7 @@ $total = array_sum($c);
                                         data-facture="<?= $r['facture'] ? h($r['facture'] . ' — ' . $r['periode'] . ' — ' . $r['ttc'] . ' DH') : '' ?>"
                                         data-categorie="<?= h($r['categorie']) ?>"
                                         data-soustype="<?= h($r['sousType']) ?>"
+                                        data-releve="<?= h($r['releve']) ?>"
                                         data-lieu="<?= h($r['lieu']) ?>"
                                         data-photo="<?= h($r['photo']) ?>"
                                         data-type="<?= h($r['type']) ?>"
@@ -230,6 +231,7 @@ $total = array_sum($c);
                             <div class="col-md-6"><small class="text-muted d-block">Client</small><b id="mClient"></b><br><small id="mContact" class="text-muted"></small></div>
                             <div class="col-md-6" id="mBlocFacture"><small class="text-muted d-block">Facture concernée</small><b id="mFacture"></b></div>
                             <div class="col-md-12"><small class="text-muted d-block">Type</small><b id="mType"></b></div>
+                            <div class="col-md-12" id="mBlocReleve" style="display:none;"><small class="text-muted d-block">Relevé du mois facturé</small><b id="mReleve"></b></div>
                             <div class="col-md-12" id="mBlocLieu" style="display:none;"><small class="text-muted d-block">Lieu de la fuite</small><b id="mLieu"></b></div>
                             <div class="col-md-12" id="mBlocPhoto" style="display:none;"><small class="text-muted d-block mb-1">Photo jointe</small>
                                 <a id="mPhotoLien" href="#" target="_blank"><img id="mPhoto" alt="Photo de la fuite" style="max-height:170px; border-radius:8px;"></a></div>
@@ -285,6 +287,8 @@ $total = array_sum($c);
                 document.getElementById('mFacture').textContent = d.facture;
                 document.getElementById('mBlocFacture').style.display = d.facture ? 'block' : 'none';
                 document.getElementById('mType').textContent    = d.type + (d.soustype ? ' — ' + d.soustype : '');
+                document.getElementById('mReleve').textContent  = d.releve || '';
+                document.getElementById('mBlocReleve').style.display = d.releve ? 'block' : 'none';
                 document.getElementById('mLieu').textContent    = d.lieu || '';
                 document.getElementById('mBlocLieu').style.display = d.lieu ? 'block' : 'none';
                 document.getElementById('mPhoto').src           = d.photo || '';

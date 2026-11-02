@@ -268,7 +268,12 @@ switch ($page) {
         $d = preparerPageReclamationsFournisseur();
         require __DIR__ . '/IHM/fournisseur/fournisseurReclamtion.php';
         break;
-
+case 'historique_compteurs':
+        exigerRole('fournisseur');
+        require_once __DIR__ . '/traitement/HistoriqueCompteur.php';
+        $d = preparerPageHistoriqueCompteurs();
+        require __DIR__ . '/IHM/fournisseur/historique_compteurs.php';
+        break;
     default:
         http_response_code(404);
         require __DIR__ . '/IHM/404.php';

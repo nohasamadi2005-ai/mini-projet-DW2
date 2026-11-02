@@ -202,7 +202,7 @@ function icone($nom)
               <select name="sous_type" id="sous_type">
                 <option value="">— Choisir —</option>
                 <?php foreach ($d['sousTypes'] as $st): ?>
-                  <option value="<?= h($st) ?>"><?= h($st) ?></option>
+                  <option value="<?= h($st) ?>" <?= $st === $d['preSousType'] ? 'selected' : '' ?>><?= h($st) ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
@@ -308,6 +308,9 @@ function icone($nom)
     if (ok) {
       label.textContent = TEXTES[t][0];
       desc.placeholder  = TEXTES[t][1];
+      if (t === 'Facture' && document.getElementById('sous_type').value === 'Surconsommation') {
+        desc.placeholder = 'Expliquez pourquoi cette consommation vous semble anormale (fuite suspectée, appareil défectueux, absence...)';
+      }
     }
     const req = (id, v) => { const e = document.getElementById(id); if (e) e.required = v; };
     req('lieu', t === 'Fuite externe');
@@ -319,6 +322,7 @@ function icone($nom)
 
   if (type) {
     type.addEventListener('change', majFormulaire);
+    document.getElementById('sous_type').addEventListener('change', majFormulaire);
     desc.addEventListener('input', () => { nb.textContent = desc.value.length; });
     document.getElementById('formRec').addEventListener('submit', e => {
       e.target.querySelector('button[type=submit]').disabled = true;

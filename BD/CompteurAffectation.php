@@ -49,10 +49,65 @@ function getCompteursLibres($type)
     return $liste;
 }
 
+// Dernier index connu d'un compteur : dernier relevé vérifié, sinon l'index initial
+function dernierIndexCompteur($cnx, $idCompteur)
+{
+    $stmt = mysqli_prepare($cnx,
+        "SELECT COALESCE(
+                  (SELECT cm.Index_Actuel
+                     FROM consommation_mensuelle cm
+                    WHERE cm.ID_Compteur = c.ID_Compteur
+                      AND (cm.Statut_Traitement = 'Verifie'
+                           OR (cm.Statut_Traitement = 'Anomalie' AND cm.Consommation >= 0))
+                    ORDER BY cm.Annee DESC, cm.Mois DESC LIMIT 1),
+                  c.Index_Initial) AS idx
+           FROM compteur c WHERE c.ID_Compteur = ?");
+    mysqli_stmt_bind_param($stmt, "i", $idCompteur);
+    mysqli_stmt_execute($stmt);
+    $ligne = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+    return $ligne ? (float) $ligne['idx'] : 0.0;
+}
+
+// Libère un compteur et clôture sa ligne d'historique (index de fin = dernier index connu)
+function libererCompteurAvecHistorique($cnx, $idCompteur, $idClient)
+{
+    $indexFin = dernierIndexCompteur($cnx, $idCompteur);
+
+    $stmt = mysqli_prepare($cnx,
+        "UPDATE compteur SET statut = 'inactif', ID_Client = NULL WHERE ID_Compteur = ?");
+    mysqli_stmt_bind_param($stmt, "i", $idCompteur);
+    mysqli_stmt_execute($stmt);
+
+    $stmt = mysqli_prepare($cnx,
+        "UPDATE historique_compteur SET Date_Fin = NOW(), Index_Fin = ?
+          WHERE ID_Compteur = ? AND ID_Client = ? AND Date_Fin IS NULL");
+    mysqli_stmt_bind_param($stmt, "dii", $indexFin, $idCompteur, $idClient);
+    mysqli_stmt_execute($stmt);
+
+    if (mysqli_stmt_affected_rows($stmt) === 0) {          // compteur sans ligne d'historique : on la crée, déjà clôturée
+        $stmt = mysqli_prepare($cnx,
+            "INSERT INTO historique_compteur (ID_Compteur, ID_Client, Date_Debut, Date_Fin, Index_Debut, Index_Fin)
+             SELECT c.ID_Compteur, ?, TIMESTAMP(COALESCE(c.Date_Installation, CURDATE())), NOW(), c.Index_Initial, ?
+               FROM compteur c WHERE c.ID_Compteur = ?");
+        mysqli_stmt_bind_param($stmt, "idi", $idClient, $indexFin, $idCompteur);
+        mysqli_stmt_execute($stmt);
+    }
+}
+
+// Ouvre une ligne d'historique : le client reçoit le compteur à cette date, avec cet index
+function ouvrirHistoriqueCompteur($cnx, $idCompteur, $idClient, $indexDebut)
+{
+    $stmt = mysqli_prepare($cnx,
+        "INSERT INTO historique_compteur (ID_Compteur, ID_Client, Date_Debut, Index_Debut) VALUES (?, ?, NOW(), ?)");
+    mysqli_stmt_bind_param($stmt, "iid", $idCompteur, $idClient, $indexDebut);
+    mysqli_stmt_execute($stmt);
+}
+
 // Change le compteur d'un client pour un type donné.
 //  - champ vide            : le compteur actuel est libéré (statut inactif, sans client)
 //  - numéro d'un compteur libre : il est affecté au client, son index actuel est conservé
-//  - numéro inconnu        : nouveau compteur créé avec $indexInitial (0 s'il est neuf)
+//  - numéro inconnu        : nouveau compteur créé avec un index initial aléatoire entre 0 et 5
+//                            (le paramètre $indexInitial est conservé pour compatibilité mais ignoré)
 //  - numéro d'un autre client   : refusé
 // Retourne null si tout va bien, sinon un message d'erreur.
 function changerCompteurClient($idClient, $typeCompteur, $nouveauNumero, $indexInitial = 0)
@@ -69,10 +124,7 @@ function changerCompteurClient($idClient, $typeCompteur, $nouveauNumero, $indexI
             || (int) $nouveauNumero < 1 || (int) $nouveauNumero > 2147483647)) {
         return "le numéro du compteur doit être un nombre.";
     }
-    $indexInitial = (float) str_replace(',', '.', (string) $indexInitial);
-    if ($indexInitial < 0 || $indexInitial > 9999999999.99) {
-        return "l'index de départ est invalide.";
-    }
+    $indexInitial = random_int(0, 5);       // compteur neuf : index initial aléatoire entre 0 et 5
 
     $cnx = Connexion();
     try {
@@ -87,10 +139,9 @@ function changerCompteurClient($idClient, $typeCompteur, $nouveauNumero, $indexI
         // Champ vidé : on libère le compteur actuel
         if ($nouveauNumero === '') {
             if ($actuel) {
-                $stmt = mysqli_prepare($cnx,
-                    "UPDATE compteur SET statut = 'inactif', ID_Client = NULL WHERE ID_Compteur = ?");
-                mysqli_stmt_bind_param($stmt, "i", $actuel);
-                mysqli_stmt_execute($stmt);
+                mysqli_begin_transaction($cnx);
+                libererCompteurAvecHistorique($cnx, $actuel, $idClient);
+                mysqli_commit($cnx);
             }
             return null;
         }
@@ -121,10 +172,7 @@ function changerCompteurClient($idClient, $typeCompteur, $nouveauNumero, $indexI
         mysqli_begin_transaction($cnx);
 
         if ($actuel) {                                     // l'ancien compteur reste à sa place, sans client
-            $stmt = mysqli_prepare($cnx,
-                "UPDATE compteur SET statut = 'inactif', ID_Client = NULL WHERE ID_Compteur = ?");
-            mysqli_stmt_bind_param($stmt, "i", $actuel);
-            mysqli_stmt_execute($stmt);
+            libererCompteurAvecHistorique($cnx, $actuel, $idClient);
         }
 
         if ($existant) {                                   // compteur existant : historique et index conservés
@@ -139,6 +187,10 @@ function changerCompteurClient($idClient, $typeCompteur, $nouveauNumero, $indexI
             mysqli_stmt_bind_param($stmt, "iisds", $nouveau, $idClient, $type, $indexInitial, $date);
         }
         mysqli_stmt_execute($stmt);
+
+        // Traçabilité : le client reçoit ce compteur à cette date, avec cet index
+        ouvrirHistoriqueCompteur($cnx, $nouveau, $idClient,
+            $existant ? dernierIndexCompteur($cnx, $nouveau) : (float) $indexInitial);
 
         mysqli_commit($cnx);
         return null;

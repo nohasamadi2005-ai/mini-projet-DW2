@@ -108,7 +108,8 @@ $finAffichage = min($debut + $parPage, $totalClients);
 
         .btn-action { background: #EEF2F6; border: none; padding: 6px 12px; border-radius: 6px; color: #475569; cursor: pointer; font-weight: 500; transition: 0.2s; }
         .btn-action:hover { background: #1890FF; color: #fff; }
-
+        .actions-cell { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+        .actions-cell .btn-action { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; text-decoration:none; font-size:14px; line-height:1.2; font-family:inherit; }
         .pagination-footer { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-top: 1px solid #E2E8F0; background: #fff; font-size: 13px; color: #64748B; }
         .pagination-buttons { display: flex; gap: 10px; }
         .page-btn { background: #1890FF; border: 1px solid #1890FF; padding: 6px 14px; border-radius: 6px; color: #ffffff; font-size: 13px; font-weight: 500; text-decoration: none; transition: 0.2s; cursor: pointer; display: inline-block; }
@@ -222,17 +223,20 @@ $finAffichage = min($debut + $parPage, $totalClients);
                                 <td>
                                     <span class="badge badge-actif">Actif</span>
                                 </td>
-                                <td>
-                                    <button class="btn-action" onclick="openEditModal(
-                                        '<?php echo $client['ID_Client']; ?>',
-                                        '<?php echo addslashes($client['Nom']); ?>',
-                                        '<?php echo addslashes($client['Prenom']); ?>',
-                                        '<?php echo addslashes($client['Adresse']); ?>',
-                                        '<?php echo addslashes($client['Telephone']); ?>',
-                                        '<?php echo addslashes($client['Email']); ?>',
-                                        '<?php echo addslashes($client['compteur_eau_ids'] ?? ''); ?>',
-                                        '<?php echo addslashes($client['compteur_elec_ids'] ?? ''); ?>'
-                                    )"><i class="fa-solid fa-pen"></i> Modifier</button>
+                                                                <td>
+                                    <div class="actions-cell">
+                                        <button class="btn-action" onclick="openEditModal(
+                                            '<?php echo $client['ID_Client']; ?>',
+                                            '<?php echo addslashes($client['Nom']); ?>',
+                                            '<?php echo addslashes($client['Prenom']); ?>',
+                                            '<?php echo addslashes($client['Adresse']); ?>',
+                                            '<?php echo addslashes($client['Telephone']); ?>',
+                                            '<?php echo addslashes($client['Email']); ?>',
+                                            '<?php echo addslashes($client['compteur_eau_ids'] ?? ''); ?>',
+                                            '<?php echo addslashes($client['compteur_elec_ids'] ?? ''); ?>'
+                                        )"><i class="fa-solid fa-pen"></i> Modifier</button>
+                                        <a class="btn-action" href="index.php?page=historique_compteurs&client=<?php echo (int) $client['ID_Client']; ?>"><i class="fa-solid fa-clock-rotate-left"></i> Historique</a>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

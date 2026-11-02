@@ -21,7 +21,10 @@ function categorieReclamation($type, $sousType = null)
         if ($sousType === 'Autre') {
             return 'Autre';
         }
-        return 'Facture';                       // "Prix dans la facture" (ou ancienne réclamation sans sous-type)
+        if ($sousType === 'Surconsommation' || $sousType === 'Prix dans la facture') {
+            return 'Surconsommation';           // ancien nom : "Prix dans la facture"
+        }
+        return 'Facture';                       // ancienne réclamation sans sous-type
     }
     if (in_array($type, ['Fuite externe', 'Fuite interne', 'Déménagement', 'Saisie bloquée'], true)) {
         return $type;
@@ -65,6 +68,29 @@ function actionsReclamation()
                 'libelle' => 'Fuite côté client (conseil plombier)',
                 'statut'  => 'Traitee',
                 'msg'     => "Après vérification, la fuite se situe dans votre installation intérieure. Nous vous conseillons de faire appel à un plombier.",
+            ],
+        ],
+        'Surconsommation' => [
+            'encours'    => $encours,
+            'technicien' => [
+                'libelle' => 'Technicien envoyé (vérification du compteur)',
+                'statut'  => 'En cours',
+                'msg'     => "Un technicien sera envoyé pour vérifier votre compteur suite à la surconsommation que vous avez signalée.",
+            ],
+            'fuite'      => [
+                'libelle' => 'Fuite côté client (conseil plombier)',
+                'statut'  => 'Traitee',
+                'msg'     => "Après vérification, la surconsommation provient d'une fuite dans votre installation intérieure. Nous vous conseillons de faire appel à un plombier.",
+            ],
+            'corrigee'   => [
+                'libelle' => 'Consommation corrigée',
+                'statut'  => 'Traitee',
+                'msg'     => "Après vérification, une erreur de relevé a été constatée : votre consommation et votre facture ont été corrigées. Vous pouvez les consulter dans « Mes factures ».",
+            ],
+            'confirmee'  => [
+                'libelle' => 'Consommation confirmée (réclamation non fondée)',
+                'statut'  => 'Rejetee',
+                'msg'     => "Après vérification, votre consommation est confirmée : aucune erreur n'a été constatée.",
             ],
         ],
         'Facture' => [
@@ -187,6 +213,12 @@ function preparerPageReclamationsFournisseur()
             'periode'     => $r['ID_Facture'] ? nomMois($r['Mois']) . ' ' . $r['Annee'] : null,
             'compteur'    => $r['Type_Compteur'],
             'ttc'         => $r['ID_Facture'] ? number_format((float) $r['Montant_TTC'], 2, ',', ' ') : null,
+            'releve'      => $r['ID_Facture']
+                ? 'Index précédent ' . number_format((float) $r['Index_Precedent'], 2, ',', ' ')
+                  . ' → index actuel ' . number_format((float) $r['Index_Actuel'], 2, ',', ' ')
+                  . ' = ' . number_format((float) $r['Consommation'], 2, ',', ' ')
+                  . ($r['Type_Compteur'] === 'Eau' ? ' m³' : ' kWh')
+                : null,
             'type'        => $r['Type_Reclamation'],
             'sousType'    => $r['Sous_Type'],
             'categorie'   => categorieReclamation($r['Type_Reclamation'], $r['Sous_Type']),

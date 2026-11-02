@@ -8,7 +8,7 @@ function getToutesReclamations($statut = '')
                    r.Description, r.Statut, r.Reponse, r.Date_Reponse,
                    r.Sous_Type, r.Lieu_Fuite, r.Photo,
                    cl.Nom, cl.Prenom, cl.Email, cl.Telephone,
-                   cm.Mois, cm.Annee, cm.Consommation, c.Type_Compteur,
+                   cm.Mois, cm.Annee, cm.Index_Precedent, cm.Index_Actuel, cm.Consommation, c.Type_Compteur,
                    f.Montant_TTC
               FROM reclamation r
               JOIN client cl ON cl.ID_Client = r.ID_Client
