@@ -215,7 +215,7 @@ function preparerPageSaisie()
    $s = $saisie['Statut_Traitement'];
 if ($s === 'Verifie') {
     $etat = 'verifie';
-} elseif ($s === 'Rejete' || $s === 'Saisie_Fournisseur') {
+} elseif ( $s === 'Saisie_Fournisseur') {
     $etat = 'rejete';
     } else {
     $etat = 'anomalie';

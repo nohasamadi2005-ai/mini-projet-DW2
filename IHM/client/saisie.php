@@ -433,7 +433,8 @@ anomalie: [
   'Votre saisie est en cours de traitement par le fournisseur.'
 ],
     resaisie: ['info',     'Nouvelle saisie demandée', 'Le fournisseur vous demande de saisir à nouveau votre index. Vérifiez votre compteur puis renvoyez votre relevé.'],
-    rejete: ['erreur', 'Saisie rejetée', 'Le nombre maximum de tentatives est atteint. Veuillez contacter le fournisseur.']
+   rejete: ['anomalie', 'Correction par le fournisseur',
+         'Le fournisseur va corriger l\'index de votre compteur d\'après la photo envoyée. Votre facture sera ensuite disponible dans « Mes factures ».']
   };
   let courant = null;
 
