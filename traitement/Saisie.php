@@ -79,6 +79,11 @@ function traiterSaisie()
         retourSaisie('erreur', 'La saisie est fermée. Elle est ouverte du 18 à la fin de chaque mois.', $idCompteur);
     }
 
+    // [Contrats - P1] Relevé du mois fait par l'ancien titulaire (clôture de son contrat)
+    if ($existante && !$resaisie && (int) $existante['ID_Client'] !== $idClient) {
+        retourSaisie('erreur', 'Ce compteur vous a été attribué ce mois-ci : son relevé de ' . nomMois($mois) . ' ' . $annee
+            . ' a été fait à la clôture du contrat précédent. Votre première saisie se fera le mois prochain.', $idCompteur);
+    }
     if ($existante && !$resaisie) {
         retourSaisie('erreur', 'Vous avez déjà saisi ce compteur pour ce mois.', $idCompteur);
     }
@@ -205,12 +210,20 @@ function preparerPageSaisie()
 
         $resaisie = getSaisieEnResaisie($id);
         $saisie   = $resaisie ?: getSaisie($id, $moisNow, $anneeNow);
+        // [Contrats - P1] Compteur repris ce mois-ci (transfert / nouveau contrat) : le relevé du mois
+        // est le relevé de clôture de l'ancien titulaire. On ne l'affiche pas au nouveau titulaire.
+        $reprise = !$resaisie && $saisie && (int) $saisie['ID_Client'] !== $idClient;
+        if ($reprise) {
+            $saisie = null;
+        }
         $mc = $resaisie ? (int) $resaisie['Mois']  : $moisNow;
         $ac = $resaisie ? (int) $resaisie['Annee'] : $anneeNow;
         $ref = getReferencePrecedente($c, $mc, $ac);   
 
         if ($resaisie) {
             $etat = 'resaisie';
+       } elseif ($reprise) {
+            $etat = 'reprise';
        } elseif ($saisie) {
    $s = $saisie['Statut_Traitement'];
 if ($s === 'Verifie') {

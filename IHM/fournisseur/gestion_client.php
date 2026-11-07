@@ -145,13 +145,7 @@ $finAffichage = min($debut + $parPage, $totalClients);
             </div>
         </div>
 
-        <ul class="sidebar-menu">
-            <li class="active"><a href="index.php?page=gestion_client"><i class="fa-solid fa-users"></i> Gestion Clients</a></li>
-            <li><a href="index.php?page=historique_paiements"><i class="fa-solid fa-receipt"></i> Historique des Paiements</a></li>
-            <li><a href="index.php?page=verification_annuelle"><i class="fa-solid fa-scale-balanced"></i> Vérification Annuelle</a></li>
-            <li><a href="index.php?page=traitement_anomalies"><i class="fa-solid fa-triangle-exclamation"></i> Traitement des Anomalies</a></li>
-            <li><a href="index.php?page=reclamations_fournisseur"><i class="fa-solid fa-file-invoice-dollar"></i>Gestion des Réclamations</li>
-        </ul>
+        <?php require __DIR__ . '/menu.php'; ?>
 
         <div class="sidebar-footer">
             <div class="user-profile">
@@ -235,6 +229,7 @@ $finAffichage = min($debut + $parPage, $totalClients);
                                             '<?php echo addslashes($client['compteur_eau_ids'] ?? ''); ?>',
                                             '<?php echo addslashes($client['compteur_elec_ids'] ?? ''); ?>'
                                         )"><i class="fa-solid fa-pen"></i> Modifier</button>
+                                        <a class="btn-action" href="index.php?page=contrats&client=<?php echo (int) $client['ID_Client']; ?>"><i class="fa-solid fa-file-signature"></i> Contrats</a>
                                         <a class="btn-action" href="index.php?page=historique_compteurs&client=<?php echo (int) $client['ID_Client']; ?>"><i class="fa-solid fa-clock-rotate-left"></i> Historique</a>
                                     </div>
                                 </td>
@@ -279,16 +274,9 @@ $finAffichage = min($debut + $parPage, $totalClients);
                 <div class="form-group"><label>Email (Identifiant)</label><input type="email" name="email" required></div>
                 <div class="form-group"><label>Mot de passe provisoire</label><input type="password" name="password" required></div>
                 
-                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #E2E8F0;">
-                <h3 style="font-size: 14px; color: #1890FF; margin-bottom: 12px;"><i class="fa-solid fa-gauge"></i> Compteur initial</h3>
-                <div class="form-group"><label>Numéro / Référence du compteur</label><input type="text" name="numero_compteur" placeholder="Ex: CPT-9988"></div>
-                <div class="form-group">
-                    <label>Type de compteur</label>
-                    <select name="type_compteur">
-                        <option value="Eau">Eau</option>
-                        <option value="Electricite">Électricité</option>
-                    </select>
-                </div>
+                <p style="font-size:13px; color:#64748B; margin-top:15px;"><i class="fa-solid fa-file-signature" style="color:#1890FF"></i>
+                    Les compteurs se gèrent maintenant par <strong>contrat</strong> : après l'enregistrement, vous arrivez
+                    sur l'écran Contrats pour créer le(s) contrat(s) de ce client (compteur + zone).</p>
 
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary" onclick="closeModal('addModal')">Annuler</button>
@@ -301,7 +289,7 @@ $finAffichage = min($debut + $parPage, $totalClients);
     <!-- Modale de Modification -->
     <div id="editModal" class="modal">
         <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
-            <h2>Modifier le client et ses compteurs</h2>
+            <h2>Modifier le client</h2>
             <form method="POST" action="index.php?page=clientcompteur">
                 <input type="hidden" name="action" value="modifier">
                 <input type="hidden" name="id_client" id="edit_id">
@@ -312,35 +300,9 @@ $finAffichage = min($debut + $parPage, $totalClients);
                 <div class="form-group"><label>Téléphone</label><input type="text" name="telephone" id="edit_telephone"></div>
                 <div class="form-group"><label>Email</label><input type="email" name="email" id="edit_email" required></div>
 
-                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #E2E8F0;">
-                <h3 style="font-size: 14px; color: #1890FF; margin-bottom: 12px;"><i class="fa-solid fa-gauge"></i> Gestion des Compteurs</h3>
-                <div class="form-group"><label>Numéro Compteur Eau</label>
-    <input type="text" name="compteur_eau" id="edit_compteur_eau" list="liste_eau" autocomplete="off" oninput="majIndex('eau')">
-    <div id="bloc_index_eau" style="display:none; margin-top:8px;">
-        <label style="font-size:12px;">Index de départ du nouveau compteur (0 s’il est neuf)</label>
-        <input type="number" name="index_eau" id="index_eau" value="0" min="0" step="0.01">
-    </div>
-    <small id="info_eau" style="color:#64748B;"></small>
-</div>
-<div class="form-group"><label>Numéro Compteur Électricité</label>
-    <input type="text" name="compteur_elec" id="edit_compteur_elec" list="liste_elec" autocomplete="off" oninput="majIndex('elec')">
-    <div id="bloc_index_elec" style="display:none; margin-top:8px;">
-        <label style="font-size:12px;">Index de départ du nouveau compteur (0 s’il est neuf)</label>
-        <input type="number" name="index_elec" id="index_elec" value="0" min="0" step="0.01">
-    </div>
-    <small id="info_elec" style="color:#64748B;"></small>
-</div>
-
-<datalist id="liste_eau">
-    <?php foreach (getCompteursLibres('Eau') as $c): ?>
-        <option value="<?= (int) $c['numero'] ?>" label="Libre — index actuel : <?= number_format($c['index'], 2, ',', ' ') ?>"></option>
-    <?php endforeach; ?>
-</datalist>
-<datalist id="liste_elec">
-    <?php foreach (getCompteursLibres('Electricite') as $c): ?>
-        <option value="<?= (int) $c['numero'] ?>" label="Libre — index actuel : <?= number_format($c['index'], 2, ',', ' ') ?>"></option>
-    <?php endforeach; ?>
-</datalist>
+                <p style="font-size:13px; color:#64748B; margin-top:15px;"><i class="fa-solid fa-file-signature" style="color:#1890FF"></i>
+                    Compteurs : <a id="edit_lien_contrats" href="index.php?page=contrats">gérer les contrats de ce client</a>
+                    (nouveau compteur, résiliation, transfert, déménagement).</p>
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary" onclick="closeModal('editModal')">Annuler</button>
                     <button type="submit" class="btn-primary">Mettre à jour</button>
@@ -351,22 +313,6 @@ $finAffichage = min($debut + $parPage, $totalClients);
 
     <script>
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        const compteursActuels = { eau: '', elec: '' };
-        function majIndex(t) {
-            const champ = document.getElementById(t === 'eau' ? 'edit_compteur_eau' : 'edit_compteur_elec');
-            const info  = document.getElementById('info_' + t);
-            const v = champ.value.trim();
-            const libre = Array.from(document.querySelectorAll('#liste_' + t + ' option')).some(o => o.value === v);
-            if (v === compteursActuels[t] || v.indexOf(',') !== -1) {
-                info.textContent = '';
-            } else if (v === '') {
-                info.textContent = 'Le compteur actuel sera libéré.';
-            } else if (libre) {
-                info.textContent = 'Compteur existant : son index actuel est conservé.';
-            } else {
-                info.textContent = 'Nouveau compteur : il sera créé avec un index initial de 0.';
-            }
-        }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         
         function openEditModal(id, nom, prenom, adresse, telephone, email, compteurEau, compteurElec) {
@@ -376,10 +322,7 @@ $finAffichage = min($debut + $parPage, $totalClients);
             document.getElementById('edit_adresse').value = adresse;
             document.getElementById('edit_telephone').value = telephone;
             document.getElementById('edit_email').value = email;
-            document.getElementById('edit_compteur_eau').value = compteurEau;
-            document.getElementById('edit_compteur_elec').value = compteurElec;
-            compteursActuels.eau = compteurEau; compteursActuels.elec = compteurElec;
-            majIndex('eau'); majIndex('elec');
+            document.getElementById('edit_lien_contrats').href = 'index.php?page=contrats&client=' + id;
             openModal('editModal');
         }
     </script>

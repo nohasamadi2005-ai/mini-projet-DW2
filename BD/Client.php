@@ -103,7 +103,7 @@ function ajouterClientAvecCompteur($nom, $prenom, $adresse, $telephone, $email, 
         }
         
         mysqli_close($cnx);
-        return true;
+        return $idClient;          // ID du client créé (toujours « vrai »)
     }
     mysqli_close($cnx);
     return false;

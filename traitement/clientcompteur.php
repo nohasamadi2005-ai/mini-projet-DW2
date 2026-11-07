@@ -15,13 +15,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email          = trim($_POST['email'] ?? '');
         $password       = $_POST['password'] ?? '';
         
-        $numeroCompteur = trim($_POST['numero_compteur'] ?? '');
-        $typeCompteur   = $_POST['type_compteur'] ?? 'Electricite';
-
+        // Les compteurs se gèrent par contrat : on crée le client, puis on ouvre l'écran Contrats
         if (!empty($nom) && !empty($prenom) && !empty($email) && !empty($password)) {
-            ajouterClientAvecCompteur($nom, $prenom, $adresse, $telephone, $email, $password, $numeroCompteur, $typeCompteur);
+            try {
+                $idClient = ajouterClientAvecCompteur($nom, $prenom, $adresse, $telephone, $email, $password, '', '');
+            } catch (mysqli_sql_exception $e) {
+                $idClient = false;
+            }
+            if ($idClient) {
+                $_SESSION['contrat_msg'] = ['type' => 'succes',
+                    'texte' => "Client #$idClient créé. Créez maintenant son contrat (compteur + zone)."];
+                header('Location: index.php?page=contrats&client=' . (int) $idClient . '&nouveau=1');
+                exit;
+            }
+            $_SESSION['client_msg'] = ['type' => 'erreur', 'texte' => "Client non créé : cet email est peut-être déjà utilisé."];
         }
-
 
         header('Location: index.php?page=gestion_client');
         exit;
@@ -43,16 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             modifierClient($idClient, $nom, $prenom, $adresse, $telephone, $email);
 
          
-            // Nouvelle gestion des compteurs (affectation avec conservation de l'index)
-            $erreurs = [];
-            $e = changerCompteurClient($idClient, 'Eau', $compteurEau, $_POST['index_eau'] ?? 0);
-            if ($e) { $erreurs[] = "Compteur eau : $e"; }
-            $e = changerCompteurClient($idClient, 'Electricite', $compteurElec, $_POST['index_elec'] ?? 0);
-            if ($e) { $erreurs[] = "Compteur électricité : $e"; }
-
-            $_SESSION['client_msg'] = $erreurs
-                ? ['type' => 'erreur', 'texte' => implode(' ', $erreurs)]
-                : ['type' => 'succes', 'texte' => 'Client et compteurs mis à jour.'];
+            // Les compteurs ne se modifient plus ici : écran Contrats (index.php?page=contrats)
+            $_SESSION['client_msg'] = ['type' => 'succes', 'texte' => 'Client mis à jour.'];
         }
 
         

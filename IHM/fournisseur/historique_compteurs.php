@@ -91,13 +91,7 @@ if (!function_exists('h')) {
             </div>
         </div>
 
-        <ul class="sidebar-menu">
-            <li class="active"><a href="index.php?page=gestion_client"><i class="fa-solid fa-users"></i> Gestion Clients</a></li>
-            <li><a href="index.php?page=historique_paiements"><i class="fa-solid fa-receipt"></i> Historique Paiements</a></li>
-            <li><a href="index.php?page=verification_annuelle"><i class="fa-solid fa-scale-balanced"></i> Vérification Annuelle</a></li>
-            <li><a href="index.php?page=traitement_anomalies"><i class="fa-solid fa-triangle-exclamation"></i> Traitement des Anomalies</a></li>
-            <li><a href="index.php?page=reclamations_fournisseur"><i class="fa-solid fa-file-invoice-dollar"></i> Gestion Réclamations</a></li>
-        </ul>
+        <?php require __DIR__ . '/menu.php'; ?>
 
         <div class="sidebar-footer">
             <div class="user-profile">
@@ -126,11 +120,11 @@ if (!function_exists('h')) {
                     <?php elseif ($d['idCompteur']): ?>
                         <h5 class="mb-0">Propriétaires successifs du compteur n° <?= (int) $d['idCompteur'] ?></h5>
                     <?php else: ?>
-                        <h5 class="mb-0">Toutes les affectations de compteurs</h5>
+                        <h5 class="mb-0">Tous les contrats (affectations successives des compteurs)</h5>
                     <?php endif; ?>
                     <small class="text-muted">Chaque compteur reste attaché à sa maison : son historique et son index suivent le compteur, pas le client.</small>
                 </div>
-                <a href="index.php?page=gestion_client" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Gestion Clients</a>
+                <a href="index.php?page=contrats" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-arrow-left"></i> Contrats</a>
             </div>
 
             <form method="GET" action="index.php" class="row g-2 mb-3">
@@ -148,23 +142,25 @@ if (!function_exists('h')) {
                     <table class="table mb-0 align-middle">
                         <thead>
                             <tr>
-                                <th>Compteur</th><th>Client</th><th>Du</th><th>Au</th>
+                                <th>Contrat</th><th>Compteur</th><th>Zone</th><th>Client</th><th>Du</th><th>Au</th>
                                 <th>Index début</th><th>Index fin</th><th>Saisies</th><th>Consommation</th>
                             </tr>
                         </thead>
                         <tbody>
                         <?php if (empty($d['lignes'])): ?>
-                            <tr><td colspan="8" class="text-center text-muted py-5">Aucun historique pour ce filtre.</td></tr>
+                            <tr><td colspan="10" class="text-center text-muted py-5">Aucun historique pour ce filtre.</td></tr>
                         <?php else: foreach ($d['lignes'] as $l): ?>
                             <tr>
+                                <td class="fw-bold">n° <?= (int) $l['contrat'] ?></td>
                                 <td class="fw-bold">n° <?= (int) $l['compteur'] ?><br>
                                     <span class="<?= $l['type'] === 'Eau' ? 'badge-eau' : 'badge-elec' ?>"><?= $l['type'] === 'Eau' ? 'Eau' : 'Électricité' ?></span></td>
+                                <td><?= h($l['zone']) ?><br><small class="text-muted"><?= h($l['activite']) ?></small></td>
                                 <td><?php if ($l['idClient']): ?>
                                         <a href="index.php?page=historique_compteurs&client=<?= (int) $l['idClient'] ?>" style="text-decoration:none;"><?= h($l['client']) ?></a>
                                         <br><small class="text-muted">#<?= (int) $l['idClient'] ?></small>
                                     <?php else: ?><span class="text-muted"><?= h($l['client']) ?></span><?php endif; ?></td>
                                 <td><?= h($l['debut']) ?></td>
-                                <td><?= $l['enCours'] ? '<span class="enc">En cours</span>' : h($l['fin']) ?></td>
+                                <td><?= $l['enCours'] ? '<span class="enc">En cours</span>' : h($l['fin']) . '<br><small class="text-muted">' . h($l['motif']) . '</small>' ?></td>
                                 <td><?= h($l['indexDeb']) ?></td>
                                 <td><?= $l['enCours'] ? '<span class="fin">—</span>' : h($l['indexFin']) ?></td>
                                 <td><?= (int) $l['saisies'] ?></td>

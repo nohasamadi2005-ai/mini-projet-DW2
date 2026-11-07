@@ -432,6 +432,7 @@ anomalie: [
   'Anomalie détectée',
   'Votre saisie est en cours de traitement par le fournisseur.'
 ],
+    reprise:  ['info',     'Compteur repris ce mois-ci', 'Le relevé de ce mois a été fait à la clôture du contrat précédent. Votre première saisie se fera le mois prochain.'],
     resaisie: ['info',     'Nouvelle saisie demandée', 'Le fournisseur vous demande de saisir à nouveau votre index. Vérifiez votre compteur puis renvoyez votre relevé.'],
    rejete: ['anomalie', 'Correction par le fournisseur',
          'Le fournisseur va corriger l\'index de votre compteur d\'après la photo envoyée. Votre facture sera ensuite disponible dans « Mes factures ».']
@@ -473,7 +474,7 @@ anomalie: [
       $('etatIcOk').hidden = e[0] !== 'succes';
       $('etatIcAl').hidden = e[0] === 'succes';
     }
-    $('champs').disabled = ['ferme', 'verifie', 'anomalie','rejete'].includes(c.etat);
+    $('champs').disabled = ['ferme', 'verifie', 'anomalie','rejete','reprise'].includes(c.etat);
 
     
     $('btnFacture').disabled = !c.facture;

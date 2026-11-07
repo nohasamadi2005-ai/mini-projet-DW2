@@ -1,0 +1,55 @@
+# ============================================================
+# Relevé annuel 2027 - fichier de TEST pour la vérification annuelle
+# Format : ID_Client ; consommation eau (m³) ; consommation électricité (kWh)
+# À déposer dans l espace Agent avec l année 2027.
+# Les lignes qui commencent par # sont ignorées : elles indiquent le résultat attendu.
+# Client 6 (Lah Oumi) est volontairement absent -> « Sans relevé agent ».
+# ============================================================
+# Conforme : exactement les mêmes valeurs
+1;157.8;2555
+# Conforme : écart de 3 % (tolérance 5 %)
+2;205.9;3298.06
+# À régulariser : agent +10 % (le client a déclaré moins)
+3;152.9;2698.3
+# À vérifier : agent -10 % (le client a déclaré plus : trop-perçu ?)
+5;238.23;8300.7
+# Eau conforme / Électricité à vérifier : agent +30 % (> 20 %)
+7;119.2;2424.5
+# Conforme
+8;165.9;1788
+# Conforme : Omar, janvier dans l ancien logement + février à novembre dans le nouveau (déménagement)
+9;143.6;1806
+# Conforme : Salma, depuis la reprise des compteurs d Omar en février
+10;159;1607
+# À vérifier : un relevé de novembre est en anomalie (index négatif)
+11;129.4;1706
+# À vérifier : une resaisie est en attente (octobre)
+12;129.4;2160
+# À vérifier : saisie à corriger par le fournisseur (novembre)
+13;136.5;1881
+# Conforme
+14;158.9;2149
+# Conforme
+15;110.6;1605
+# Conforme : maison + résidence secondaire (résiliée fin septembre)
+16;196;3120
+# Conforme
+17;176.7;1841
+# Conforme
+18;109.9;2180
+# À vérifier : surconsommation de novembre en attente
+19;173.5;2337
+# Conforme : Hicham, seulement janvier à juin (son café a été transféré à Anas)
+20;275.7;8932
+# Conforme
+21;549.2;17362
+# Conforme
+22;120.7;7089
+# Conforme : Anas, sa supérette + le café repris depuis juillet
+23;781.4;25257
+# À régulariser : agent +8 %
+24;20814.19;215457.84
+# Conforme
+25;9710.8;241651
+# Conforme
+26;1361;73000

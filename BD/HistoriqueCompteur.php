@@ -4,17 +4,23 @@ require_once __DIR__ . '/Consommation.php';
 // Historique des affectations de compteurs (filtrable par client et/ou par compteur)
 function getHistoriqueCompteurs($idClient = 0, $idCompteur = 0)
 {
-    $sql = "SELECT h.ID_Historique, h.ID_Compteur, h.ID_Client, h.Date_Debut, h.Date_Fin,
-                   h.Index_Debut, h.Index_Fin,
+    // Depuis l'ajout des contrats, l'historique d'un compteur = la liste de ses contrats
+    // (la table contrat remplace historique_compteur ; mêmes noms de colonnes ci-dessous).
+    $sql = "SELECT h.ID_Contrat AS ID_Historique, h.ID_Contrat, h.ID_Compteur, h.ID_Client, h.Date_Debut, h.Date_Fin,
+                   h.Index_Debut, h.Index_Fin, h.Statut, h.Motif_Fin,
+                   q.Nom AS Quartier, q.Ville, t.Libelle AS Type_Activite,
                    c.Type_Compteur, c.ID_Client AS client_actuel,
                    cl.Nom, cl.Prenom,
                    (SELECT COUNT(*) FROM consommation_mensuelle cm
                      WHERE cm.ID_Compteur = h.ID_Compteur AND cm.ID_Client = h.ID_Client) AS nb_saisies,
                    (SELECT COALESCE(SUM(cm.Consommation), 0) FROM consommation_mensuelle cm
-                     WHERE cm.ID_Compteur = h.ID_Compteur AND cm.ID_Client = h.ID_Client) AS conso_totale
-              FROM historique_compteur h
-              JOIN compteur c ON c.ID_Compteur = h.ID_Compteur
-              LEFT JOIN client cl ON cl.ID_Client = h.ID_Client
+                     WHERE cm.ID_Compteur = h.ID_Compteur AND cm.ID_Client = h.ID_Client
+                       AND cm.Statut_Traitement IN ('Verifie', 'Anomalie') AND cm.Consommation >= 0) AS conso_totale
+              FROM contrat h
+              JOIN compteur c       ON c.ID_Compteur = h.ID_Compteur
+              JOIN quartier q       ON q.ID_Quartier = h.ID_Quartier
+              JOIN type_activite t  ON t.ID_Type_Activite = q.ID_Type_Activite
+              LEFT JOIN client cl   ON cl.ID_Client = h.ID_Client
              WHERE 1 = 1";
     $types  = '';
     $params = [];
@@ -28,7 +34,7 @@ function getHistoriqueCompteurs($idClient = 0, $idCompteur = 0)
         $types .= 'i';
         $params[] = $idCompteur;
     }
-    $sql .= " ORDER BY h.ID_Compteur, h.Date_Debut DESC, h.ID_Historique DESC";
+    $sql .= " ORDER BY h.ID_Compteur, h.Date_Debut DESC, h.ID_Contrat DESC";
     return consoSelect($sql, $types, $params);
 }
 

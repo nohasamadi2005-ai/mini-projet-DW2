@@ -268,6 +268,23 @@ switch ($page) {
         $d = preparerPageReclamationsFournisseur();
         require __DIR__ . '/IHM/fournisseur/fournisseurReclamtion.php';
         break;
+    // ---- Contrats (Personne 1) ----
+    case 'contrats':
+        exigerRole('fournisseur');
+        require_once __DIR__ . '/traitement/contrat.php';
+        $d = preparerPageContrats();
+        require __DIR__ . '/IHM/fournisseur/contrats.php';
+        break;
+
+    case 'contrat_action':
+        exigerRole('fournisseur');
+        require_once __DIR__ . '/traitement/contrat.php';
+        if ($post) {
+            traiterActionContrat();          // redirige vers index.php?page=contrats
+        }
+        header('Location: index.php?page=contrats');
+        exit;
+
 case 'historique_compteurs':
         exigerRole('fournisseur');
         require_once __DIR__ . '/traitement/HistoriqueCompteur.php';

@@ -23,6 +23,10 @@ function preparerPageHistoriqueCompteurs()
             'indexFin'  => $h['Index_Fin'] !== null ? number_format((float) $h['Index_Fin'], 2, ',', ' ') : '—',
             'saisies'   => (int) $h['nb_saisies'],
             'conso'     => number_format((float) $h['conso_totale'], 2, ',', ' '),
+            'contrat'   => (int) $h['ID_Contrat'],
+            'zone'      => $h['Quartier'] . ' — ' . $h['Ville'],
+            'activite'  => $h['Type_Activite'],
+            'motif'     => ['Resiliation' => 'Résiliation', 'Demenagement' => 'Déménagement', 'Transfert' => 'Transfert'][$h['Motif_Fin']] ?? '',
         ];
     }
 

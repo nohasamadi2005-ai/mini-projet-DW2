@@ -3,6 +3,7 @@
 // Principe : un compteur reste attaché à sa maison. Quand le client change, le compteur
 // garde son historique : l'index précédent est lu sur le compteur (voir getReferencePrecedente).
 require_once __DIR__ . '/connexion.php';
+require_once __DIR__ . '/../traitement/Regles.php';   // maintenant() : date simulée de l'application
 
 // Compteur correspondant à un numéro (ou null s'il n'existe pas)
 function getCompteurParNumero($numero)
@@ -68,38 +69,40 @@ function dernierIndexCompteur($cnx, $idCompteur)
     return $ligne ? (float) $ligne['idx'] : 0.0;
 }
 
-// Libère un compteur et clôture sa ligne d'historique (index de fin = dernier index connu)
+// Libère un compteur et clôture son contrat actif (index de fin = dernier index connu).
+// Depuis l'ajout des contrats, l'historique d'un compteur = ses contrats (table contrat,
+// qui remplace historique_compteur). L'écran normal pour cela est index.php?page=contrats.
 function libererCompteurAvecHistorique($cnx, $idCompteur, $idClient)
 {
     $indexFin = dernierIndexCompteur($cnx, $idCompteur);
+    $dateFin  = date('Y-m-d', function_exists('maintenant') ? maintenant() : time());
+
+    $stmt = mysqli_prepare($cnx,
+        "UPDATE contrat SET Statut = 'Resilie', Date_Fin = GREATEST(Date_Debut, ?), Index_Fin = ?, Motif_Fin = 'Resiliation'
+          WHERE ID_Compteur = ? AND Statut = 'Actif'");
+    mysqli_stmt_bind_param($stmt, "sdi", $dateFin, $indexFin, $idCompteur);
+    mysqli_stmt_execute($stmt);
 
     $stmt = mysqli_prepare($cnx,
         "UPDATE compteur SET statut = 'inactif', ID_Client = NULL WHERE ID_Compteur = ?");
     mysqli_stmt_bind_param($stmt, "i", $idCompteur);
     mysqli_stmt_execute($stmt);
-
-    $stmt = mysqli_prepare($cnx,
-        "UPDATE historique_compteur SET Date_Fin = NOW(), Index_Fin = ?
-          WHERE ID_Compteur = ? AND ID_Client = ? AND Date_Fin IS NULL");
-    mysqli_stmt_bind_param($stmt, "dii", $indexFin, $idCompteur, $idClient);
-    mysqli_stmt_execute($stmt);
-
-    if (mysqli_stmt_affected_rows($stmt) === 0) {          // compteur sans ligne d'historique : on la crée, déjà clôturée
-        $stmt = mysqli_prepare($cnx,
-            "INSERT INTO historique_compteur (ID_Compteur, ID_Client, Date_Debut, Date_Fin, Index_Debut, Index_Fin)
-             SELECT c.ID_Compteur, ?, TIMESTAMP(COALESCE(c.Date_Installation, CURDATE())), NOW(), c.Index_Initial, ?
-               FROM compteur c WHERE c.ID_Compteur = ?");
-        mysqli_stmt_bind_param($stmt, "idi", $idClient, $indexFin, $idCompteur);
-        mysqli_stmt_execute($stmt);
-    }
 }
 
-// Ouvre une ligne d'historique : le client reçoit le compteur à cette date, avec cet index
+// Ouvre un contrat : le client reçoit le compteur à cette date, avec cet index.
+// Zone : celle du dernier contrat du compteur (il ne bouge pas), sinon une zone
+// résidentielle de la ville du client (à corriger ensuite dans l'écran Contrats).
 function ouvrirHistoriqueCompteur($cnx, $idCompteur, $idClient, $indexDebut)
 {
+    $date = date('Y-m-d', function_exists('maintenant') ? maintenant() : time());
     $stmt = mysqli_prepare($cnx,
-        "INSERT INTO historique_compteur (ID_Compteur, ID_Client, Date_Debut, Index_Debut) VALUES (?, ?, NOW(), ?)");
-    mysqli_stmt_bind_param($stmt, "iid", $idCompteur, $idClient, $indexDebut);
+        "INSERT INTO contrat (ID_Client, ID_Compteur, ID_Quartier, Adresse_Branchement, Date_Debut, Index_Debut, Statut)
+         SELECT cl.ID_Client, ?,
+                COALESCE((SELECT x.ID_Quartier FROM contrat x WHERE x.ID_Compteur = ? ORDER BY x.ID_Contrat DESC LIMIT 1),
+                         IF(LOWER(cl.Adresse) LIKE '%t_touan%', 5, 1)),
+                cl.Adresse, ?, ?, 'Actif'
+           FROM client cl WHERE cl.ID_Client = ?");
+    mysqli_stmt_bind_param($stmt, "iisdi", $idCompteur, $idCompteur, $date, $indexDebut, $idClient);
     mysqli_stmt_execute($stmt);
 }
 

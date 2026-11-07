@@ -127,24 +127,24 @@ function consoClientParType($annee)
         $parCompteur[$l['ID_Compteur']][] = $l;     // déjà triés par année puis mois
     }
 
+    // [Contrats - P1] Avec les contrats, un compteur peut changer de titulaire (transfert,
+    // déménagement). On additionne donc la consommation MOIS PAR MOIS et chaque mois est
+    // compté pour le client qui a fait ce relevé. Pour un compteur qui n'a jamais changé
+    // de titulaire, le résultat est le même qu'avant (dernier index - index de début d'année).
     $res = [];
     foreach ($parCompteur as $rows) {
-        $ref  = (float) $rows[0]['Index_Initial'];
-        $last = null;
+        $precedent = (float) $rows[0]['Index_Initial'];
+        $type      = $rows[0]['Type_Compteur'] === 'Eau' ? 'Eau' : 'Electricite';
         foreach ($rows as $l) {
             if ((int) $l['Annee'] < $annee) {
-                $ref = (float) $l['Index_Actuel'];  // dernier index de l'année précédente
-            } else {
-                $last = $l;                          // dernier mois saisi de l'année
+                $precedent = (float) $l['Index_Actuel'];   // dernier index de l'année précédente
+                continue;
             }
+            $id = (int) $l['ID_Client'];
+            $res[$id][$type]['conso']       = ($res[$id][$type]['conso'] ?? 0.0) + (float) $l['Index_Actuel'] - $precedent;
+            $res[$id][$type]['dernierMois'] = max($res[$id][$type]['dernierMois'] ?? 0, (int) $l['Mois']);
+            $precedent = (float) $l['Index_Actuel'];
         }
-        if (!$last) {
-            continue;
-        }
-        $id   = (int) $rows[0]['ID_Client'];
-        $type = $rows[0]['Type_Compteur'] === 'Eau' ? 'Eau' : 'Electricite';
-        $res[$id][$type]['conso']       = ($res[$id][$type]['conso'] ?? 0.0) + (float) $last['Index_Actuel'] - $ref;
-        $res[$id][$type]['dernierMois'] = max($res[$id][$type]['dernierMois'] ?? 0, (int) $last['Mois']);
     }
     return $res;
 }
