@@ -131,9 +131,9 @@ $classes = [
 
             <div class="stats-grid">
                 <div class="card-kpi">
-                    <div class="kpi-label">Clients dans la vérification <?= $annee ?></div>
-                    <div class="kpi-value"><?= $s['total'] ?></div>
-                    <div class="kpi-sub"><?= $s[ST_CONFORME] ?> conforme(s)</div>
+                    <div class="kpi-label">Contrats dans la vérification <?= $annee ?></div>
+                    <div class="kpi-value"><?= $s['contrats'] ?></div>
+                    <div class="kpi-sub"><?= $s['total'] ?> client(s) · <?= $s[ST_CONFORME] ?> conforme(s)</div>
                 </div>
                 <div class="card-kpi">
                     <div class="kpi-label">À régulariser</div>
@@ -154,18 +154,32 @@ $classes = [
 
             <div class="table-card">
                 <div class="action-bar">
-                    <form method="get" action="index.php">
+                    <form method="get" action="index.php" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
                         <input type="hidden" name="page" value="verification_annuelle">
-                        <label for="annee" style="font-size:13px;color:#64748B;font-weight:500;">Année</label>
-                        <select name="annee" id="annee" onchange="this.form.submit()">
-                            <?php foreach ($d['annees'] as $a): ?>
-                                <option value="<?= (int) $a ?>" <?= $a === $annee ? 'selected' : '' ?>><?= (int) $a ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <span>
+                            <label for="annee" style="font-size:13px;color:#64748B;font-weight:500;">Année</label>
+                            <select name="annee" id="annee" onchange="this.form.submit()">
+                                <?php foreach ($d['annees'] as $a): ?>
+                                    <option value="<?= (int) $a ?>" <?= $a === $annee ? 'selected' : '' ?>><?= (int) $a ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </span>
+                        <span>
+                            <label for="quartier" style="font-size:13px;color:#64748B;font-weight:500;">Quartier</label>
+                            <select name="quartier" id="quartier" onchange="this.form.submit()">
+                                <option value="0">Tous les quartiers</option>
+                                <?php foreach ($d['quartiers'] as $q): ?>
+                                    <option value="<?= (int) $q['ID_Quartier'] ?>" <?= (int) $q['ID_Quartier'] === $d['quartier'] ? 'selected' : '' ?>>
+                                        <?= h($q['Nom'] . ' (' . $q['Ville'] . ')') ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </span>
                     </form>
                     <div style="display:flex;gap:8px;">
                         <form method="post" action="index.php?page=verification_annuelle">
                             <input type="hidden" name="annee" value="<?= $annee ?>">
+                            <input type="hidden" name="quartier" value="<?= (int) $d['quartier'] ?>">
                             <button class="btn vert" name="action" value="notifier_tous" type="submit" <?= $s['anotifier'] ? '' : 'disabled' ?>>
                                 <i class="fa-solid fa-bell"></i> Notifier tous (<?= $s['anotifier'] ?>)
                             </button>
@@ -182,18 +196,22 @@ $classes = [
                 <table>
                     <thead>
                         <tr>
-                            <th>Client</th><th>Type</th>
-                            <th class="num">Conso client</th><th class="num">Conso agent</th><th class="num">Écart</th>
+                            <th>Client</th><th>Contrat / Quartier</th><th>Type</th>
+                            <th class="num">Conso contrat</th><th class="num">Conso agent</th><th class="num">Écart</th>
                             <th class="num">Montant client</th><th class="num">Montant agent</th><th class="num">Régularisation</th>
                             <th>Décision</th><th>Notification</th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php foreach ($d['entrees'] as $e):
-                        $n = count($e['types']); $i = 0;
-                        $impTotal = array_sum(array_column($e['impayes'], 'total'));
-                        $impNb    = array_sum(array_column($e['impayes'], 'nb'));
-                        foreach ($e['types'] as $type => $r): $i++; ?>
+                        $n = count($e['contrats']); $i = 0; $vus = [];
+                        $tailles  = array_count_values(array_column($e['contrats'], 'type'));
+                        $impTotal = array_sum(array_column($e['contrats'], 'impTotal'));
+                        $impNb    = array_sum(array_column($e['contrats'], 'impNb'));
+                        foreach ($e['contrats'] as $r): $i++;
+                            $type = $r['type'];
+                            $premier = !isset($vus[$type]); $vus[$type] = true;
+                            $rs = $tailles[$type]; ?>
                         <tr class="<?= $i === $n ? 'fin-client' : '' ?>">
                             <?php if ($i === 1): ?>
                             <td rowspan="<?= $n ?>">
@@ -201,28 +219,44 @@ $classes = [
                                 <small>ID <?= (int) $e['id'] ?></small>
                             </td>
                             <?php endif; ?>
+                            <td>
+                                <?php if ($r['idContrat'] === null): ?>
+                                    <small>Aucun contrat sur <?= $annee ?></small>
+                                <?php else: ?>
+                                    <b>#<?= (int) $r['idContrat'] ?></b> <?= h($r['quartier']) ?>
+                                    <small><?= h($r['ville']) ?> · <?= h($r['typeActivite']) ?><?= ($r['statutContrat'] ?? '') === 'Resilie' ? ' · résilié' : '' ?></small>
+                                <?php endif; ?>
+                            </td>
                             <td><span class="badge <?= $type === 'Eau' ? 'badge-eau' : 'badge-elec' ?>"><?= h(labelType($type)) ?></span></td>
                             <td class="num">
-                                <?= $r['consoClient'] === null ? '—' : vaNb($r['consoClient']) . ' ' . uniteType($type) ?>
-                                <?php if ($r['consoClient'] !== null && $r['dernierMois'] < 12): ?>
+                                <?= $r['consoContrat'] === null ? '—' : vaNb($r['consoContrat']) . ' ' . uniteType($type) ?>
+                                <?php if ($premier && $r['nbGroupe'] > 1 && $r['consoClient'] !== null): ?>
+                                    <small>total <?= $r['nbGroupe'] ?> contrats : <?= vaNb($r['consoClient']) ?> <?= uniteType($type) ?></small>
+                                <?php endif; ?>
+                                <?php if ($r['consoContrat'] !== null && $r['dernierMois'] < 12): ?>
                                     <small>jusqu'à <?= h(mb_strtolower(nomMois($r['dernierMois']))) ?></small>
                                 <?php endif; ?>
                             </td>
-                            <td class="num"><?= $r['consoAgent'] === null ? '—' : vaNb($r['consoAgent']) . ' ' . uniteType($type) ?></td>
-                            <td class="num">
+                            <?php if ($premier): ?>
+                            <td class="num" rowspan="<?= $rs ?>">
+                                <?= $r['consoAgent'] === null ? '—' : vaNb($r['consoAgent']) . ' ' . uniteType($type) ?>
+                                <?php if ($rs > 1): ?><small>relevé agent global (<?= $rs ?> contrats)</small><?php endif; ?>
+                            </td>
+                            <td class="num" rowspan="<?= $rs ?>">
                                 <?php if ($r['ecart'] === null): ?>—
                                 <?php else: $cl = abs($r['pct']) <= TOLERANCE_ECART ? 'zero' : ($r['ecart'] < 0 ? 'neg' : 'pos'); ?>
                                     <span class="<?= $cl ?>"><?= ($r['ecart'] > 0 ? '+' : '') . vaNb($r['ecart']) ?></span>
                                     <small><?= ($r['pct'] > 0 ? '+' : '') . vaNb($r['pct'], 1) ?> %</small>
                                 <?php endif; ?>
                             </td>
-                            <td class="num"><?= $r['montantClient'] === null ? '—' : vaNb($r['montantClient']) . ' DH' ?></td>
-                            <td class="num"><?= $r['montantAgent'] === null ? '—' : vaNb($r['montantAgent']) . ' DH' ?></td>
-                            <td class="num"><?= $r['regul'] > 0 ? '<b>' . vaNb($r['regul']) . ' DH</b>' : '—' ?></td>
-                            <td>
+                            <td class="num" rowspan="<?= $rs ?>"><?= $r['montantClient'] === null ? '—' : vaNb($r['montantClient']) . ' DH' ?></td>
+                            <td class="num" rowspan="<?= $rs ?>"><?= $r['montantAgent'] === null ? '—' : vaNb($r['montantAgent']) . ' DH' ?></td>
+                            <td class="num" rowspan="<?= $rs ?>"><?= $r['regul'] > 0 ? '<b>' . vaNb($r['regul']) . ' DH</b>' : '—' ?></td>
+                            <td rowspan="<?= $rs ?>">
                                 <span class="badge <?= $classes[$r['statut']] ?>" title="<?= h($r['raison']) ?>"><?= h(libelleStatut($r['statut'])) ?></span>
                                 <small><?= h($r['raison']) ?></small>
                             </td>
+                            <?php endif; ?>
                             <?php if ($i === 1): ?>
                             <td rowspan="<?= $n ?>">
                                 <?php if ($impNb): ?><small style="margin-bottom:6px;color:#B91C1C;"><?= $impNb ?> facture(s) impayée(s) : <?= vaNb($impTotal) ?> DH</small><?php endif; ?>
@@ -234,6 +268,7 @@ $classes = [
                                     <?php endif; ?>
                                     <form method="post" action="index.php?page=verification_annuelle">
                                         <input type="hidden" name="annee" value="<?= $annee ?>">
+                                        <input type="hidden" name="quartier" value="<?= (int) $d['quartier'] ?>">
                                         <input type="hidden" name="id_client" value="<?= (int) $e['id'] ?>">
                                         <button class="btn petit" name="action" value="notifier" type="submit">
                                             <i class="fa-solid fa-bell"></i> <?= $e['notifie'] ? 'Renvoyer' : 'Notifier' ?>
@@ -250,7 +285,8 @@ $classes = [
             </div>
 
             <div class="regles">
-                <b>Règle de calcul.</b> Conso client = dernier index vérifié de <?= $annee ?> − dernier index de <?= $annee - 1 ?> ;
+                <b>Règle de calcul.</b> Une ligne par <b>contrat</b> (un compteur dans un quartier). Conso contrat = dernier index vérifié de <?= $annee ?> − dernier index de <?= $annee - 1 ?> ;
+                le relevé de l'agent étant par client, un client qui a plusieurs contrats du même type est comparé sur le <b>total</b> de ses contrats ;
                 écart = conso client − conso agent (fichier annuel).<br>
                 <b>Décision.</b>
                 Écart ≤ <?= TOLERANCE_ECART ?> % → <b>Conforme</b> : le client est invité à payer ses factures impayées.

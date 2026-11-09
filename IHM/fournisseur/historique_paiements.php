@@ -1,20 +1,34 @@
 <?php
 require_once __DIR__ . '/../../traitement/auth.php';
 require_once __DIR__ . '/../../BD/Facture.php';
+require_once __DIR__ . '/../../BD/Quartier.php';   // lecture seule : liste des quartiers / types
 
 
 exigerRole('fournisseur');
 
 
-$paiements = obtenirHistoriquePaiementsFournisseur();
+$filtres = [
+    'quartier' => (int) ($_GET['quartier'] ?? 0),
+    'type'     => (int) ($_GET['type'] ?? 0),
+    'ville'    => trim($_GET['ville'] ?? ''),
+];
+$paiements = obtenirHistoriquePaiementsFournisseur($filtres);
 
+$listeQuartiers = getQuartiers();
+$listeTypes     = getTypesActivite();
+$listeVilles    = getVillesQuartiers();
 
 $totalEncaisse = 0;
+$totalHT = 0;
+$totalTVA = 0;
 $nbTransactions = count($paiements);
 
 foreach ($paiements as $p) {
     $totalEncaisse += $p['Montant_TTC'];
+    $totalHT  += $p['Montant_HT'];
+    $totalTVA += $p['TVA'];
 }
+$filtreActif = $filtres['quartier'] || $filtres['type'] || $filtres['ville'] !== '';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -80,6 +94,14 @@ foreach ($paiements as $p) {
         .badge-paye { background: #DCFCE7; color: #15803D; }
         .badge-eau { background: #E0F2FE; color: #0369A1; }
         .badge-elec { background: #FEF3C7; color: #B45309; }
+            .filtres { display:flex; flex-wrap:wrap; gap:12px; align-items:end; margin-bottom:20px; }
+        .filtres label { display:block; font-size:12px; color:#64748B; margin-bottom:4px; font-weight:500; }
+        .filtres select { padding:8px 12px; border:1px solid #CBD5E1; border-radius:8px; background:#fff; font-size:13px; min-width:170px; }
+        .filtres button, .filtres a.reset { padding:9px 16px; border:none; border-radius:8px; font-weight:600; cursor:pointer; font-size:13px; text-decoration:none; }
+        .filtres button { background:#1890FF; color:#fff; }
+        .filtres a.reset { background:#E2E8F0; color:#475569; }
+        .badge-type { background:#EDE9FE; color:#6D28D9; }
+        tfoot td { font-weight:700; background:#F8FAFC; border-top:2px solid #E2E8F0; }
     </style>
 </head>
 <body>
@@ -148,12 +170,46 @@ foreach ($paiements as $p) {
             </div>
 
           
+            <form method="get" action="index.php" class="filtres">
+                <input type="hidden" name="page" value="historique_paiements">
+                <div>
+                    <label for="ville">Ville</label>
+                    <select name="ville" id="ville">
+                        <option value="">Toutes</option>
+                        <?php foreach ($listeVilles as $v): ?>
+                            <option value="<?= htmlspecialchars($v) ?>"<?= $v === $filtres['ville'] ? ' selected' : '' ?>><?= htmlspecialchars($v) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label for="quartier">Quartier</label>
+                    <select name="quartier" id="quartier">
+                        <option value="0">Tous</option>
+                        <?php foreach ($listeQuartiers as $q): ?>
+                            <option value="<?= (int) $q['ID_Quartier'] ?>"<?= (int) $q['ID_Quartier'] === $filtres['quartier'] ? ' selected' : '' ?>>
+                                <?= htmlspecialchars($q['Nom'] . ' (' . $q['Ville'] . ')') ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label for="type">Type d'activité</label>
+                    <select name="type" id="type">
+                        <option value="0">Tous</option>
+                        <?php foreach ($listeTypes as $t): ?>
+                            <option value="<?= (int) $t['ID_Type_Activite'] ?>"<?= (int) $t['ID_Type_Activite'] === $filtres['type'] ? ' selected' : '' ?>>
+                                <?= htmlspecialchars($t['Libelle']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <button type="submit"><i class="fa-solid fa-filter"></i> Filtrer</button>
+                <?php if ($filtreActif): ?><a class="reset" href="index.php?page=historique_paiements">Réinitialiser</a><?php endif; ?>
+            </form>
+
             <div class="table-card">
                 <div class="action-bar">
-                    <div class="search-box">
-                        <input type="text" placeholder="Rechercher une facture, un client...">
-                        <button><i class="fa-solid fa-search"></i></button>
-                    </div>
+                    <div style="font-size:13px;color:#64748B;font-weight:500;"><?= $filtreActif ? 'Résultats filtrés' : 'Tous les règlements' ?></div>
                     <div style="font-size: 13px; color: #64748B; font-weight: 500;">
                         Statut : <span class="badge badge-paye">Factures réglées</span>
                     </div>
@@ -165,6 +221,7 @@ foreach ($paiements as $p) {
                             <th>N° Facture</th>
                             <th>Client</th>
                             <th>Contact</th>
+                            <th>Contrat / Quartier</th>
                             <th>Type / Période</th>
                             <th>Montant HT</th>
                             <th>TVA (18%)</th>
@@ -176,9 +233,9 @@ foreach ($paiements as $p) {
                     <tbody>
                         <?php if (empty($paiements)): ?>
                             <tr>
-                                <td colspan="9" style="text-align: center; color: #94A3B8; padding: 40px;">
+                                <td colspan="10" style="text-align: center; color: #94A3B8; padding: 40px;">
                                     <i class="fa-solid fa-inbox" style="font-size: 28px; margin-bottom: 10px; display: block;"></i>
-                                    Aucun règlement enregistré dans la base de données.
+                                    Aucun règlement ne correspond à ces critères.
                                 </td>
                             </tr>
                         <?php else: ?>
@@ -189,6 +246,11 @@ foreach ($paiements as $p) {
                                     <td>
                                         <?php echo htmlspecialchars($p['Email']); ?><br>
                                         <small style="color: #64748B;"><?php echo htmlspecialchars($p['Telephone'] ?? 'N/A'); ?></small>
+                                    </td>
+                                    <td>
+                                        <strong>#<?= (int) $p['ID_Contrat'] ?></strong>
+                                        <small style="color:#64748B;display:block;"><?= htmlspecialchars($p['Quartier'] . ' · ' . $p['Ville']) ?></small>
+                                        <span class="badge badge-type"><?= htmlspecialchars($p['Type_Activite']) ?></span>
                                     </td>
                                     <td>
                                         <?php $isEau = (strtolower($p['Type_Compteur']) === 'eau'); ?>
@@ -212,6 +274,17 @@ foreach ($paiements as $p) {
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </tbody>
+                    <?php if (!empty($paiements)): ?>
+                    <tfoot>
+                        <tr>
+                            <td colspan="5">TOTAUX (<?= $nbTransactions ?> règlement(s))</td>
+                            <td><?= number_format($totalHT, 2, ',', ' ') ?> DH</td>
+                            <td><?= number_format($totalTVA, 2, ',', ' ') ?> DH</td>
+                            <td style="color:#16A34A;"><?= number_format($totalEncaisse, 2, ',', ' ') ?> DH</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                    <?php endif; ?>
                 </table>
             </div>
         </div>

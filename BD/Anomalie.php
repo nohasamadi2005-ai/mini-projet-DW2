@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/connexion.php';
-require_once __DIR__ . '/../traitement/Regles.php'; 
+require_once __DIR__ . '/../traitement/Regles.php';
+require_once __DIR__ . '/Statistiques.php';   // statFromReleves() : relevé -> contrat -> quartier -> type d'activité
 
 // Nombre de resaisies que le fournisseur peut demander (client = 1re saisie + 1 resaisie)
 if (!defined('MAX_RESAISIES')) { define('MAX_RESAISIES', 1); }
@@ -28,10 +29,13 @@ function getAnomaliesEnAttente() {
                    cl.Email,
                    cp.ID_Compteur,
                    cp.Type_Compteur,
+                   ct.ID_Contrat,
+                   q.Nom AS Quartier,
+                   q.Ville,
+                   ta.Libelle AS Type_Activite,
                    (SELECT COUNT(*) FROM anomalie a WHERE a.ID_Consommation_Mensuelle = cm.ID_Consommation_Mensuelle) AS Nb_Refus
-            FROM consommation_mensuelle cm
+            " . statFromReleves('LEFT JOIN') . "
             JOIN client cl ON cm.ID_Client = cl.ID_Client
-            JOIN compteur cp ON cm.ID_Compteur = cp.ID_Compteur
             WHERE (cm.Statut_Traitement IS NULL 
                OR cm.Statut_Traitement = '' 
                OR cm.Statut_Traitement = 'Anomalie'
@@ -45,7 +49,12 @@ function getAnomaliesEnAttente() {
 
     if ($res) {
         while ($row = mysqli_fetch_assoc($res)) {
-            $seuil = (strtolower($row['Type_Compteur']) === 'eau') ? 80 : 500;
+            // Seuil donné par Regles.php (Personne 2). On lui passe le type d'activité du quartier :
+            // tant que seuilMax() n'en tient pas compte, il renvoie le seuil par défaut.
+            $estEau = (strtolower($row['Type_Compteur']) === 'eau');
+            $seuil  = seuilMax($row['Type_Compteur'], $row['Type_Activite'] ?? null);
+            $row['Seuil'] = $seuil;
+            $row['Unite'] = $estEau ? 'm³' : 'kWh';
             $nbRefus = intval($row['Nb_Refus'] ?? 0);
             $statutTraitement = strtolower($row['Statut_Traitement'] ?? '');
 

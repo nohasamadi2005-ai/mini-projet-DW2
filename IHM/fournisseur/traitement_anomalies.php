@@ -5,6 +5,9 @@ require_once __DIR__ . '/../../BD/Anomalie.php';
 
 $anomalies = getAnomaliesEnAttente();
 
+// 4650.00 -> « 4 650 »
+$fmt = fn($v) => rtrim(rtrim(number_format((float) $v, 2, ',', ' '), '0'), ',');
+
 $totalAnomalies = count($anomalies);
 $nbIndexNegatifs = 0;
 $nbSurconso = 0;
@@ -170,6 +173,7 @@ foreach ($anomalies as $a) {
                                 <th>Client</th>
                                 <th>Contact</th>
                                 <th>Type / Compteur</th>
+                                <th>Quartier / Activité</th>
                                 <th>Ancien Index</th>
                                 <th>Nouveau Saisi</th>
                                 <th>Consommation</th>
@@ -181,7 +185,7 @@ foreach ($anomalies as $a) {
                         <tbody>
                             <?php if (empty($anomalies)): ?>
                                 <tr>
-                                    <td colspan="9" class="text-center py-5 text-muted">
+                                    <td colspan="10" class="text-center py-5 text-muted">
                                         <i class="fa-solid fa-circle-check fa-3x mb-3 text-success"></i>
                                         <p class="fs-6 mb-0">Aucune anomalie en attente de traitement.</p>
                                     </td>
@@ -205,9 +209,21 @@ foreach ($anomalies as $a) {
                                             <?php endif; ?>
                                             <br><small class="text-muted">#<?= htmlspecialchars($a['ID_Compteur'] ?? '') ?></small>
                                         </td>
+                                        <td>
+                                            <?php if (!empty($a['Quartier'])): ?>
+                                                <strong><?= htmlspecialchars($a['Quartier']) ?></strong>
+                                                <small class="text-muted d-block"><?= htmlspecialchars($a['Ville'] . ' · contrat #' . $a['ID_Contrat']) ?></small>
+                                                <span class="badge bg-light text-dark border"><?= htmlspecialchars($a['Type_Activite']) ?></span>
+                                            <?php else: ?>
+                                                <small class="text-muted">Aucun contrat trouvé</small>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?= htmlspecialchars($a['Index_Precedent'] ?? '0') ?></td>
                                         <td><strong class="text-primary"><?= htmlspecialchars($a['Index_Actuel'] ?? '0') ?></strong></td>
-                                        <td><strong><?= htmlspecialchars($a['Consommation'] ?? '0') ?></strong></td>
+                                        <td>
+                                            <strong><?= $fmt($a['Consommation'] ?? 0) ?> <?= htmlspecialchars($a['Unite'] ?? '') ?></strong>
+                                            <small class="text-muted d-block">seuil <?= htmlspecialchars($a['Type_Activite'] ?? '') ?> <?= $fmt($a['Seuil'] ?? 0) ?> <?= htmlspecialchars($a['Unite'] ?? '') ?></small>
+                                        </td>
                                         <td>
                                             <?php if ($peutCorrigerDirectement): ?>
                                                 <span class="badge-saisie-fournisseur"><i class="fa-solid fa-user-pen me-1"></i> Correction Fournisseur</span>

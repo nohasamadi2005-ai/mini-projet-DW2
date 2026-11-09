@@ -261,6 +261,11 @@ switch ($page) {
         require __DIR__ . '/IHM/fournisseur/historique_paiements.php';
         break;
 
+        case 'tableau_bord':
+        exigerRole('fournisseur');
+        require __DIR__ . '/IHM/fournisseur/tableau_bord.php';
+        break;
+        
     case 'traitement_anomalies':
         exigerRole('fournisseur');
         require __DIR__ . '/IHM/fournisseur/traitement_anomalies.php';

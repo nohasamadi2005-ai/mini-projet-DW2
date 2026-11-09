@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/Consommation.php';
+require_once __DIR__ . '/Statistiques.php';
 
 function getSaisiePourFacture($idConso)
 {
@@ -63,45 +64,35 @@ function getFactureDuClient($idFacture, $idClient)
     return $r[0] ?? null; 
 }
 
-function obtenirHistoriquePaiementsFournisseur()
+function obtenirHistoriquePaiementsFournisseur($f = [])
 {
-    $cnx = Connexion();
-    
-    $sql = "SELECT f.ID_Facture,
-                   f.Date_Facture,
-                   f.Date_paiement,
-                   f.Montant_HT,
-                   f.TVA,
-                   f.Montant_TTC,
-                   f.Statut_Paiement,
-                   cm.Mois,
-                   cm.Annee,
-                   c.Type_Compteur,
-                   cl.Nom,
-                   cl.Prenom,
-                   cl.Email,
-                   cl.Telephone
-              FROM facture f
-              JOIN consommation_mensuelle cm 
-                ON cm.ID_Consommation_Mensuelle = f.ID_Consommation_Mensuelle
-              JOIN client cl 
-                ON cl.ID_Client = cm.ID_Client
-              JOIN compteur c 
-                ON c.ID_Compteur = cm.ID_Compteur
-             WHERE f.Statut_Paiement LIKE 'Paye%'
-             ORDER BY f.Date_Facture DESC, f.ID_Facture DESC";
-
-    $resultat = mysqli_query($cnx, $sql);
-    $historique = [];
-
-    if ($resultat) {
-        while ($ligne = mysqli_fetch_assoc($resultat)) {
-            $historique[] = $ligne;
-        }
-    }
-
-    mysqli_close($cnx);
-    return $historique;
+    $where  = ["f.Statut_Paiement LIKE 'Paye%'"];
+    $types  = '';
+    $params = [];
+ 
+    if (!empty($f['quartier'])) { $where[] = 'q.ID_Quartier = ?';       $types .= 'i'; $params[] = (int) $f['quartier']; }
+    if (!empty($f['type']))     { $where[] = 'ta.ID_Type_Activite = ?'; $types .= 'i'; $params[] = (int) $f['type']; }
+    if (!empty($f['ville']))    { $where[] = 'q.Ville = ?';             $types .= 's'; $params[] = (string) $f['ville']; }
+ 
+    return consoSelect(
+        "SELECT f.ID_Facture, f.Date_Facture, f.Date_paiement,
+                f.Montant_HT, f.TVA, f.Montant_TTC, f.Statut_Paiement,
+                cm.Mois, cm.Annee, cp.Type_Compteur,
+                ct.ID_Contrat, q.Nom AS Quartier, q.Ville, ta.Libelle AS Type_Activite,
+                cl.Nom, cl.Prenom, cl.Email, cl.Telephone
+           " . statFromReleves() . "
+           JOIN facture f ON f.ID_Consommation_Mensuelle = cm.ID_Consommation_Mensuelle
+           JOIN client cl ON cl.ID_Client = cm.ID_Client
+          WHERE " . implode(' AND ', $where) . "
+          ORDER BY f.Date_Facture DESC, f.ID_Facture DESC",
+        $types ?: null, $params
+    );
+}
+ 
+// Villes qui ont au moins un quartier (pour le filtre)
+function getVillesQuartiers()
+{
+    return array_column(consoSelect("SELECT DISTINCT Ville FROM quartier ORDER BY Ville"), 'Ville');
 }
 
 function payerFactureClient($idFacture, $idClient)

@@ -2,11 +2,17 @@
 require_once __DIR__ . '/Regles.php';
 require_once __DIR__ . '/../BD/VerificationAnnuelle.php';
 require_once __DIR__ . '/../BD/Notification.php';
+require_once __DIR__ . '/../BD/Quartier.php';   // lecture seule : liste des quartiers pour le filtre
 
 /*
  * VÉRIFICATION ANNUELLE (côté fournisseur)
  *
- *   conso client = dernier index vérifié de l'année - dernier index de l'année précédente
+ *   VÉRIFICATION PAR CONTRAT : un contrat = un compteur dans un quartier (donc un seul type : Eau ou
+ *   Électricité). Chaque relevé mensuel est rattaché au contrat du compteur qui couvre son mois.
+ *   Le fichier de l'agent est encore PAR CLIENT et par type : si un client a plusieurs contrats du même
+ *   type (ex. 2 maisons), la décision se prend sur le TOTAL de ses contrats de ce type.
+ *
+ *   conso contrat = dernier index vérifié de l'année - dernier index de l'année précédente
  *                  (ou Index_Initial du compteur s'il n'y en a pas)
  *   conso agent  = valeur du fichier Consommation_Annuelle.txt
  *   écart        = conso client - conso agent
@@ -119,31 +125,81 @@ function statutGlobal($types)
 }
 
 
-// [ID_Client][type] = ['conso' => float, 'dernierMois' => int]
-function consoClientParType($annee)
+function typeNormal($typeCompteur) { return $typeCompteur === 'Eau' ? 'Eau' : 'Electricite'; }
+
+
+// Contrat du compteur qui couvre le mois d'un relevé (le plus récent si deux se chevauchent : transfert dans le mois)
+function contratDuReleve($contratsParCompteur, $idCompteur, $annee, $mois)
+{
+    $debutMois = sprintf('%04d-%02d-01', $annee, $mois);
+    $finMois   = date('Y-m-t', strtotime($debutMois));
+    $choix = null;
+    foreach ($contratsParCompteur[(int) $idCompteur] ?? [] as $c) {
+        if ($c['Date_Debut'] <= $finMois && ($c['Date_Fin'] === null || $c['Date_Fin'] >= $debutMois)) {
+            if ($choix === null || $c['Date_Debut'] > $choix['Date_Debut']
+                || ($c['Date_Debut'] === $choix['Date_Debut'] && (int) $c['ID_Contrat'] > (int) $choix['ID_Contrat'])) {
+                $choix = $c;
+            }
+        }
+    }
+    return $choix;
+}
+
+
+// [ID_Contrat] = ['conso' => float, 'dernierMois' => int]
+function consoParContrat($annee, $contratsParCompteur)
 {
     $parCompteur = [];
     foreach (vaIndexVerifies($annee) as $l) {
         $parCompteur[$l['ID_Compteur']][] = $l;     // déjà triés par année puis mois
     }
 
-    // [Contrats - P1] Avec les contrats, un compteur peut changer de titulaire (transfert,
-    // déménagement). On additionne donc la consommation MOIS PAR MOIS et chaque mois est
-    // compté pour le client qui a fait ce relevé. Pour un compteur qui n'a jamais changé
-    // de titulaire, le résultat est le même qu'avant (dernier index - index de début d'année).
     $res = [];
-    foreach ($parCompteur as $rows) {
+    foreach ($parCompteur as $idCompteur => $rows) {
         $precedent = (float) $rows[0]['Index_Initial'];
-        $type      = $rows[0]['Type_Compteur'] === 'Eau' ? 'Eau' : 'Electricite';
         foreach ($rows as $l) {
             if ((int) $l['Annee'] < $annee) {
                 $precedent = (float) $l['Index_Actuel'];   // dernier index de l'année précédente
                 continue;
             }
-            $id = (int) $l['ID_Client'];
-            $res[$id][$type]['conso']       = ($res[$id][$type]['conso'] ?? 0.0) + (float) $l['Index_Actuel'] - $precedent;
-            $res[$id][$type]['dernierMois'] = max($res[$id][$type]['dernierMois'] ?? 0, (int) $l['Mois']);
+            $ct = contratDuReleve($contratsParCompteur, $idCompteur, (int) $l['Annee'], (int) $l['Mois']);
+            if ($ct !== null) {
+                $k = (int) $ct['ID_Contrat'];
+                $res[$k]['conso']       = ($res[$k]['conso'] ?? 0.0) + (float) $l['Index_Actuel'] - $precedent;
+                $res[$k]['dernierMois'] = max($res[$k]['dernierMois'] ?? 0, (int) $l['Mois']);
+            }
             $precedent = (float) $l['Index_Actuel'];
+        }
+    }
+    return $res;
+}
+
+
+// [ID_Contrat] = nombre de relevés de l'année encore en anomalie
+function anomaliesParContrat($annee, $contratsParCompteur)
+{
+    $res = [];
+    foreach (vaReleveEnAnomalie($annee) as $l) {
+        $ct = contratDuReleve($contratsParCompteur, $l['ID_Compteur'], $annee, (int) $l['Mois']);
+        if ($ct !== null) {
+            $k = (int) $ct['ID_Contrat'];
+            $res[$k] = ($res[$k] ?? 0) + 1;
+        }
+    }
+    return $res;
+}
+
+
+// [ID_Contrat] = ['nb' => , 'total' => ] : factures de l'année non payées
+function impayesParContrat($annee, $contratsParCompteur)
+{
+    $res = [];
+    foreach (vaFacturesImpayees($annee) as $l) {
+        $ct = contratDuReleve($contratsParCompteur, $l['ID_Compteur'], $annee, (int) $l['Mois']);
+        if ($ct !== null) {
+            $k = (int) $ct['ID_Contrat'];
+            $res[$k]['nb']    = ($res[$k]['nb'] ?? 0) + 1;
+            $res[$k]['total'] = ($res[$k]['total'] ?? 0.0) + (float) $l['Montant_TTC'];
         }
     }
     return $res;
@@ -152,52 +208,107 @@ function consoClientParType($annee)
 
 /**
  * Calcule la vérification de tous les clients pour une année (sans rien écrire en base).
- * Retourne une liste d'entrées : id, nom, inconnu, types[type] => résultat, statut, impayes, notifie.
+ * Retourne une liste d'entrées (une par client) : id, nom, inconnu, contrats[] (une ligne par contrat),
+ * statut, notifie. Chaque ligne de contrat porte : idContrat, quartier, ville, typeActivite, type,
+ * consoContrat, nbGroupe/idsGroupe (contrats du même client et du même type) + le résultat d'evaluerEcart().
  */
-function calculerVerificationAnnuelle($annee)
+function calculerVerificationAnnuelle($annee, $idQuartier = 0)
 {
+    $contrats = vaContrats($annee);
+    $parCompteur = [];
+    $parClient   = [];
+    foreach ($contrats as $c) {
+        $parCompteur[(int) $c['ID_Compteur']][] = $c;
+        $parClient[(int) $c['ID_Client']][]     = $c;
+    }
+
     $agent     = vaReleveAgent($annee);
-    $client    = consoClientParType($annee);
-    $anomalies = vaAnomaliesEnAttente($annee);
-    $impayes   = vaImpayes($annee);
+    $conso     = consoParContrat($annee, $parCompteur);
+    $anomalies = anomaliesParContrat($annee, $parCompteur);
+    $impayes   = impayesParContrat($annee, $parCompteur);
     $infos     = vaClients();
 
-    $ids = array_unique(array_merge(array_keys($agent), array_keys($client)));
+    $ids = array_unique(array_merge(array_keys($agent), array_keys($parClient)));
     sort($ids);
 
     $out = [];
     foreach ($ids as $id) {
-        $types = [];
+        $lignes = [];
         foreach (TYPES_COMPTEUR as $type) {
+            $groupe = array_values(array_filter($parClient[$id] ?? [], fn($c) => typeNormal($c['Type_Compteur']) === $type));
+
             $a = isset($agent[$id])
                 ? (float) $agent[$id][$type === 'Eau' ? 'ConsommationEau' : 'ConsommationElect']
                 : null;
-            $c = $client[$id][$type]['conso'] ?? null;
 
-            if ($a !== null && $c === null && $a == 0.0) {
-                continue;                           // pas de compteur de ce type et rien relevé
+            $cGroupe = null; $dernierMois = 0; $nbAnom = 0;
+            foreach ($groupe as $c) {
+                $k = (int) $c['ID_Contrat'];
+                if (isset($conso[$k])) {
+                    $cGroupe     = ($cGroupe ?? 0.0) + $conso[$k]['conso'];
+                    $dernierMois = max($dernierMois, $conso[$k]['dernierMois']);
+                }
+                $nbAnom += $anomalies[$k] ?? 0;
             }
-            if ($a === null && $c === null) {
+
+            if ($a !== null && $cGroupe === null && $a == 0.0) {
+                continue;                           // pas de contrat de ce type et rien relevé
+            }
+            if ($a === null && $cGroupe === null) {
                 continue;
             }
-            $types[$type] = evaluerEcart($c, $a, $type, $client[$id][$type]['dernierMois'] ?? 12, $anomalies[$id] ?? 0);
+            $r = evaluerEcart($cGroupe, $a, $type, $dernierMois ?: 12, $nbAnom);
+
+            if (!$groupe) {                         // relevé agent pour un client sans contrat cette année
+                $lignes[] = array_merge($r, [
+                    'type' => $type, 'idContrat' => null, 'idQuartier' => null, 'quartier' => null, 'ville' => null,
+                    'typeActivite' => null, 'consoContrat' => null, 'nbGroupe' => 1, 'idsGroupe' => [],
+                    'impNb' => 0, 'impTotal' => 0.0,
+                ]);
+                continue;
+            }
+            $idsGroupe = array_map(fn($c) => (int) $c['ID_Contrat'], $groupe);
+            foreach ($groupe as $c) {
+                $k = (int) $c['ID_Contrat'];
+                $lignes[] = array_merge($r, [
+                    'type' => $type, 'idContrat' => $k,
+                    'idQuartier' => (int) $c['ID_Quartier'], 'quartier' => $c['Quartier'], 'ville' => $c['Ville'],
+                    'typeActivite' => $c['Type_Activite'], 'statutContrat' => $c['Statut'],
+                    'consoContrat' => $conso[$k]['conso'] ?? null,
+                    'nbGroupe' => count($groupe), 'idsGroupe' => $idsGroupe,
+                    'impNb' => $impayes[$k]['nb'] ?? 0, 'impTotal' => $impayes[$k]['total'] ?? 0.0,
+                ]);
+            }
         }
-        if (!$types) {
+        if (!$lignes) {
             continue;
         }
 
-        $statut = statutGlobal($types);
         $inconnu = !isset($infos[$id]);
-
         $out[] = [
-            'id'      => $id,
-            'nom'     => $inconnu ? 'Client inconnu' : trim($infos[$id]['Prenom'] . ' ' . $infos[$id]['Nom']),
-            'inconnu' => $inconnu,
-            'types'   => $types,
-            'statut'  => $statut,
-            'impayes' => $impayes[$id] ?? [],
-            'notifie' => $inconnu ? null : vaDerniereNotification($id, $annee),
+            'id'       => $id,
+            'nom'      => $inconnu ? 'Client inconnu' : trim($infos[$id]['Prenom'] . ' ' . $infos[$id]['Nom']),
+            'inconnu'  => $inconnu,
+            'contrats' => $lignes,
+            'statut'   => statutGlobal($lignes),
+            'notifie'  => $inconnu ? null : vaDerniereNotification($id, $annee),
         ];
+    }
+    return $idQuartier ? filtrerParQuartier($out, $idQuartier) : $out;
+}
+
+
+// Ne garde que les lignes de contrat du quartier choisi (les clients sans ligne disparaissent)
+function filtrerParQuartier($entrees, $idQuartier)
+{
+    $out = [];
+    foreach ($entrees as $e) {
+        $l = array_values(array_filter($e['contrats'], fn($r) => (int) $r['idQuartier'] === (int) $idQuartier));
+        if ($l) {
+            $e['contrats'] = $l;
+            $e['statut']   = statutGlobal($l);
+            $out[] = $e;
+        }
     }
     return $out;
 }
@@ -209,44 +320,69 @@ function notifiable($e)
 }
 
 
-// Texte envoyé au client
-function construireMessageClient($annee, $nom, $types, $impayes)
+// Libellé d'un groupe de contrats : « Contrat n°1040 (Al Manar, Larache) » ou « Contrats n°1040, 1041 (total) »
+function libelleContrats($r)
+{
+    if ($r['idContrat'] === null) {
+        return 'Compteur sans contrat';
+    }
+    if (count($r['idsGroupe']) > 1) {
+        return 'Contrats n°' . implode(', ', $r['idsGroupe']) . ' (total)';
+    }
+    return 'Contrat n°' . $r['idContrat'] . ' (' . $r['quartier'] . ', ' . $r['ville'] . ')';
+}
+
+
+// Texte envoyé au client : une ligne par contrat (ou par groupe de contrats du même type)
+function construireMessageClient($annee, $nom, $lignesContrat)
 {
     $lignes   = ["Bonjour $nom, voici le résultat de la vérification annuelle $annee de vos consommations."];
     $nbPayer  = 0;
     $totPayer = 0.0;
     $bloque   = false;
+    $vus      = [];
 
-    foreach ($types as $type => $r) {
-        $lib = labelType($type);
-        $u   = uniteType($type);
+    foreach ($lignesContrat as $r) {
+        $type = $r['type'];
+        $lib  = libelleContrats($r) . ' - ' . labelType($type);
+        $u    = uniteType($type);
+        $premier = !isset($vus[$type]);
+        $vus[$type] = true;
 
         switch ($r['statut']) {
             case ST_CONFORME:
-                $lignes[] = "- $lib : vos relevés mensuels (" . vaNb($r['consoClient']) . " $u) correspondent au relevé de l'agent. Aucun écart.";
+                if ($premier) {
+                    $lignes[] = "- $lib : vos relevés mensuels (" . vaNb($r['consoClient']) . " $u) correspondent au relevé de l'agent. Aucun écart.";
+                }
                 break;
             case ST_REGULARISER:
-                $lignes[] = "- $lib : l'agent a relevé " . vaNb($r['consoAgent']) . " $u sur l'année contre "
-                          . vaNb($r['consoClient']) . " $u déclarés (écart " . vaNb(abs($r['ecart'])) . " $u). "
-                          . "Régularisation estimée : " . vaNb($r['regul']) . " DH TTC, qui vous sera réclamée par le fournisseur.";
+                if ($premier) {
+                    $lignes[] = "- $lib : l'agent a relevé " . vaNb($r['consoAgent']) . " $u sur l'année contre "
+                              . vaNb($r['consoClient']) . " $u déclarés (écart " . vaNb(abs($r['ecart'])) . " $u). "
+                              . "Régularisation estimée : " . vaNb($r['regul']) . " DH TTC, qui vous sera réclamée par le fournisseur.";
+                }
                 break;
             case ST_A_VERIFIER:
-                $bloque   = true;
-                $lignes[] = "- $lib : un écart a été détecté entre vos relevés (" . vaNb($r['consoClient']) . " $u) et ceux de l'agent ("
-                          . vaNb($r['consoAgent']) . " $u). Le fournisseur vérifie votre dossier ; vous serez informé du résultat. "
-                          . "Vous pouvez déposer une réclamation si vous contestez.";
+                $bloque = true;
+                if ($premier) {
+                    $lignes[] = "- $lib : un écart a été détecté entre vos relevés (" . vaNb($r['consoClient']) . " $u) et ceux de l'agent ("
+                              . vaNb($r['consoAgent']) . " $u). Le fournisseur vérifie votre dossier ; vous serez informé du résultat. "
+                              . "Vous pouvez déposer une réclamation si vous contestez.";
+                }
                 continue 2;
             case ST_SANS_SAISIE:
-                $bloque   = true;
-                $lignes[] = "- $lib : aucun relevé mensuel validé en $annee alors que l'agent a relevé " . vaNb($r['consoAgent'])
-                          . " $u. Merci de contacter le fournisseur.";
+                $bloque = true;
+                if ($premier) {
+                    $lignes[] = "- $lib : aucun relevé mensuel validé en $annee alors que l'agent a relevé " . vaNb($r['consoAgent'])
+                              . " $u. Merci de contacter le fournisseur.";
+                }
                 continue 2;
             default:
                 continue 2;
         }
-        // factures à payer uniquement pour les compteurs sans blocage
-        $nbPayer  += $impayes[$type]['nb'] ?? 0;
-        $totPayer += $impayes[$type]['total'] ?? 0.0;
+        // factures à payer uniquement pour les contrats sans blocage
+        $nbPayer  += $r['impNb'];
+        $totPayer += $r['impTotal'];
     }
 
     if ($nbPayer > 0) {
@@ -267,7 +403,7 @@ function notifierClientAnnuel($e, $annee)
     }
     try {
         creerNotification($e['id'], (int) $_SESSION['user']['id'],
-                          construireMessageClient($annee, $e['nom'], $e['types'], $e['impayes']));
+                          construireMessageClient($annee, $e['nom'], $e['contrats']));
     } catch (Throwable $ex) {
         return "Notification impossible : " . $ex->getMessage();
     }
@@ -277,15 +413,18 @@ function notifierClientAnnuel($e, $annee)
 
 function resumerVerification($entrees)
 {
-    $s = ['total' => count($entrees), ST_CONFORME => 0, ST_REGULARISER => 0, ST_A_VERIFIER => 0,
+    $s = ['total' => count($entrees), 'contrats' => 0, ST_CONFORME => 0, ST_REGULARISER => 0, ST_A_VERIFIER => 0,
           ST_SANS_SAISIE => 0, ST_SANS_AGENT => 0, 'regul' => 0.0, 'impaye' => 0.0, 'anotifier' => 0];
     foreach ($entrees as $e) {
         $s[$e['statut']]++;
-        foreach ($e['types'] as $r) {
-            $s['regul'] += $r['regul'];
-        }
-        foreach ($e['impayes'] as $i) {
-            $s['impaye'] += $i['total'];
+        $vus = [];
+        foreach ($e['contrats'] as $r) {
+            $s['contrats']++;
+            $s['impaye'] += $r['impTotal'];
+            if (!isset($vus[$r['type']])) {           // la régularisation est calculée une fois par groupe
+                $vus[$r['type']] = true;
+                $s['regul'] += $r['regul'];
+            }
         }
         if (notifiable($e) && !$e['notifie']) {
             $s['anotifier']++;
@@ -298,12 +437,13 @@ function resumerVerification($entrees)
 // Contrôleur de la page fournisseur (gère aussi les POST, puis redirige)
 function preparerPageVerificationAnnuelle()
 {
-    $annees = vaAnneesDisponibles();
-    $annee  = (int) ($_POST['annee'] ?? $_GET['annee'] ?? ($annees[0] ?? date('Y', maintenant())));
+    $annees   = vaAnneesDisponibles();
+    $annee    = (int) ($_POST['annee'] ?? $_GET['annee'] ?? ($annees[0] ?? date('Y', maintenant())));
+    $quartier = (int) ($_POST['quartier'] ?? $_GET['quartier'] ?? 0);      // 0 = tous les quartiers
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action  = $_POST['action'] ?? '';
-        $entrees = calculerVerificationAnnuelle($annee);
+        $entrees = calculerVerificationAnnuelle($annee);                    // toujours complet : le message couvre tous les contrats
         $flash   = ['type' => 'succes', 'texte' => ''];
 
         if ($action === 'notifier') {
@@ -316,9 +456,10 @@ function preparerPageVerificationAnnuelle()
                 }
             }
         } elseif ($action === 'notifier_tous') {
+            $visibles = array_column(calculerVerificationAnnuelle($annee, $quartier), 'id');   // seulement les clients affichés
             $nb = 0;
             foreach ($entrees as $e) {
-                if (notifiable($e) && !$e['notifie']) {
+                if (in_array($e['id'], $visibles, true) && notifiable($e) && !$e['notifie']) {
                     $err = notifierClientAnnuel($e, $annee);
                     if ($err) {
                         $flash = ['type' => 'erreur', 'texte' => $err];
@@ -332,20 +473,22 @@ function preparerPageVerificationAnnuelle()
             }
         }
         $_SESSION['flash_va'] = $flash;
-        header('Location: index.php?page=verification_annuelle&annee=' . $annee);
+        header('Location: index.php?page=verification_annuelle&annee=' . $annee . ($quartier ? '&quartier=' . $quartier : ''));
         exit;
     }
 
     $flash = $_SESSION['flash_va'] ?? null;
     unset($_SESSION['flash_va']);
 
-    $entrees = calculerVerificationAnnuelle($annee);
+    $entrees = calculerVerificationAnnuelle($annee, $quartier);
     return [
-        'annee'   => $annee,
-        'annees'  => $annees ?: [$annee],
-        'entrees' => $entrees,
-        'resume'  => resumerVerification($entrees),
-        'flash'   => $flash,
+        'annee'     => $annee,
+        'annees'    => $annees ?: [$annee],
+        'quartier'  => $quartier,
+        'quartiers' => getQuartiers(),
+        'entrees'   => $entrees,
+        'resume'    => resumerVerification($entrees),
+        'flash'     => $flash,
     ];
 }
 

@@ -6,17 +6,20 @@ require_once __DIR__ . '/Consommation.php';
 function vaAnneesDisponibles()
 {
     return array_map('intval', array_column(
-consoSelect("SELECT DISTINCT Annee FROM consommation_annuelle WHERE Statut_Import = 'Integre' ORDER BY Annee DESC"), 'Annee'    ));
+        consoSelect("SELECT DISTINCT Annee FROM consommation_annuelle WHERE Statut_Import = 'Integre' ORDER BY Annee DESC"), 'Annee'
+    ));
 }
 
 
-// Valeurs du fichier de l'agent : [ID_Client => ligne]. Si un fichier a été importé deux fois,
-// la ligne la plus récente écrase la précédente.
+// Valeurs du fichier de l'agent (lignes intégrées seulement) : [ID_Client => ligne]. Le dépôt de l'agent est
+// par CLIENT (eau + électricité). Si un fichier a été importé deux fois, la ligne la plus récente écrase la précédente.
 function vaReleveAgent($annee)
 {
     $lignes = consoSelect(
         "SELECT ID_Client, ConsommationEau, ConsommationElect, Fichier_Source
-           FROM consommation_annuelle WHERE Annee = ? AND Statut_Import = 'Integre' ORDER BY Date_saisie ASC",
+           FROM consommation_annuelle
+          WHERE Annee = ? AND Statut_Import = 'Integre' AND ID_Client IS NOT NULL   -- les lignes rejetées (Personne 4) ne comptent pas
+          ORDER BY Date_saisie ASC, ID_Consommation_Annuelle ASC",
         'i', [$annee]
     );
     $par = [];
@@ -42,40 +45,50 @@ function vaIndexVerifies($annee)
 }
 
 
-// Saisies de l'année encore en anomalie / ressaisie : [ID_Client => nombre]
-function vaAnomaliesEnAttente($annee)
+// Contrats qui chevauchent l'année (actifs ou résiliés en cours d'année), avec quartier et type d'activité.
+// [ID_Contrat => ligne]
+function vaContrats($annee)
 {
     $r = consoSelect(
-        "SELECT ID_Client, COUNT(*) AS nb FROM consommation_mensuelle
-          WHERE Annee = ? AND Statut_Traitement <> 'Verifie' GROUP BY ID_Client",
-        'i', [$annee]
+        "SELECT ct.ID_Contrat, ct.ID_Client, ct.ID_Compteur, ct.Date_Debut, ct.Date_Fin, ct.Statut,
+                q.ID_Quartier, q.Nom AS Quartier, q.Ville, ta.Libelle AS Type_Activite, cp.Type_Compteur
+           FROM contrat ct
+           JOIN quartier q       ON q.ID_Quartier = ct.ID_Quartier
+           JOIN type_activite ta ON ta.ID_Type_Activite = q.ID_Type_Activite
+           JOIN compteur cp      ON cp.ID_Compteur = ct.ID_Compteur
+          WHERE ct.Date_Debut <= ? AND (ct.Date_Fin IS NULL OR ct.Date_Fin >= ?)
+          ORDER BY ct.ID_Contrat",
+        'ss', [(int) $annee . '-12-31', (int) $annee . '-01-01']
     );
     $out = [];
     foreach ($r as $l) {
-        $out[(int) $l['ID_Client']] = (int) $l['nb'];
+        $out[(int) $l['ID_Contrat']] = $l;
     }
     return $out;
 }
 
 
-// Factures de l'année non payées : [ID_Client][type] = ['nb' => , 'total' => ]
-function vaImpayes($annee)
+// Relevés de l'année encore en anomalie / ressaisie (le contrat est retrouvé côté PHP : compteur + mois)
+function vaReleveEnAnomalie($annee)
 {
-    $r = consoSelect(
-        "SELECT cm.ID_Client, c.Type_Compteur, COUNT(*) AS nb, SUM(f.Montant_TTC) AS total
-           FROM facture f
-           JOIN consommation_mensuelle cm ON cm.ID_Consommation_Mensuelle = f.ID_Consommation_Mensuelle
-           JOIN compteur c ON c.ID_Compteur = cm.ID_Compteur
-          WHERE cm.Annee = ? AND f.Statut_Paiement <> 'Payee'
-          GROUP BY cm.ID_Client, c.Type_Compteur",
+    return consoSelect(
+        "SELECT ID_Compteur, Mois FROM consommation_mensuelle
+          WHERE Annee = ? AND Statut_Traitement <> 'Verifie'",
         'i', [$annee]
     );
-    $out = [];
-    foreach ($r as $l) {
-        $type = $l['Type_Compteur'] === 'Eau' ? 'Eau' : 'Electricite';
-        $out[(int) $l['ID_Client']][$type] = ['nb' => (int) $l['nb'], 'total' => (float) $l['total']];
-    }
-    return $out;
+}
+
+
+// Factures de l'année non payées (le contrat est retrouvé côté PHP : compteur + mois)
+function vaFacturesImpayees($annee)
+{
+    return consoSelect(
+        "SELECT cm.ID_Compteur, cm.Mois, f.Montant_TTC
+           FROM facture f
+           JOIN consommation_mensuelle cm ON cm.ID_Consommation_Mensuelle = f.ID_Consommation_Mensuelle
+          WHERE cm.Annee = ? AND f.Statut_Paiement <> 'Payee'",
+        'i', [$annee]
+    );
 }
 
 
