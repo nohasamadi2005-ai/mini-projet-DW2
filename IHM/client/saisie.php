@@ -432,6 +432,7 @@ anomalie: [
   'Anomalie détectée',
   'Votre saisie est en cours de traitement par le fournisseur.'
 ],
+   surconso: ['info', 'Surconsommation détectée', 'Votre facture est disponible.'],
     reprise:  ['info',     'Compteur repris ce mois-ci', 'Le relevé de ce mois a été fait à la clôture du contrat précédent. Votre première saisie se fera le mois prochain.'],
     resaisie: ['info',     'Nouvelle saisie demandée', 'Le fournisseur vous demande de saisir à nouveau votre index. Vérifiez votre compteur puis renvoyez votre relevé.'],
    rejete: ['anomalie', 'Correction par le fournisseur',
@@ -474,13 +475,13 @@ anomalie: [
       $('etatIcOk').hidden = e[0] !== 'succes';
       $('etatIcAl').hidden = e[0] === 'succes';
     }
-    $('champs').disabled = ['ferme', 'verifie', 'anomalie','rejete','reprise'].includes(c.etat);
+    $('champs').disabled = ['ferme', 'verifie', 'anomalie','rejete','surconso','reprise'].includes(c.etat);
 
     
     $('btnFacture').disabled = !c.facture;
        let note = 'Votre facture sera disponible après une saisie valide.';
     if (c.facture) {
-      note = c.etat === 'anomalie' ? 'Votre facture est disponible malgré la vérification en cours.' : '';
+       note = '';
     } else if (c.etat === 'verifie') {
       note = 'Votre facture est en cours de génération.';
     }
