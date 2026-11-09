@@ -1,6 +1,7 @@
 <?php
 $erreurs = $erreurs ?? [];
-$v = $v ?? ['nom' => '', 'prenom' => '', 'adresse' => '', 'telephone' => '', 'email' => ''];
+$v = array_merge(['nom' => '', 'prenom' => '', 'adresse' => '', 'telephone' => '', 'email' => '',
+                  'cin' => '', 'type_client' => 'particulier', 'raison_sociale' => '', 'ice' => ''], $v ?? []);
 $roleSaisi = $roleSaisi ?? 'client';
 ?>
 <!doctype html>
@@ -50,8 +51,25 @@ $roleSaisi = $roleSaisi ?? 'client';
 
       <label>Adresse e-mail</label>
       <input type="email" name="email" value="<?= htmlspecialchars($v['email']) ?>" required>
-             <div id="champsClient">
-       
+      <div id="champsClient">
+        <label>CIN</label>
+        <input name="cin" value="<?= htmlspecialchars($v['cin']) ?>" maxlength="10"
+               pattern="[A-Za-z]{1,2}[0-9]{5,6}" placeholder="Ex. AB123456"
+               style="text-transform:uppercase" title="1 ou 2 lettres suivies de 5 ou 6 chiffres">
+
+        <label>Type de client</label>
+        <select name="type_client" id="type_client">
+          <option value="particulier" <?= $v['type_client'] !== 'entreprise' ? 'selected' : '' ?>>Particulier</option>
+          <option value="entreprise"  <?= $v['type_client'] === 'entreprise' ? 'selected' : '' ?>>Entreprise</option>
+        </select>
+
+        <div id="champsEntreprise" style="display:none">
+          <label>Raison sociale</label>
+          <input name="raison_sociale" value="<?= htmlspecialchars($v['raison_sociale']) ?>">
+          <label>ICE (15 chiffres)</label>
+          <input name="ice" value="<?= htmlspecialchars($v['ice']) ?>" maxlength="15"
+                 pattern="[0-9]{15}" inputmode="numeric" title="Exactement 15 chiffres">
+        </div>
       </div>
       <div class="row2">
         <div><label>Mot de passe</label>
@@ -73,7 +91,21 @@ $roleSaisi = $roleSaisi ?? 'client';
 <script>
   const role = document.getElementById('role');
   const champs = document.getElementById('champsClient');
-  function maj() { champs.style.display = (role && role.value === 'fournisseur'|| role.value === 'agent') ? 'none' : 'block'; }
+  function maj() {
+    const autre = role && (role.value === 'fournisseur' || role.value === 'agent');
+    champs.style.display = autre ? 'none' : 'block';
+    const cin = champs.querySelector('[name=cin]'); if (cin) cin.required = !autre;
+  }
   if (role) { role.addEventListener('change', maj); maj(); }
+
+  // Champs entreprise : visibles seulement si « Entreprise », et alors obligatoires.
+  const typeClient = document.getElementById('type_client');
+  const blocEntreprise = document.getElementById('champsEntreprise');
+  function majType() {
+    const ent = typeClient.value === 'entreprise';
+    blocEntreprise.style.display = ent ? 'block' : 'none';
+    blocEntreprise.querySelectorAll('input').forEach(i => i.required = ent);
+  }
+  typeClient.addEventListener('change', majType); majType();
 </script>
 </html>

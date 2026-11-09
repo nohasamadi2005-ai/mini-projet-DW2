@@ -4,6 +4,7 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/Regles.php';
 require_once __DIR__ . '/../BD/Consommation.php';
 require_once __DIR__ . '/Facture.php';
+require_once __DIR__ . '/../BD/Contrat.php';   // [P3] contrat actif de chaque compteur
 
 const PHOTOS_DOSSIER   = __DIR__ . '/../uploads/compteurs/';
 const PHOTOS_URL       = 'uploads/compteurs/';
@@ -203,6 +204,12 @@ function preparerPageSaisie()
     $compteurs = [];
     $payload   = [];
 
+    // [P3] Contrats actifs du client, indexés par compteur : une seule requête.
+    $contratsParCompteur = [];
+    foreach (getContratsDuClient($idClient, true) as $ct) {
+        $contratsParCompteur[(int) $ct['ID_Compteur']] = $ct;
+    }
+
     foreach (getCompteursDuClient($idClient) as $c) {
         $id   = (int) $c['ID_Compteur'];
         $eau  = $c['Type_Compteur'] === 'Eau';
@@ -231,9 +238,7 @@ if ($s === 'Verifie') {
 } elseif ( $s === 'Saisie_Fournisseur') {
     $etat = 'rejete';
     } else {
-    $etat = (detecterAnomalie((float) $saisie['Consommation'], $c['Type_Compteur']) === 'Surconsommation')
-        ? 'surconso'
-        : 'anomalie';
+    $etat = 'anomalie';
 }
       }else {
             $etat = $ouverte ? 'libre' : 'ferme';
@@ -272,7 +277,22 @@ if ($s === 'Verifie') {
             }
         }
 
+        // [P3] Contrat / quartier / logement de ce compteur
+        $ct = $contratsParCompteur[$id] ?? null;
+
+        $etatsLib = ['libre' => ['À saisir', 'a-saisir'], 'verifie' => ['Saisi ✓', 'ok'],
+                     'anomalie' => ['Anomalie', 'alerte'], 'rejete' => ['À ressaisir', 'alerte'],
+                     'resaisie' => ['À ressaisir', 'alerte'], 'ferme' => ['Saisie fermée', 'neutre'],
+                     'reprise' => ['Prochain mois', 'neutre']];
         $compteurs[] = [
+            'etatLabel'  => $etatsLib[$etat][0] ?? '',
+            'etatClasse' => $etatsLib[$etat][1] ?? 'neutre',
+            'contrat'  => $ct ? (int) $ct['ID_Contrat'] : null,
+            'quartier' => $ct ? $ct['Quartier'] . ' (' . $ct['Ville'] . ')' : null,
+            'activite' => $ct ? $ct['Type_Activite'] : null,
+            'adresse'  => $ct ? trim((string) $ct['Adresse_Branchement']) : '',
+            // Un logement / local = même quartier + même adresse de branchement
+            'groupe'   => $ct ? $ct['ID_Quartier'] . '|' . mb_strtolower(trim((string) $ct['Adresse_Branchement'])) : 'aucun',
             'id'     => $id,
             'label'  => $eau ? 'Eau' : 'Électricité',
             'numero' => $prefixe . str_pad($id, 5, '0', STR_PAD_LEFT),
@@ -296,6 +316,22 @@ if ($s === 'Verifie') {
     }
 
   
+    // [P3] Regroupement des compteurs par logement / local (ex. les 2 maisons de Nouha)
+    $groupes = [];
+    foreach ($compteurs as $c) {
+        $k = $c['groupe'];
+        if (!isset($groupes[$k])) {
+            $groupes[$k] = [
+                'titre'    => $c['contrat'] === null ? 'Compteurs sans contrat actif' : $c['quartier'],
+                'adresse'  => $c['adresse'],
+                'activite' => $c['activite'],
+                'compteurs' => [],
+            ];
+        }
+        $groupes[$k]['compteurs'][] = $c;
+    }
+    $groupes = array_values($groupes);
+
     $choisi = (int) ($_GET['c'] ?? 0);
     if (!isset($payload[$choisi])) {
         $choisi = $compteurs ? $compteurs[0]['id'] : 0;
@@ -313,5 +349,5 @@ if ($s === 'Verifie') {
     $flash = $_SESSION['flash'] ?? null;
     unset($_SESSION['flash']);
 
-    return compact('compteurs', 'payload', 'choisi', 'ouverte', 'fenetreTexte', 'pastille', 'flash');
+    return compact('compteurs', 'groupes', 'payload', 'choisi', 'ouverte', 'fenetreTexte', 'pastille', 'flash');
 }

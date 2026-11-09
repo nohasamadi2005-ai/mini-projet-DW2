@@ -13,17 +13,40 @@ function trouverClientParEmail($email)
     return mysqli_fetch_assoc($res);
 }
 
-function creerClient($nom, $prenom, $adresse, $telephone, $email, $hash)
+function creerClient($nom, $prenom, $adresse, $telephone, $email, $hash,
+                     $cin = null, $typeClient = 'particulier', $raisonSociale = null, $ice = null)
 {
     $cnx  = Connexion();
     $stmt = mysqli_prepare($cnx,
-        "INSERT INTO client (Nom, Prenom, Adresse, Telephone, Email, Password)
-         VALUES (?, ?, ?, ?, ?, ?)");
-    mysqli_stmt_bind_param($stmt, "ssssss", $nom, $prenom, $adresse, $telephone, $email, $hash);
+        "INSERT INTO client (Nom, Prenom, Adresse, Telephone, Email, Password,
+                             CIN, Type_Client, Raison_Sociale, ICE)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    mysqli_stmt_bind_param($stmt, "ssssssssss", $nom, $prenom, $adresse, $telephone, $email, $hash,
+                           $cin, $typeClient, $raisonSociale, $ice);
     if (mysqli_stmt_execute($stmt)) {
         return mysqli_insert_id($cnx);
     }
     return false;
+}
+
+/** Retourne le client portant ce CIN (ou null) : sert au contrôle d'unicité. */
+function trouverClientParCin($cin)
+{
+    $cnx  = Connexion();
+    $stmt = mysqli_prepare($cnx, "SELECT ID_Client FROM client WHERE CIN = ?");
+    mysqli_stmt_bind_param($stmt, "s", $cin);
+    mysqli_stmt_execute($stmt);
+    return mysqli_fetch_assoc(mysqli_stmt_get_result($stmt)) ?: null;
+}
+
+/** Retourne le client portant cet ICE (ou null). */
+function trouverClientParIce($ice)
+{
+    $cnx  = Connexion();
+    $stmt = mysqli_prepare($cnx, "SELECT ID_Client FROM client WHERE ICE = ?");
+    mysqli_stmt_bind_param($stmt, "s", $ice);
+    mysqli_stmt_execute($stmt);
+    return mysqli_fetch_assoc(mysqli_stmt_get_result($stmt)) ?: null;
 }
 
 function modifierMotDePasseClient($id, $hash)

@@ -138,6 +138,7 @@ function icone($nom)
     <nav>
       <a href="index.php?page=client"><?= icone('accueil') ?> Accueil</a>
       <a href="index.php?page=saisie"><?= icone('saisie') ?> Saisie mensuelle</a>
+      <a href="index.php?page=mes_contrats"><?= icone('facture') ?> Mes contrats</a>
       <a href="index.php?page=factures"><?= icone('facture') ?> Mes factures</a>
       <a href="index.php?page=reclamations" class="actif"><?= icone('message') ?> Mes réclamations</a>
       <a href="index.php?page=notifications"><?= icone('cloche') ?> Notifications</a>

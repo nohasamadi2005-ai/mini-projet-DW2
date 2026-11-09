@@ -108,6 +108,19 @@ function icone($nom)
   .compteur b { display:block; }
   .compteur small { color:var(--mut); font-size:11px; }
 
+  .compteur { flex-direction:column; align-items:stretch; gap:8px; padding:12px 44px 12px 16px; }
+  .compteur .ligne { display:flex; align-items:center; gap:12px; min-width:0; }
+  .compteur .txt { min-width:0; }
+  .compteur .txt small { display:block; overflow-wrap:anywhere; }
+  .compteur .ctr { font-size:10px; letter-spacing:.1em; font-weight:700; color:var(--blue-d); }
+  .logement-t .adr { color:var(--mut); font-size:11px; flex-basis:100%; }
+  .sel-logement { width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:8px; font:inherit; background:#fff; margin-bottom:16px; }
+  .logement { margin-bottom:18px; }
+  .logement:last-child { margin-bottom:0; }
+  .logement-t { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:10px; padding-bottom:8px; border-bottom:1px dashed var(--line); }
+  .logement-t b { font-size:13px; }
+  .tag { background:var(--soft); color:var(--blue-d); border-radius:20px; padding:2px 9px; font-size:11px; font-weight:600; }
+  .tag.act { background:#fff4dc; color:#8a5300; }
   .deux { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px; }
   .gris { background:#f8fafd; }
   .mois { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
@@ -220,6 +233,7 @@ function icone($nom)
     <nav>
       <a href="index.php?page=client"><?= icone('accueil') ?> Accueil</a>
       <a href="index.php?page=saisie" class="actif"><?= icone('saisie') ?> Saisie mensuelle</a>
+       <a href="index.php?page=mes_contrats"><?= icone('facture') ?> Mes contrats</a>
      <a href="index.php?page=factures"><?= icone('facture') ?> Mes factures</a>
      <a href="index.php?page=reclamations"><?= icone('message') ?> Mes réclamations</a>      <a href="index.php?page=notifications"><?= icone('cloche') ?> Notifications</a>    </nav>
     <div class="aide">
@@ -281,16 +295,36 @@ function icone($nom)
         <section class="carte">
           <div class="titre"><span class="num">1</span>
             <div><b>Choisissez votre compteur</b><span>Sélectionnez le type de consommation à relever</span></div></div>
-          <div class="choix">
-            <?php foreach ($compteurs as $c): ?>
-              <label class="compteur">
-                <span class="ico <?= $c['icone'] === 'eclair' ? 'elec' : '' ?>"><?= icone($c['icone']) ?></span>
-                <span><b><?= h($c['label']) ?></b><small>Compteur n° <?= h($c['numero']) ?></small></span>
-                <input type="radio" name="compteur" value="<?= (int) $c['id'] ?>"
-                       <?= $c['id'] === $choisi ? 'checked' : '' ?> required>
-              </label>
-            <?php endforeach; ?>
-          </div>
+          <?php if (count($d['groupes']) > 1): ?>
+            <label class="champ" for="selLogement">Logement / local</label>
+            <select id="selLogement" class="sel-logement">
+              <?php foreach ($d['groupes'] as $i => $g): ?>
+                <option value="<?= (int) $i ?>"><?= h($g['titre']) ?><?= $g['activite'] ? ' · ' . h($g['activite']) : '' ?><?= $g['adresse'] !== '' ? ' — ' . h($g['adresse']) : '' ?> (<?= count($g['compteurs']) ?> compteur<?= count($g['compteurs']) > 1 ? 's' : '' ?>)</option>
+              <?php endforeach; ?>
+            </select>
+          <?php endif; ?>
+          <?php foreach ($d['groupes'] as $i => $g): ?>
+            <div class="logement" data-groupe="<?= (int) $i ?>">
+              <div class="logement-t">
+                <b><?= h($g['titre']) ?></b>
+                <?php if ($g['activite']): ?><span class="tag act"><?= h($g['activite']) ?></span><?php endif; ?>
+                <?php if ($g['adresse'] !== ''): ?><small class="adr"><?= h($g['adresse']) ?></small><?php endif; ?>
+              </div>
+              <div class="choix">
+                <?php foreach ($g['compteurs'] as $c): ?>
+                  <label class="compteur">
+                    <?php if ($c['contrat']): ?><span class="ctr">CONTRAT N° <?= (int) $c['contrat'] ?></span><?php endif; ?>
+                    <span class="ligne">
+                      <span class="ico <?= $c['icone'] === 'eclair' ? 'elec' : '' ?>"><?= icone($c['icone']) ?></span>
+                      <span class="txt"><b><?= h($c['label']) ?></b><small>Compteur n° <?= h($c['numero']) ?></small></span>
+                    </span>
+                    <input type="radio" name="compteur" value="<?= (int) $c['id'] ?>"
+                           <?= $c['id'] === $choisi ? 'checked' : '' ?> required>
+                  </label>
+                <?php endforeach; ?>
+              </div>
+            </div>
+          <?php endforeach; ?>
         </section>
 
         <div class="deux">
@@ -432,7 +466,6 @@ anomalie: [
   'Anomalie détectée',
   'Votre saisie est en cours de traitement par le fournisseur.'
 ],
-   surconso: ['info', 'Surconsommation détectée', 'Votre facture est disponible.'],
     reprise:  ['info',     'Compteur repris ce mois-ci', 'Le relevé de ce mois a été fait à la clôture du contrat précédent. Votre première saisie se fera le mois prochain.'],
     resaisie: ['info',     'Nouvelle saisie demandée', 'Le fournisseur vous demande de saisir à nouveau votre index. Vérifiez votre compteur puis renvoyez votre relevé.'],
    rejete: ['anomalie', 'Correction par le fournisseur',
@@ -475,13 +508,13 @@ anomalie: [
       $('etatIcOk').hidden = e[0] !== 'succes';
       $('etatIcAl').hidden = e[0] === 'succes';
     }
-    $('champs').disabled = ['ferme', 'verifie', 'anomalie','rejete','surconso','reprise'].includes(c.etat);
+    $('champs').disabled = ['ferme', 'verifie', 'anomalie','rejete','reprise'].includes(c.etat);
 
     
     $('btnFacture').disabled = !c.facture;
        let note = 'Votre facture sera disponible après une saisie valide.';
     if (c.facture) {
-       note = '';
+      note = c.etat === 'anomalie' ? 'Votre facture est disponible malgré la vérification en cours.' : '';
     } else if (c.etat === 'verifie') {
       note = 'Votre facture est en cours de génération.';
     }
@@ -493,6 +526,21 @@ anomalie: [
 
   document.querySelectorAll('input[name="compteur"]').forEach(r =>
     r.addEventListener('change', () => afficher(r.value)));
+  // Un seul logement / local affiché à la fois (utile quand le client a beaucoup de contrats)
+  const selLog = document.getElementById('selLogement');
+  if (selLog) {
+    const blocs = document.querySelectorAll('.logement[data-groupe]');
+    const montrer = (i) => blocs.forEach(b => b.hidden = b.dataset.groupe !== String(i));
+    const cocheInit = document.querySelector('input[name="compteur"]:checked');
+    const blocInit = cocheInit && cocheInit.closest('.logement');
+    if (blocInit) selLog.value = blocInit.dataset.groupe;
+    montrer(selLog.value);
+    selLog.addEventListener('change', () => {
+      montrer(selLog.value);
+      const premier = document.querySelector('.logement[data-groupe="' + selLog.value + '"] input[name="compteur"]');
+      if (premier) { premier.checked = true; premier.dispatchEvent(new Event('change')); }
+    });
+  }
   const coche = document.querySelector('input[name="compteur"]:checked');
   if (coche) afficher(coche.value);
 

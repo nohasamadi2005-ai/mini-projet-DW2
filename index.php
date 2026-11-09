@@ -117,7 +117,8 @@ switch ($page) {
     case 'register':
         $erreurs   = [];
         $roleSaisi = 'client';
-        $v = ['nom' => '', 'prenom' => '', 'adresse' => '', 'telephone' => '', 'email' => ''];
+        $v = ['nom' => '', 'prenom' => '', 'adresse' => '', 'telephone' => '', 'email' => '',
+              'cin' => '', 'type_client' => 'particulier', 'raison_sociale' => '', 'ice' => ''];
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($v as $cle => $_) {
@@ -141,7 +142,8 @@ switch ($page) {
                                          $_POST['password'] ?? '', $_POST['password2'] ?? '');
             } else {
                 $erreurs = inscrireClient($v['nom'], $v['prenom'], $v['adresse'], $v['telephone'],
-                                          $v['email'], $_POST['password'] ?? '', $_POST['password2'] ?? '');
+                                          $v['email'], $_POST['password'] ?? '', $_POST['password2'] ?? '',
+                                          $v['cin'], $v['type_client'], $v['raison_sociale'], $v['ice']);
             }
 
             if (!$erreurs) {
@@ -177,6 +179,13 @@ switch ($page) {
         $d = preparerPageSaisie();
         require __DIR__ . '/IHM/client/saisie.php';
         break; 
+
+    case 'mes_contrats':
+        exigerRole('client');
+        require_once __DIR__ . '/traitement/MesContrats.php';
+        $d = preparerPageMesContrats();
+        require __DIR__ . '/IHM/client/mes_contrats.php';
+        break;
 
     case 'factures':
         exigerRole('client');

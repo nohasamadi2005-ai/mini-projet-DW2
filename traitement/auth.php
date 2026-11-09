@@ -78,12 +78,47 @@ function erreurMotDePasse($mdp)
     return null;
 }
 
-function inscrireClient($nom, $prenom, $adresse, $telephone, $email, $mdp, $mdp2)
+/** CIN marocain : 1 ou 2 lettres suivies de 5 ou 6 chiffres (ex. AB123456, K98765). */
+function formatCinValide($cin)
+{
+    return (bool) preg_match('/^[A-Z]{1,2}[0-9]{5,6}$/', $cin);
+}
+
+/** ICE (Identifiant Commun de l'Entreprise) : exactement 15 chiffres. */
+function formatIceValide($ice)
+{
+    return (bool) preg_match('/^[0-9]{15}$/', $ice);
+}
+
+function inscrireClient($nom, $prenom, $adresse, $telephone, $email, $mdp, $mdp2,
+                        $cin = '', $typeClient = 'particulier', $raisonSociale = '', $ice = '')
 {
     $erreurs = [];
 
+    $cin           = strtoupper(preg_replace('/\s+/', '', $cin));
+    $ice           = preg_replace('/\s+/', '', $ice);
+    $raisonSociale = trim($raisonSociale);
+    if ($typeClient !== 'entreprise') {
+        $typeClient = 'particulier';
+    }
+
     if ($nom === '' || $prenom === '') {
         $erreurs[] = 'Le nom et le prénom sont obligatoires.';
+    }
+    if ($cin === '') {
+        $erreurs[] = 'Le CIN est obligatoire.';
+    } elseif (!formatCinValide($cin)) {
+        $erreurs[] = 'CIN invalide : 1 ou 2 lettres suivies de 5 ou 6 chiffres (ex. AB123456).';
+    }
+    if ($typeClient === 'entreprise') {
+        if ($raisonSociale === '') {
+            $erreurs[] = 'La raison sociale est obligatoire pour une entreprise.';
+        }
+        if ($ice === '') {
+            $erreurs[] = 'L\'ICE est obligatoire pour une entreprise.';
+        } elseif (!formatIceValide($ice)) {
+            $erreurs[] = 'ICE invalide : il doit contenir exactement 15 chiffres.';
+        }
     }
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $erreurs[] = 'Adresse e-mail invalide.';
@@ -97,12 +132,24 @@ function inscrireClient($nom, $prenom, $adresse, $telephone, $email, $mdp, $mdp2
     if (!$erreurs && trouverClientParEmail($email)) {
         $erreurs[] = 'Cette adresse e-mail est déjà utilisée.';
     }
+    if (!$erreurs && trouverClientParCin($cin)) {
+        $erreurs[] = 'Ce CIN est déjà enregistré.';
+    }
+    if (!$erreurs && $typeClient === 'entreprise' && trouverClientParIce($ice)) {
+        $erreurs[] = 'Cet ICE est déjà enregistré.';
+    }
 
     if (!$erreurs) {
-     
-        creerClient($nom, $prenom, $adresse, $telephone, $email, password_hash($mdp, PASSWORD_DEFAULT));
+        // Un particulier n'a ni raison sociale ni ICE.
+        $rs  = $typeClient === 'entreprise' ? $raisonSociale : null;
+        $iceBd = $typeClient === 'entreprise' ? $ice : null;
 
-     
+        if (!creerClient($nom, $prenom, $adresse, $telephone, $email,
+                         password_hash($mdp, PASSWORD_DEFAULT), $cin, $typeClient, $rs, $iceBd)) {
+            $erreurs[] = 'Impossible de créer le compte (CIN, ICE ou e-mail déjà utilisé).';
+            return $erreurs;
+        }
+
         $user = trouverClientParEmail($email);
         if ($user) {
             session_regenerate_id(true);
@@ -110,14 +157,14 @@ function inscrireClient($nom, $prenom, $adresse, $telephone, $email, $mdp, $mdp2
 
             $_SESSION['user'] = [
                 'id'     => $idUser,
-                'role'   => 'client', 
+                'role'   => 'client',
                 'nom'    => $user['Nom'],
                 'prenom' => $user['Prenom'],
                 'email'  => $user['Email'],
             ];
         }
     }
-    return $erreurs; 
+    return $erreurs;
 }
 
 function inscrireFournisseur($nom, $prenom, $email, $mdp, $mdp2)
