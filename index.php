@@ -64,7 +64,48 @@ switch ($page) {
         exigerRole('agent');
         require_once __DIR__ . '/BD/AgentImport.php';
         require __DIR__ . '/IHM/agent/historique.php';
-        break;    
+        break;
+        case 'agent_tournee':
+        exigerRole('agent');
+        require_once __DIR__ . '/traitement/agent.php';
+        $d = preparerPageTournee();
+        require __DIR__ . '/IHM/agent/tournee.php';
+        break;
+
+    case 'agent_tournee_export':
+        exigerRole('agent');
+        require_once __DIR__ . '/traitement/agent.php';
+        envoyerFeuilleTournee();          // télécharge la feuille (.txt) puis exit
+        break;
+
+    case 'agent_historique_detail':
+        exigerRole('agent');
+        require_once __DIR__ . '/traitement/agent.php';
+        $d = preparerPageDetailDepot();
+        if (!$d) {
+            http_response_code(404);
+            require __DIR__ . '/IHM/404.php';
+            break;
+        }
+        require __DIR__ . '/IHM/agent/depot_detail.php';
+        break;
+
+    // ---- Gestion des agents par le fournisseur (Personne 4) ----
+    case 'agents':
+        exigerRole('fournisseur');
+        require_once __DIR__ . '/traitement/agent.php';
+        $d = preparerPageAgents();
+        require __DIR__ . '/IHM/fournisseur/agents.php';
+        break;
+
+    case 'agents_action':
+        exigerRole('fournisseur');
+        require_once __DIR__ . '/traitement/agent.php';
+        if ($post) {
+            traiterActionAgents();
+        }
+        header('Location: index.php?page=agents');
+        exit;    
     
     case 'logout':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {

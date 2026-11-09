@@ -87,6 +87,7 @@ $dernierFichier = !empty($fichiersImportes) ? $fichiersImportes[0]['Nom_Fichier'
       <div class="nav-section-title">Agent terrain</div>
       <div class="nav-menu">
         <a href="index.php?page=agent_depot" class="nav-item active">Déposer un relevé annuel</a>
+        <a href="index.php?page=agent_tournee" class="nav-item">Ma tournée</a>
         <a href="index.php?page=agent_historique" class="nav-item">Historique des dépôts</a>
       </div>
     </div>
@@ -130,6 +131,10 @@ $dernierFichier = !empty($fichiersImportes) ? $fichiersImportes[0]['Nom_Fichier'
         <div class="ok"><?= htmlspecialchars($resultatTraitement['succes']) ?></div>
       <?php endif; ?>
 
+      <?php if (!empty($resultatTraitement['fichier'])): ?>
+         <p style="margin: 0 0 16px;"><a href="index.php?page=agent_historique_detail&amp;fichier=<?= urlencode($resultatTraitement['fichier']) ?>" style="color: #0284c7; font-weight: 600; text-decoration: none;">Voir le détail du dépôt (lignes intégrées et rejetées) →</a></p>
+      <?php endif; ?>
+
       <form method="post" action="index.php?page=agent_depot" enctype="multipart/form-data">
         <!-- Main Card: Upload -->
         <div class="card">
@@ -148,18 +153,19 @@ $dernierFichier = !empty($fichiersImportes) ? $fichiersImportes[0]['Nom_Fichier'
             <div>
               <label>Année de référence</label>
               <select name="annee">
-                <option value="2026" selected>2026</option>
-                <option value="2025">2025</option>
-                <option value="2024">2024</option>
+                 <?php foreach (anneesAgent() as $a): ?>
+                  <option value="<?= (int) $a ?>"<?= (int) $a === (int) date('Y') ? ' selected' : '' ?>><?= (int) $a ?></option>
+                 <?php endforeach; ?>
               </select>
             </div>
             <div>
-              <label>Zone d'intervention</label>
-              <select name="zone">
-                <option value="Secteur Nord — Zone 04" selected>Secteur Nord — Zone 04</option>
-                <option value="Secteur Sud — Zone 01">Secteur Sud — Zone 01</option>
-                <option value="Secteur Est — Zone 02">Secteur Est — Zone 02</option>
-              </select>
+              <label>Mes quartiers</label>
+                <div style="padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; font-size: 13px; color: #14213d;">
+                 <?php $mesQuartiers = getQuartiersAgent($agentId); ?>
+                 <?= $mesQuartiers
+                      ? htmlspecialchars(implode(', ', array_map(fn($q) => $q['Nom'] . ' (' . $q['Ville'] . ')', $mesQuartiers)))
+                      : 'Aucun quartier affecté — contactez le fournisseur' ?>
+                 </div>
             </div>
           </div>
 

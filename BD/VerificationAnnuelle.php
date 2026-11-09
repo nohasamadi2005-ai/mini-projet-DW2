@@ -6,8 +6,7 @@ require_once __DIR__ . '/Consommation.php';
 function vaAnneesDisponibles()
 {
     return array_map('intval', array_column(
-        consoSelect("SELECT DISTINCT Annee FROM consommation_annuelle ORDER BY Annee DESC"), 'Annee'
-    ));
+consoSelect("SELECT DISTINCT Annee FROM consommation_annuelle WHERE Statut_Import = 'Integre' ORDER BY Annee DESC"), 'Annee'    ));
 }
 
 
@@ -17,7 +16,7 @@ function vaReleveAgent($annee)
 {
     $lignes = consoSelect(
         "SELECT ID_Client, ConsommationEau, ConsommationElect, Fichier_Source
-           FROM consommation_annuelle WHERE Annee = ? ORDER BY Date_saisie ASC",
+           FROM consommation_annuelle WHERE Annee = ? AND Statut_Import = 'Integre' ORDER BY Date_saisie ASC",
         'i', [$annee]
     );
     $par = [];

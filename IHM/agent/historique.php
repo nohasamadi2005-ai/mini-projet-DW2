@@ -48,7 +48,7 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
   .small-tag { font-size: 12px; font-weight: 700; color: #0284c7; letter-spacing: 0.08em; text-transform: uppercase; }
 
   /* Stats Cards (2 colonnes) */
-  .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
   .stat-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; justify-content: space-between; }
   .stat-card .top-line { display: flex; justify-content: space-between; align-items: center; color: #6b7a90; font-size: 13px; font-weight: 600; }
   .stat-card .value { font-size: 32px; font-weight: 700; color: #14213d; margin: 10px 0 4px; }
@@ -68,6 +68,13 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
 
   .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
   .badge.integre { background: #f0fdf4; color: #15803d; }
+  .badge.partiel { background: #fffbeb; color: #b45309; }
+  .badge.rejete  { background: #fef2f2; color: #b91c1c; }
+  .actions-cell { display: flex; gap: 8px; align-items: center; }
+  .btn-detail { color: #0284c7; background: #eff6ff; text-decoration: none; border: 1px solid #bfdbfe; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; transition: 0.2s; white-space: nowrap; }
+  .btn-detail:hover { background: #dbeafe; }
+  .num-rejet { color: #b91c1c; font-weight: 700; }
+  .num-zero { color: #94a3b8; font-weight: 600; }
   .download-icon-btn { color: #6b7a90; text-decoration: none; border: 1px solid #e2e8f0; padding: 6px 10px; border-radius: 6px; transition: 0.2s; display: inline-block; background: #fff; }
   .download-icon-btn:hover { background: #f1f5f9; color: #0284c7; }
   .download-icon-btn {
@@ -105,6 +112,7 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
       <div class="nav-section-title">Agent terrain</div>
       <div class="nav-menu">
         <a href="index.php?page=agent_depot" class="nav-item">Déposer un relevé annuel</a>
+        <a href="index.php?page=agent_tournee" class="nav-item">Ma tournée</a>
         <a href="index.php?page=agent_historique" class="nav-item active">Historique des dépôts</a>
       </div>
     </div>
@@ -153,7 +161,14 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
             <div class="stat-icon">✓</div>
           </div>
           <div class="value"><?= intval($stats['releves_integres']) ?></div>
-          <div class="desc">Tous secteurs confondus</div>
+          <div class="desc">Lignes valides enregistrées</div>
+        </div>
+        <div class="stat-card">
+          <div class="top-line">
+            <span>Lignes rejetées</span>
+          </div>
+          <div class="value"><?= intval($stats['releves_rejetes']) ?></div>
+          <div class="desc">À corriger puis redéposer</div>
         </div>
       </div>
 
@@ -162,7 +177,7 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
         <div class="table-header">
           <div>
             <h3>Fichiers importés</h3>
-            <span><?= count($imports) ?> fichiers au total</span>
+            <span><?= count($imports) ?> dépôt(s) au total</span>
           </div>
           <!-- Le filtre recherche par nom de fichier ou par année -->
           <form method="get" action="index.php" class="search-box">
@@ -178,15 +193,16 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
               <th>Date d'import</th>
               <th>Année</th>
               <th>Zone</th>
-              <th>Nb. relevés</th>
-              <th>Statut d'intégration</th>
+              <th>Intégrées</th>
+              <th>Rejetées</th>
+              <th>Statut</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
             <?php if (empty($imports)): ?>
               <tr>
-                <td colspan="7" style="text-align: center; color: #6b7a90; padding: 24px;">Aucun fichier importé pour le moment.</td>
+                <td colspan="8" style="text-align: center; color: #6b7a90; padding: 24px;">Aucun fichier importé pour le moment.</td>
               </tr>
             <?php else: ?>
               <?php foreach ($imports as $imp): ?>
@@ -195,18 +211,28 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
                   <td><?= date('d/m/Y H:i', strtotime($imp['Date_Import'])) ?></td>
                   <td><?= htmlspecialchars($imp['Annee']) ?></td>
                   <td><?= htmlspecialchars($imp['Zone']) ?></td>
-                  <td><strong><?= intval($imp['Nb_Releves']) ?></strong></td>
+                  <td><strong><?= intval($imp['Nb_Integres']) ?></strong></td>
+                  <td><span class="<?= $imp['Nb_Rejetes'] > 0 ? 'num-rejet' : 'num-zero' ?>"><?= intval($imp['Nb_Rejetes']) ?></span></td>
                   <td>
-                    <span class="badge integre">● Intégré</span>
+                    <?php if ($imp['Statut'] === 'Integre'): ?>
+                      <span class="badge integre">● Intégré</span>
+                    <?php elseif ($imp['Statut'] === 'Partiel'): ?>
+                      <span class="badge partiel">● Partiel</span>
+                    <?php else: ?>
+                      <span class="badge rejete">● Rejeté</span>
+                    <?php endif; ?>
                   </td>
                   <td>
-  <a href="uploads/<?= htmlspecialchars($imp['Nom_Fichier']) ?>" class="download-icon-btn" title="Télécharger" download>
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 3v12m0 0l-4-4m4 4l4-4"></path>
-      <path d="M4 21h16"></path>
-    </svg>
-  </a>
-</td>
+                    <div class="actions-cell">
+                      <a href="index.php?page=agent_historique_detail&amp;fichier=<?= urlencode($imp['Nom_Fichier']) ?>" class="btn-detail">Détail</a>
+                      <a href="uploads/<?= rawurlencode($imp['Nom_Fichier']) ?>" class="download-icon-btn" title="Télécharger" download>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 3v12m0 0l-4-4m4 4l4-4"></path>
+                          <path d="M4 21h16"></path>
+                        </svg>
+                      </a>
+                    </div>
+                  </td>
                 </tr>
               <?php endforeach; ?>
             <?php endif; ?>

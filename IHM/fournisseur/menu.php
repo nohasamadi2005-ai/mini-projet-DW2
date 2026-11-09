@@ -9,6 +9,7 @@ $liensMenu = [
     'verification_annuelle'    => ['fa-scale-balanced',       'Vérification Annuelle'],
     'traitement_anomalies'     => ['fa-triangle-exclamation', 'Traitement des Anomalies'],
     'reclamations_fournisseur' => ['fa-file-invoice-dollar',  'Gestion des Réclamations'],
+    'agents'                   => ['fa-user-tie',             'Agents'],
 ];
 // Pages rattachées à une entrée du menu
 $pageMenu = $_GET['page'] ?? 'gestion_client';
