@@ -158,9 +158,16 @@ if ($typeAnomalie === 'Surconsommation') {
         }
     }
 
+    // [P3] Message précis : consommation, seuil du type d'activité du contrat, quartier
+    $uniteMsg = estEau($compteur['Type_Compteur']) ? 'm³' : 'kWh';
+    $ctMsg    = getContratActifDuCompteur($idCompteur);
+    $seuilMsg = seuilMax($compteur['Type_Compteur'], getTypeActiviteDuCompteur($idCompteur));
+    $detailMsg = formaterIndex($delta) . ' ' . $uniteMsg . ', seuil ' . ($ctMsg ? $ctMsg['Type_Activite'] . ' ' : '')
+               . formaterIndex($seuilMsg) . ' ' . $uniteMsg
+               . ($ctMsg ? ' (contrat n° ' . $ctMsg['ID_Contrat'] . ', ' . $ctMsg['Quartier'] . ')' : '');
     retourSaisie(
         'anomalie',
-        'Surconsommation détectée : le fournisseur va vérifier d’éventuelles fuites. '
+        'Surconsommation détectée (' . $detailMsg . ') : le fournisseur va vérifier d’éventuelles fuites. '
         . 'Votre facture a été générée et est disponible dans « Mes factures ».',
         $idCompteur
     );
@@ -244,12 +251,27 @@ if ($s === 'Verifie') {
             $etat = $ouverte ? 'libre' : 'ferme';
         }
 
+        $ct = $contratsParCompteur[$id] ?? null;   // [P3]
         $facture = null;
         if ($saisie) {
             $fa = getFactureDeSaisie($saisie['ID_Consommation_Mensuelle']);
             if ($fa) {
                 $payee    = $fa['Statut_Paiement'] === 'Payee';
+                // [P3] Détail par tranche + redevance (Personne 2), selon le type d'activité du contrat
+                $lignes = [];
+                try {
+                    $lignes = lignesFacture(
+                        detailMontants((float) $fa['Consommation'], $fa['Type_Compteur'], $ct ? $ct['Type_Activite'] : null),
+                        $eau ? 'm³' : 'kWh', $ct ? $ct['Type_Activite'] : '');
+                } catch (Throwable $e) {
+                    error_log($e->getMessage());
+                }
                 $facture = [
+                    'contrat'    => $ct ? (int) $ct['ID_Contrat'] : null,
+                    'quartier'   => $ct ? $ct['Quartier'] . ' (' . $ct['Ville'] . ')' : null,
+                    'activite'   => $ct ? $ct['Type_Activite'] : null,
+                    'logement'   => $ct ? trim((string) $ct['Adresse_Branchement']) : '',
+                    'lignes'     => $lignes,
                     'numero'     => 'FAC-' . $fa['Annee'] . '-' . ($eau ? 'EAU' : 'ELEC')
                                   . '-' . str_pad($fa['ID_Facture'], 4, '0', STR_PAD_LEFT),
                     'type'       => $fa['Type_Compteur'],

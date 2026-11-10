@@ -27,8 +27,8 @@ function insererFacture($idConso, $dateFacture, $debut, $fin, $ht, $tva, $ttc)
 }
 
 /**
- * Factures d'un client, avec le contrat / quartier / type d'activité de chaque relevé.
- * [P3] $idContrat > 0 : filtre sur un seul contrat.
+ * Factures d'un client, avec le contrat / quartier / type d'activité de chaque relevé. [P3]
+ * $idContrat > 0 : filtre sur un seul contrat.
  * La jointure relevé -> contrat vient de statFromReleves() (Personne 5) ; LEFT JOIN pour ne pas
  * perdre les anciennes factures dont le mois n'est couvert par aucun contrat.
  */

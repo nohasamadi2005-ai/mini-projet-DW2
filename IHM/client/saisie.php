@@ -421,16 +421,15 @@ function icone($nom)
       <div><small>CLIENT</small><b id="fClient"></b>
         <span class="f-sous" id="fAdresse"></span><span class="f-sous" id="fContact"></span></div>
       <div><small>PÉRIODE DE CONSOMMATION</small><b id="fPeriode"></b>
-        <span class="f-sous" id="fCompteur"></span></div>
+        <span class="f-sous" id="fCompteur"></span>
+        <span class="f-sous" id="fContrat"></span>
+        <span class="f-sous" id="fLogement"></span>
+        <span class="f-sous" id="fIndex"></span></div>
     </div>
 
     <table class="f-table">
       <thead><tr><th>DÉTAIL</th><th>CONSOMMATION</th><th>MONTANT HT</th></tr></thead>
-      <tbody><tr>
-        <td><b id="fDetail"></b><span class="f-sous" id="fIndex"></span></td>
-        <td id="fConso"></td>
-        <td id="fLigneHT"></td>
-      </tr></tbody>
+      <tbody id="fCorps"></tbody>
     </table>
 
     <div class="f-totaux">
@@ -589,13 +588,31 @@ anomalie: [
       fClient: f.client.nom, fAdresse: f.client.adresse || '',
       fContact: [f.client.tel, f.client.email].filter(Boolean).join(' · '),
       fPeriode: f.periode, fCompteur: 'Compteur : ' + f.compteur,
-      fDetail: 'Consommation ' + f.typeLabel.toLowerCase(),
-      fIndex: 'Index ' + f.indexPrec + ' → ' + f.indexAct + ' ' + u,
-      fConso: f.conso + ' ' + u, fConso2: f.conso + ' ' + u,
-      fLigneHT: f.ht + ' DH', fHT: f.ht + ' DH', fTVA: f.tva + ' DH', fTTC: f.ttc + ' DH',
+      fIndex: 'Index : ' + f.indexPrec + ' → ' + f.indexAct + ' ' + u,
+      fContrat: f.contrat ? 'Contrat n° ' + f.contrat + ' · ' + f.quartier + ' · ' + f.activite : '',
+      fLogement: f.logement ? 'Adresse du logement : ' + f.logement : '',
+      fConso2: f.conso + ' ' + u,
+      fHT: f.ht + ' DH', fTVA: f.tva + ' DH', fTTC: f.ttc + ' DH',
       fIdxAvant: 'Index : ' + f.indexPrec + ' ' + u, fIdxApres: 'Index : ' + f.indexAct + ' ' + u
     };
     Object.keys(txt).forEach(k => $(k).textContent = txt[k]);
+    // Détail par tranche + redevance (ou ligne simple si le détail est indisponible)
+    const corps = $('fCorps');
+    corps.textContent = '';
+    const ligne = (lib, sous, qte, mont) => {
+      const tr = document.createElement('tr');
+      const t1 = document.createElement('td'), b = document.createElement('b');
+      b.textContent = lib; t1.appendChild(b);
+      if (sous) { const sp = document.createElement('span'); sp.className = 'f-sous'; sp.textContent = sous; t1.appendChild(sp); }
+      const t2 = document.createElement('td'); t2.textContent = qte;
+      const t3 = document.createElement('td'); t3.textContent = mont;
+      tr.append(t1, t2, t3); return tr;
+    };
+    if (f.lignes && f.lignes.length) {
+      f.lignes.forEach(l => corps.appendChild(ligne(l.libelle, l.sous, l.quantite, l.montant)));
+    } else {
+      corps.appendChild(ligne('Consommation ' + f.typeLabel.toLowerCase(), '', f.conso + ' ' + u, f.ht + ' DH'));
+    }
     $('fBadge').textContent = f.typeLabel;
     $('fBadge').className = 'f-badge ' + (f.type === 'Eau' ? 'eau' : 'elec');
     $('fStatut').className = 'f-statut ' + (f.paye ? 'paye' : 'impaye');

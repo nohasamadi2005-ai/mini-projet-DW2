@@ -95,6 +95,11 @@ $resilies = $d['resilies'];
   .ct dt { color:var(--mut); }
   .ct dd { margin:0; font-weight:600; text-align:right; overflow-wrap:anywhere; }
   .ct.ferme { opacity:.75; }
+  details.tranches { margin-top:12px; border-top:1px dashed var(--line); padding-top:10px; font-size:13px; }
+  details.tranches summary { cursor:pointer; font-weight:700; color:var(--blue-d); }
+  details.tranches ul { margin:10px 0 6px; padding-left:18px; }
+  details.tranches li { margin-bottom:3px; }
+  details.tranches small { color:var(--mut); font-size:11px; }
   details.resilies { margin-top:8px; }
   details.resilies summary { cursor:pointer; font-weight:700; margin-bottom:14px; }
   @media (max-width:760px) { .cartes { grid-template-columns:1fr; } .app { grid-template-columns:1fr; } .side { display:none; } }
@@ -165,13 +170,19 @@ $resilies = $d['resilies'];
                   </div>
                   <dl>
                     <dt>Compteur</dt><dd><?= h($c['compteur']) ?></dd>
-                    <dt>Quartier</dt><dd><?= h($c['quartier']) ?></dd>
-                    <dt>Type d'activité</dt><dd><?= h($c['activite']) ?></dd>
                     <dt>Tarif appliqué</dt><dd><?= h($c['tarif']) ?></dd>
+                    <dt>Redevance fixe</dt><dd><?= h($c['redevance']) ?></dd>
                     <dt>Seuil d'alerte</dt><dd><?= h($c['seuil']) ?></dd>
                     <dt>Début</dt><dd><?= h($c['debut']) ?></dd>
                     <dt>Index de départ</dt><dd><?= h($c['indexDebut']) ?> <?= h($c['unite']) ?></dd>
                   </dl>
+                  <?php if (!empty($c['tranches'])): ?>
+                    <details class="tranches">
+                      <summary>Voir les tranches de prix</summary>
+                      <ul><?php foreach ($c['tranches'] as $tx): ?><li><?= h($tx) ?></li><?php endforeach; ?></ul>
+                      <small>Le prix de la tranche atteinte s'applique à toute la consommation du mois.</small>
+                    </details>
+                  <?php endif; ?>
                 </article>
               <?php endforeach; ?>
             </div>

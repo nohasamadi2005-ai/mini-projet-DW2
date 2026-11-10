@@ -17,7 +17,21 @@ function preparerPageMesContrats()
         $actif  = $ct['Statut'] === 'Actif';
         $adr    = trim((string) $ct['Adresse_Branchement']);
 
+        // [P2] Vrais tarifs du type d'activité du contrat (tranches + redevance)
+        $unit  = $eau ? 'm³' : 'kWh';
+        $tr    = chargerTarifs($ct['Type_Compteur'], $ct['Type_Activite']);
+        $bas   = 0.0;
+        $tranchesTxt = [];
+        foreach ($tr['tranches'] as $t) {
+            $nb = function ($v) { return number_format((float) $v, fmod((float) $v, 1) == 0.0 ? 0 : 2, ',', ' '); };
+            $tranchesTxt[] = ($t['borne'] === null ? '> ' . $nb($bas) : $nb($bas) . ' – ' . $nb($t['borne']))
+                           . ' ' . $unit . ' : ' . number_format($t['prix'], 2, ',', ' ') . ' DH';
+            if ($t['borne'] !== null) { $bas = $t['borne']; }
+        }
+
         $carte = [
+            'tranches'  => $tranchesTxt,
+            'redevance' => number_format($tr['redevance'], 2, ',', ' ') . ' DH / mois',
             'id'        => (int) $ct['ID_Contrat'],
             'label'     => $eau ? 'Eau' : 'Électricité',
             'icone'     => $eau ? 'goutte' : 'eclair',
