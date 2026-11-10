@@ -128,13 +128,18 @@ function statutGlobal($types)
 function typeNormal($typeCompteur) { return $typeCompteur === 'Eau' ? 'Eau' : 'Electricite'; }
 
 
-// Contrat du compteur qui couvre le mois d'un relevé (le plus récent si deux se chevauchent : transfert dans le mois)
-function contratDuReleve($contratsParCompteur, $idCompteur, $annee, $mois)
+// Contrat du compteur, du même client, qui couvre le mois d'un relevé.
+// Le client est nécessaire : en cas de transfert dans le mois, le relevé de clôture de l'ancien client
+// doit rester sur son contrat (et non sur celui du nouveau).
+function contratDuReleve($contratsParCompteur, $idCompteur, $idClient, $annee, $mois)
 {
     $debutMois = sprintf('%04d-%02d-01', $annee, $mois);
     $finMois   = date('Y-m-t', strtotime($debutMois));
     $choix = null;
     foreach ($contratsParCompteur[(int) $idCompteur] ?? [] as $c) {
+        if ((int) $c['ID_Client'] !== (int) $idClient) {
+            continue;
+        }
         if ($c['Date_Debut'] <= $finMois && ($c['Date_Fin'] === null || $c['Date_Fin'] >= $debutMois)) {
             if ($choix === null || $c['Date_Debut'] > $choix['Date_Debut']
                 || ($c['Date_Debut'] === $choix['Date_Debut'] && (int) $c['ID_Contrat'] > (int) $choix['ID_Contrat'])) {
@@ -162,7 +167,7 @@ function consoParContrat($annee, $contratsParCompteur)
                 $precedent = (float) $l['Index_Actuel'];   // dernier index de l'année précédente
                 continue;
             }
-            $ct = contratDuReleve($contratsParCompteur, $idCompteur, (int) $l['Annee'], (int) $l['Mois']);
+            $ct = contratDuReleve($contratsParCompteur, $idCompteur, $l['ID_Client'], (int) $l['Annee'], (int) $l['Mois']);
             if ($ct !== null) {
                 $k = (int) $ct['ID_Contrat'];
                 $res[$k]['conso']       = ($res[$k]['conso'] ?? 0.0) + (float) $l['Index_Actuel'] - $precedent;
@@ -180,7 +185,7 @@ function anomaliesParContrat($annee, $contratsParCompteur)
 {
     $res = [];
     foreach (vaReleveEnAnomalie($annee) as $l) {
-        $ct = contratDuReleve($contratsParCompteur, $l['ID_Compteur'], $annee, (int) $l['Mois']);
+        $ct = contratDuReleve($contratsParCompteur, $l['ID_Compteur'], $l['ID_Client'], $annee, (int) $l['Mois']);
         if ($ct !== null) {
             $k = (int) $ct['ID_Contrat'];
             $res[$k] = ($res[$k] ?? 0) + 1;
@@ -195,7 +200,7 @@ function impayesParContrat($annee, $contratsParCompteur)
 {
     $res = [];
     foreach (vaFacturesImpayees($annee) as $l) {
-        $ct = contratDuReleve($contratsParCompteur, $l['ID_Compteur'], $annee, (int) $l['Mois']);
+        $ct = contratDuReleve($contratsParCompteur, $l['ID_Compteur'], $l['ID_Client'], $annee, (int) $l['Mois']);
         if ($ct !== null) {
             $k = (int) $ct['ID_Contrat'];
             $res[$k]['nb']    = ($res[$k]['nb'] ?? 0) + 1;

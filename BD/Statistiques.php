@@ -3,8 +3,9 @@
     Aucune vue SQL : la jointure  relevé -> contrat -> quartier -> type d'activité
     est écrite UNE seule fois, dans statFromReleves(), et réutilisée par toutes les requêtes.
     (consommation_mensuelle n'a pas d'ID_Contrat : on rattache le relevé au contrat du MÊME
-    compteur qui couvre le mois du relevé ; en cas de transfert dans le mois, le contrat
-    le plus récent est retenu.)                                                              */
+    compteur ET du MÊME CLIENT qui couvre le mois du relevé. Le filtre sur le client est
+    indispensable en cas de transfert dans le mois : le relevé de clôture de l'ancien client
+    reste ainsi sur son contrat et n'est pas attribué au nouveau.)                                                              */
 require_once __DIR__ . '/Consommation.php';
 
 
@@ -17,6 +18,7 @@ function statFromReleves($jointure = 'JOIN')
             " . $jointure . " contrat ct ON ct.ID_Contrat = (
                    SELECT c2.ID_Contrat FROM contrat c2
                     WHERE c2.ID_Compteur = cm.ID_Compteur
+                      AND c2.ID_Client = cm.ID_Client
                       AND c2.Date_Debut <= LAST_DAY(" . STAT_DEBUT_MOIS . ")
                       AND (c2.Date_Fin IS NULL OR c2.Date_Fin >= " . STAT_DEBUT_MOIS . ")
                     ORDER BY c2.Date_Debut DESC, c2.ID_Contrat DESC

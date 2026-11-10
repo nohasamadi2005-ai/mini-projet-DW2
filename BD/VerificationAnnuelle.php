@@ -39,7 +39,7 @@ function vaIndexVerifies($annee)
            FROM consommation_mensuelle cm
            JOIN compteur c ON c.ID_Compteur = cm.ID_Compteur
           WHERE cm.Statut_Traitement = 'Verifie' AND cm.Annee <= ?
-          ORDER BY cm.ID_Compteur, cm.Annee, cm.Mois",
+          ORDER BY cm.ID_Compteur, cm.Annee, cm.Mois, cm.ID_Consommation_Mensuelle",
         'i', [$annee]
     );
 }
@@ -68,22 +68,22 @@ function vaContrats($annee)
 }
 
 
-// Relevés de l'année encore en anomalie / ressaisie (le contrat est retrouvé côté PHP : compteur + mois)
+// Relevés de l'année encore en anomalie / ressaisie (le contrat est retrouvé côté PHP : compteur + mois + client)
 function vaReleveEnAnomalie($annee)
 {
     return consoSelect(
-        "SELECT ID_Compteur, Mois FROM consommation_mensuelle
+        "SELECT ID_Client, ID_Compteur, Mois FROM consommation_mensuelle
           WHERE Annee = ? AND Statut_Traitement <> 'Verifie'",
         'i', [$annee]
     );
 }
 
 
-// Factures de l'année non payées (le contrat est retrouvé côté PHP : compteur + mois)
+// Factures de l'année non payées (le contrat est retrouvé côté PHP : compteur + mois + client)
 function vaFacturesImpayees($annee)
 {
     return consoSelect(
-        "SELECT cm.ID_Compteur, cm.Mois, f.Montant_TTC
+        "SELECT cm.ID_Client, cm.ID_Compteur, cm.Mois, f.Montant_TTC
            FROM facture f
            JOIN consommation_mensuelle cm ON cm.ID_Consommation_Mensuelle = f.ID_Consommation_Mensuelle
           WHERE cm.Annee = ? AND f.Statut_Paiement <> 'Payee'",
