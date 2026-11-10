@@ -10,6 +10,7 @@ $liensMenu = [
     'traitement_anomalies'     => ['fa-triangle-exclamation', 'Traitement des Anomalies'],
     'tableau_bord'             => ['fa-chart-line',           'Tableau de bord'],
     'reclamations_fournisseur' => ['fa-file-invoice-dollar',  'Gestion des Réclamations'],
+    'quartiers_tarifs'         => ['fa-tags',                 'Quartiers & Tarifs'],
 ];
 // Pages rattachées à une entrée du menu
 $pageMenu = $_GET['page'] ?? 'gestion_client';

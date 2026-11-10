@@ -346,6 +346,24 @@ case 'historique_compteurs':
         $d = preparerPageHistoriqueCompteurs();
         require __DIR__ . '/IHM/fournisseur/historique_compteurs.php';
         break;
+
+    // ---- Quartiers & tarifs (Personne 2) ----
+    case 'quartiers_tarifs':
+        exigerRole('fournisseur');
+        require_once __DIR__ . '/traitement/tarifs.php';
+        $d = preparerPageQuartiersTarifs();
+        require __DIR__ . '/IHM/fournisseur/quartiers_tarifs.php';
+        break;
+
+    case 'tarifs_action':
+        exigerRole('fournisseur');
+        require_once __DIR__ . '/traitement/tarifs.php';
+        if ($post) {
+            traiterActionTarifs();          // redirige vers index.php?page=quartiers_tarifs
+        }
+        header('Location: index.php?page=quartiers_tarifs');
+        exit;
+
     default:
         http_response_code(404);
         require __DIR__ . '/IHM/404.php';

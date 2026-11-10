@@ -6,7 +6,7 @@ function getSaisiePourFacture($idConso)
 {
     $r = consoSelect(
         "SELECT cm.ID_Consommation_Mensuelle, cm.Mois, cm.Annee, cm.Consommation,
-                cm.Statut_Traitement, c.Type_Compteur
+                cm.Statut_Traitement, c.Type_Compteur, c.ID_Compteur
            FROM consommation_mensuelle cm
            JOIN compteur c ON c.ID_Compteur = cm.ID_Compteur
           WHERE cm.ID_Consommation_Mensuelle = ?",

@@ -28,7 +28,7 @@ function preparerPageMesContrats()
             // [P2] Le tarif dépend du type d'activité. Quand la personne 2 aura publié ses tarifs,
             // on pourra afficher ici le détail des tranches via detailMontants().
             'tarif'     => 'Tarif ' . $ct['Type_Activite'] . ' — ' . ($eau ? 'Eau' : 'Électricité'),
-            'seuil'     => seuilMax($ct['Type_Compteur']) . ' ' . ($eau ? 'm³' : 'kWh') . ' / mois',
+            'seuil'     => seuilMax($ct['Type_Compteur'], $ct['Type_Activite']) . ' ' . ($eau ? 'm³' : 'kWh') . ' / mois',
             'debut'     => dateFr($ct['Date_Debut']),
             'fin'       => $ct['Date_Fin'] ? dateFr($ct['Date_Fin']) : null,
             'motif'     => $ct['Motif_Fin'],
