@@ -118,7 +118,7 @@ function traiterSaisie()
     $delta = round($indexActuel - $ref['index'], 2);
 
 
-    $typeAnomalie = detecterAnomalie($delta, $compteur['Type_Compteur']);
+    $typeAnomalie = detecterAnomalie($delta, $compteur['Type_Compteur'], getTypeActiviteDuCompteur($idCompteur));
     $statut       = $typeAnomalie ? 'Anomalie' : 'Verifie';
     
    

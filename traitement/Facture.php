@@ -23,7 +23,7 @@ function genererFacture($idConso)
         return null; // Déjà facturée
     }
 
-    [$ht, $tva, $ttc] = calculerMontants((float) $s['Consommation'], $s['Type_Compteur']);
+    [$ht, $tva, $ttc] = calculerMontants((float) $s['Consommation'], $s['Type_Compteur'], getTypeActiviteDuCompteur($s['ID_Compteur']));
 
     $debut = sprintf('%04d-%02d-01', (int) $s['Annee'], (int) $s['Mois']);
     $fin   = date('Y-m-t', strtotime($debut));
