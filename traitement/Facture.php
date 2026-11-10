@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/Regles.php';
 require_once __DIR__ . '/../BD/Facture.php';
+require_once __DIR__ . '/../BD/Contrat.php';   
 
 /**
  * Génère une facture si le relevé est validé ou corrigé
@@ -39,13 +40,31 @@ function preparerPageFactures()
     $idClient = (int) $_SESSION['user']['id'];
     $factures = [];
 
+    // [P3] Contrats du client (pour le filtre) ; on n'accepte qu'un contrat qui lui appartient
+    $contrats = [];
+    $idsValides = [];
+    foreach (getContratsDuClient($idClient) as $ct) {
+        $eauCt = $ct['Type_Compteur'] === 'Eau';
+        $idsValides[] = (int) $ct['ID_Contrat'];
+        $contrats[] = [
+            'id'    => (int) $ct['ID_Contrat'],
+            'label' => 'Contrat n° ' . $ct['ID_Contrat'] . ' — ' . ($eauCt ? 'Eau' : 'Électricité')
+                     . ' · ' . $ct['Quartier'] . ' (' . $ct['Ville'] . ') · ' . $ct['Type_Activite']
+                     . ($ct['Statut'] === 'Actif' ? '' : ' (terminé)'),
+        ];
+    }
+    $filtre = (int) ($_GET['contrat'] ?? 0);
+    if (!in_array($filtre, $idsValides, true)) {
+        $filtre = 0;
+    }
+
     $moisFr = [
         1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',
         5 => 'Mai', 6 => 'Juin', 7 => 'Juillet', 8 => 'Août',
         9 => 'Septembre', 10 => 'Octobre', 11 => 'Novembre', 12 => 'Décembre'
     ];
 
-    foreach (getFacturesDuClient($idClient) as $f) {
+    foreach (getFacturesDuClient($idClient, $filtre) as $f) {
         $eau = (strtolower($f['Type_Compteur']) === 'eau');
         $statuts = [
             'Payee'     => ['Payée',     'paye'],
@@ -68,6 +87,9 @@ function preparerPageFactures()
 
         $factures[] = [
             'id'        => (int) $f['ID_Facture'],
+            'contrat'   => $f['ID_Contrat'] ? (int) $f['ID_Contrat'] : null,
+            'quartier'  => $f['Quartier'] ? $f['Quartier'] . ' (' . $f['Ville'] . ')' : null,
+            'activite'  => $f['Type_Activite'],
             'numero'    => 'FAC-' . $f['Annee'] . '-' . ($eau ? 'EAU' : 'ELEC')
                          . '-' . str_pad($f['ID_Facture'], 4, '0', STR_PAD_LEFT),
             'date'      => $dateFormatted,
@@ -81,7 +103,7 @@ function preparerPageFactures()
             'paye'      => (strtolower($f['Statut_Paiement']) === 'payee' || strtolower($f['Statut_Paiement']) === 'paye'),
         ];
     }
-    return compact('factures');
+    return compact('factures', 'contrats', 'filtre');
 }
 
 /**
@@ -111,7 +133,24 @@ function preparerFactureImprimable($idFacture, $idClient)
     $indexPrecFormatted = function_exists('formaterIndex') ? formaterIndex($f['Index_Precedent']) : number_format((float)$f['Index_Precedent'], 2, ',', ' ');
     $indexActFormatted = function_exists('formaterIndex') ? formaterIndex($f['Index_Actuel']) : number_format((float)$f['Index_Actuel'], 2, ',', ' ');
 
+    // [P3] Détail par tranche + redevance : fourni par la Personne 2 (traitement/Regles.php).
+    // Tant que detailMontants() n'existe pas, la facture garde l'affichage actuel (une seule ligne).
+    $detail = null;
+    if (function_exists('detailMontants') && !empty($f['Type_Activite'])) {
+        try {
+            $detail = detailMontants((float) $f['Consommation'], $f['Type_Compteur'], $f['Type_Activite']);
+        } catch (Throwable $e) {
+            error_log($e->getMessage());
+            $detail = null;
+        }
+    }
+
     return [
+        'contrat'      => $f['ID_Contrat'] ? (int) $f['ID_Contrat'] : null,
+        'quartier'     => $f['Quartier'] ? $f['Quartier'] . ' (' . $f['Ville'] . ')' : null,
+        'activite'     => $f['Type_Activite'],
+        'detail'       => $detail,
+        'unite'        => $unite,
         'numero'       => 'FAC-' . $f['Annee'] . '-' . ($eau ? 'EAU' : 'ELEC')
                         . '-' . str_pad($f['ID_Facture'], 4, '0', STR_PAD_LEFT),
         'date'         => $dateFormatted,

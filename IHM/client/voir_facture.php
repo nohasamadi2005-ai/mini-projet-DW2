@@ -82,17 +82,41 @@ if (!function_exists('h')) {
         <span class="f-sous"><?= h($facture['adresse']) ?></span>
         <span class="f-sous"><?= h($facture['contact']) ?></span></div>
       <div><small>PÉRIODE DE CONSOMMATION</small><b><?= h($facture['periode']) ?></b>
-        <span class="f-sous">Compteur n° <?= h($facture['compteur']) ?></span></div>
+        <span class="f-sous">Compteur n° <?= h($facture['compteur']) ?></span>
+        <?php if ($facture['contrat']): ?>
+          <span class="f-sous">Contrat n° <?= (int) $facture['contrat'] ?> · <?= h($facture['quartier']) ?> · <?= h($facture['activite']) ?></span>
+        <?php endif; ?></div>
     </div>
 
     <table class="f-table">
       <thead><tr><th>DÉTAIL</th><th>CONSOMMATION</th><th>MONTANT HT</th></tr></thead>
-      <tbody><tr>
-        <td><b><?= h($facture['typeLabel']) ?></b>
-            <span class="f-sous">Index : <?= h($facture['indexPrec']) ?> → <?= h($facture['indexAct']) ?></span></td>
-        <td><?= h($facture['conso']) ?></td>
-        <td><?= h($facture['ht']) ?> DH</td>
-      </tr></tbody>
+      <tbody>
+      <?php $dt = $facture['detail']; ?>
+      <?php if (is_array($dt) && !empty($dt['tranches'])): ?>
+        <?php foreach ($dt['tranches'] as $t): ?>
+          <tr>
+            <td><b>Tranche <?= h($t['de']) ?> – <?= h($t['a'] ?? '…') ?> <?= h($facture['unite']) ?></b>
+                <span class="f-sous"><?= h(number_format((float) $t['prix'], 2, ',', ' ')) ?> DH / <?= h($facture['unite']) ?></span></td>
+            <td><?= h(number_format((float) $t['quantite'], 2, ',', ' ')) ?> <?= h($facture['unite']) ?></td>
+            <td><?= h(number_format((float) $t['montant'], 2, ',', ' ')) ?> DH</td>
+          </tr>
+        <?php endforeach; ?>
+        <?php if (isset($dt['redevance'])): ?>
+          <tr>
+            <td><b>Redevance fixe</b><span class="f-sous"><?= h($facture['activite']) ?></span></td>
+            <td>—</td>
+            <td><?= h(number_format((float) $dt['redevance'], 2, ',', ' ')) ?> DH</td>
+          </tr>
+        <?php endif; ?>
+      <?php else: ?>
+        <tr>
+          <td><b><?= h($facture['typeLabel']) ?></b>
+              <span class="f-sous">Index : <?= h($facture['indexPrec']) ?> → <?= h($facture['indexAct']) ?></span></td>
+          <td><?= h($facture['conso']) ?></td>
+          <td><?= h($facture['ht']) ?> DH</td>
+        </tr>
+      <?php endif; ?>
+      </tbody>
     </table>
 
     <div class="f-totaux">

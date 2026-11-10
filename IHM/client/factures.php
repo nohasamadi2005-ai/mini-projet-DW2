@@ -89,11 +89,18 @@ function icone($nom)
   .vide .i { width:34px; height:34px; margin-bottom:10px; color:#b6c3d4; }
   .vide b { display:block; color:var(--txt); font-size:15px; margin-bottom:4px; }
 
+  .filtre { display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+  .filtre label { font-size:12px; font-weight:700; }
+  .filtre select { flex:1; min-width:240px; max-width:560px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; font:inherit; background:#fff; }
+  .filtre button, .filtre a { border-radius:8px; padding:10px 14px; font-weight:700; font-size:12px; text-decoration:none; }
+  .filtre button { background:var(--blue); color:#fff; border:0; }
+  .filtre a { color:var(--blue-d); border:1px solid var(--blue); background:#fff; }
+  .sub { display:block; color:var(--mut); font-size:11px; font-weight:400; margin-top:2px; }
   .actions-cell { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
 
   @media (max-width:900px) {
     .app { grid-template-columns:1fr; } .side { position:static; height:auto; }
-    .carte { overflow-x:auto; } table.hist { min-width:780px; }
+    .carte { overflow-x:auto; } table.hist { min-width:900px; }
   }
 </style>
 </head>
@@ -131,18 +138,38 @@ function icone($nom)
       <h1>Mes factures</h1>
       <p class="sous">Retrouvez l'historique de toutes vos factures d'eau et d'électricité.</p>
 
+      <?php if (!empty($d['contrats'])): ?>
+        <form class="filtre" method="get" action="index.php">
+          <input type="hidden" name="page" value="factures">
+          <label for="fContrat">Filtrer par contrat</label>
+          <select name="contrat" id="fContrat" onchange="this.form.submit()">
+            <option value="0">Tous mes contrats</option>
+            <?php foreach ($d['contrats'] as $ct): ?>
+              <option value="<?= (int) $ct['id'] ?>" <?= $ct['id'] === $d['filtre'] ? 'selected' : '' ?>><?= h($ct['label']) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <noscript><button type="submit">Filtrer</button></noscript>
+          <?php if ($d['filtre']): ?><a href="index.php?page=factures">Tout afficher</a><?php endif; ?>
+        </form>
+      <?php endif; ?>
+
       <div class="carte">
       <?php if (empty($d['factures'])): ?>
         <div class="vide">
           <?= icone('facture') ?>
-          <b>Aucune facture disponible</b>
-          Votre première facture apparaîtra ici après la validation de votre premier relevé.
+          <?php if ($d['filtre']): ?>
+            <b>Aucune facture pour ce contrat</b>
+            Choisissez un autre contrat ou affichez tous vos contrats.
+          <?php else: ?>
+            <b>Aucune facture disponible</b>
+            Votre première facture apparaîtra ici après la validation de votre premier relevé.
+          <?php endif; ?>
         </div>
       <?php else: ?>
         <table class="hist">
           <thead>
             <tr>
-              <th>N° FACTURE</th><th>DATE</th><th>PÉRIODE</th><th>TYPE</th>
+              <th>N° FACTURE</th><th>CONTRAT</th><th>DATE</th><th>PÉRIODE</th><th>TYPE</th>
               <th>CONSOMMATION</th><th class="r">MONTANT TTC</th><th>STATUT</th><th class="r">ACTIONS</th>
             </tr>
           </thead>
@@ -150,6 +177,9 @@ function icone($nom)
           <?php foreach ($d['factures'] as $f): ?>
             <tr>
               <td class="num"><?= h($f['numero']) ?></td>
+              <td><?php if ($f['contrat']): ?>n° <?= (int) $f['contrat'] ?>
+                    <span class="sub"><?= h($f['quartier']) ?> · <?= h($f['activite']) ?></span>
+                  <?php else: ?>—<?php endif; ?></td>
               <td><?= h($f['date']) ?></td>
               <td><?= h($f['periode']) ?></td>
               <td><span class="f-badge <?= h($f['type']) ?>">
