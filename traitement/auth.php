@@ -286,7 +286,7 @@ function changerMotDePasse($ancien, $nouveau, $nouveau2)
 
 function pageAccueil($role)
 {
-    if ($role === 'fournisseur') return 'gestion_client';
+    if ($role === 'fournisseur') return 'tableau_bord';
     if ($role === 'agent') return 'saisie_agent'; // Remplacez par la page d'accueil de l'agent
     return 'saisie';
 }

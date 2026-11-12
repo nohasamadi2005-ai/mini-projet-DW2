@@ -97,7 +97,7 @@ function obtenirHistoriquePaiementsFournisseur($f = [])
            JOIN facture f ON f.ID_Consommation_Mensuelle = cm.ID_Consommation_Mensuelle
            JOIN client cl ON cl.ID_Client = cm.ID_Client
           WHERE " . implode(' AND ', $where) . "
-          ORDER BY f.Date_Facture DESC, f.ID_Facture DESC",
+          ORDER BY f.Date_paiement DESC, f.Date_Facture DESC, f.ID_Facture DESC",
         $types ?: null, $params
     );
 }

@@ -29,6 +29,24 @@ foreach ($paiements as $p) {
     $totalTVA += $p['TVA'];
 }
 $filtreActif = $filtres['quartier'] || $filtres['type'] || $filtres['ville'] !== '';
+
+// ---- Pagination (affichage seulement : les totaux ci-dessus restent calculés sur TOUS les résultats filtrés) ----
+$parPage       = 10;
+$totalPages    = max(1, (int) ceil($nbTransactions / $parPage));
+$pageCourante  = min(max(1, (int) ($_GET['p'] ?? 1)), $totalPages);
+$paiementsPage = array_slice($paiements, ($pageCourante - 1) * $parPage, $parPage);
+$debutAff      = $nbTransactions ? ($pageCourante - 1) * $parPage + 1 : 0;
+$finAff        = min($pageCourante * $parPage, $nbTransactions);
+// Lien de page : conserve les filtres actifs
+$urlPage = function (int $n) use ($filtres) {
+    return 'index.php?' . http_build_query(array_filter([
+        'page'     => 'historique_paiements',
+        'ville'    => $filtres['ville'],
+        'quartier' => $filtres['quartier'] ?: null,
+        'type'     => $filtres['type'] ?: null,
+        'p'        => $n > 1 ? $n : null,
+    ], fn($v) => $v !== null && $v !== ''));
+};
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -101,7 +119,14 @@ $filtreActif = $filtres['quartier'] || $filtres['type'] || $filtres['ville'] !==
         .filtres button { background:#1890FF; color:#fff; }
         .filtres a.reset { background:#E2E8F0; color:#475569; }
         .badge-type { background:#EDE9FE; color:#6D28D9; }
-        tfoot td { font-weight:700; background:#F8FAFC; border-top:2px solid #E2E8F0; }
+.pagination { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding:14px 20px; border-top:1px solid #E2E8F0; background:#fff; }
+        .pagination .info { font-size:13px; color:#64748B; }
+        .pagination .pages { display:flex; gap:6px; flex-wrap:wrap; }
+        .pagination .pages a, .pagination .pages span { min-width:34px; height:34px; padding:0 10px; display:flex; align-items:center; justify-content:center; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:500; color:#475569; text-decoration:none; background:#fff; }
+        .pagination .pages a:hover { background:#F1F5F9; }
+        .pagination .pages .current { background:#1890FF; border-color:#1890FF; color:#fff; font-weight:600; }
+        .pagination .pages .disabled { color:#CBD5E1; background:#F8FAFC; }
+                tfoot td { font-weight:700; background:#F8FAFC; border-top:2px solid #E2E8F0; }
     </style>
 </head>
 <body>
@@ -239,7 +264,7 @@ $filtreActif = $filtres['quartier'] || $filtres['type'] || $filtres['ville'] !==
                                 </td>
                             </tr>
                         <?php else: ?>
-                            <?php foreach ($paiements as $p): ?>
+                            <?php foreach ($paiementsPage as $p): ?>
                                 <tr>
                                     <td><strong>#FAC-<?php echo htmlspecialchars($p['ID_Facture']); ?></strong></td>
                                     <td><strong><?php echo htmlspecialchars($p['Nom'] . ' ' . $p['Prenom']); ?></strong></td>
@@ -277,7 +302,7 @@ $filtreActif = $filtres['quartier'] || $filtres['type'] || $filtres['ville'] !==
                     <?php if (!empty($paiements)): ?>
                     <tfoot>
                         <tr>
-                            <td colspan="5">TOTAUX (<?= $nbTransactions ?> règlement(s))</td>
+                            <td colspan="5">TOTAUX — toutes pages (<?= $nbTransactions ?> règlement(s))</td>
                             <td><?= number_format($totalHT, 2, ',', ' ') ?> DH</td>
                             <td><?= number_format($totalTVA, 2, ',', ' ') ?> DH</td>
                             <td style="color:#16A34A;"><?= number_format($totalEncaisse, 2, ',', ' ') ?> DH</td>
@@ -286,6 +311,44 @@ $filtreActif = $filtres['quartier'] || $filtres['type'] || $filtres['ville'] !==
                     </tfoot>
                     <?php endif; ?>
                 </table>
+
+                <?php if ($totalPages > 1): ?>
+                <div class="pagination">
+                    <div class="info">Affichage de <?= $debutAff ?> à <?= $finAff ?> sur <?= $nbTransactions ?> règlement(s)</div>
+                    <div class="pages">
+                        <?php if ($pageCourante > 1): ?>
+                            <a href="<?= htmlspecialchars($urlPage($pageCourante - 1)) ?>"><i class="fa-solid fa-chevron-left"></i></a>
+                        <?php else: ?>
+                            <span class="disabled"><i class="fa-solid fa-chevron-left"></i></span>
+                        <?php endif; ?>
+
+                        <?php
+                        $debutP = max(1, $pageCourante - 2);
+                        $finP   = min($totalPages, $pageCourante + 2);
+                        if ($debutP > 1): ?>
+                            <a href="<?= htmlspecialchars($urlPage(1)) ?>">1</a>
+                            <?php if ($debutP > 2): ?><span class="disabled">…</span><?php endif; ?>
+                        <?php endif;
+                        for ($i = $debutP; $i <= $finP; $i++): ?>
+                            <?php if ($i === $pageCourante): ?>
+                                <span class="current"><?= $i ?></span>
+                            <?php else: ?>
+                                <a href="<?= htmlspecialchars($urlPage($i)) ?>"><?= $i ?></a>
+                            <?php endif; ?>
+                        <?php endfor;
+                        if ($finP < $totalPages): ?>
+                            <?php if ($finP < $totalPages - 1): ?><span class="disabled">…</span><?php endif; ?>
+                            <a href="<?= htmlspecialchars($urlPage($totalPages)) ?>"><?= $totalPages ?></a>
+                        <?php endif; ?>
+
+                        <?php if ($pageCourante < $totalPages): ?>
+                            <a href="<?= htmlspecialchars($urlPage($pageCourante + 1)) ?>"><i class="fa-solid fa-chevron-right"></i></a>
+                        <?php else: ?>
+                            <span class="disabled"><i class="fa-solid fa-chevron-right"></i></span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
