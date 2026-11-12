@@ -145,7 +145,7 @@ $dernierFichier = !empty($fichiersImportes) ? $fichiersImportes[0]['Nom_Fichier'
             <div class="upload-icon-circle">📁</div>
             <strong>Glissez votre fichier de consommation ici</strong>
             <p style="color: #6b7a90; font-size: 13px; margin: 6px 0 0;">ou cliquez pour sélectionner un fichier</p>
-            <div style="font-size: 11px; color: #94a3b8; margin-top: 10px;">Format accepté : .TXT - Taille maximale : 10 Mo</div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 10px;">Format accepté : .TXT - Taille maximale : 10 Mo<br>Une ligne par contrat : <strong>ID_Contrat ; consommation</strong> (m³ pour l'eau, kWh pour l'électricité, point décimal)</div>
             <input type="file" id="fileInput" name="fichier_txt" accept=".txt" style="display: none;" required>
           </div>
 

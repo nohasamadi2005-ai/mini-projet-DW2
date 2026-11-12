@@ -1,5 +1,5 @@
 <?php
-/** @var array $d données préparées par preparerPageTournee() */
+/** @var array $d données préparées par preparerPageTournee() (traitement/agent.php) */
 // Page « Ma tournée » — données préparées par preparerPageTournee() (traitement/agent.php) dans $d
 $user     = $_SESSION['user'] ?? ['nom' => 'Utilisateur', 'prenom' => 'Agent'];
 $initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
@@ -160,12 +160,7 @@ $libelleType = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
         </div>
       </div>
 
-      <?php if (empty($quartiers)): ?>
-        <div class="progress-card">
-          <strong>Aucun quartier ne vous est affecté pour le moment.</strong>
-          <p class="progress-note">Votre tournée est vide : demandez au fournisseur de vous affecter des quartiers.</p>
-        </div>
-      <?php else: ?>
+      
 
       <!-- Progression -->
       <div class="progress-card">
@@ -176,7 +171,7 @@ $libelleType = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
         <div class="bar<?= $pct >= 100 ? ' complete' : '' ?>"><div style="width: <?= $pct ?>%"></div></div>
         <p class="progress-note">
           <?php if ($progression['total'] === 0): ?>
-            Aucun contrat actif dans vos quartiers.
+            Aucun contrat en cours dans vos quartiers pour cette année.
           <?php elseif ($progression['restants'] === 0): ?>
             Tournée terminée : tous les contrats sont relevés pour <?= (int) $annee ?>.
           <?php else: ?>
@@ -189,12 +184,12 @@ $libelleType = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
         <div class="stat-card">
           <div class="label">Contrats dans ma tournée</div>
           <div class="value"><?= (int) $progression['total'] ?></div>
-          <div class="desc">Contrats actifs</div>
+          <div class="desc">Contrats en cours sur l'année</div>
         </div>
         <div class="stat-card">
           <div class="label">Déjà relevés</div>
           <div class="value"><?= (int) $progression['releves'] ?></div>
-          <div class="desc">Lignes intégrées pour <?= (int) $annee ?></div>
+          <div class="desc">Ligne intégrée pour <?= (int) $annee ?></div>
         </div>
         <div class="stat-card">
           <div class="label">Restant à relever</div>
@@ -258,7 +253,7 @@ $libelleType = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
                     <strong><?= htmlspecialchars($l['Prenom'] . ' ' . $l['Nom']) ?></strong><br>
                     <span class="muted">Client n° <?= (int) $l['ID_Client'] ?></span>
                   </td>
-                  <td>n° <?= (int) $l['ID_Contrat'] ?></td>
+                  <td>n° <?= (int) $l['ID_Contrat'] ?><?php if ($l['Statut_Contrat'] === 'Resilie' && !empty($l['Date_Fin'])): ?><br><span class="muted">résilié le <?= date('d/m/Y', strtotime($l['Date_Fin'])) ?></span><?php endif; ?></td>
                   <td><?= htmlspecialchars($libelleType[$l['Type_Compteur']] ?? $l['Type_Compteur']) ?><br><span class="muted">Compteur n° <?= (int) $l['ID_Compteur'] ?></span></td>
                   <td><?= htmlspecialchars($l['Adresse_Branchement'] ?? '—') ?></td>
                   <td>
@@ -278,7 +273,7 @@ $libelleType = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
         </table>
       </div>
 
-      <?php endif; ?>
+      
     </div>
   </div>
 

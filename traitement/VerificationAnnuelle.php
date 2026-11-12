@@ -242,8 +242,9 @@ function calculerVerificationAnnuelle($annee, $idQuartier = 0)
         foreach (TYPES_COMPTEUR as $type) {
             $groupe = array_values(array_filter($parClient[$id] ?? [], fn($c) => typeNormal($c['Type_Compteur']) === $type));
 
-            $a = isset($agent[$id])
-                ? (float) $agent[$id][$type === 'Eau' ? 'ConsommationEau' : 'ConsommationElect']
+            $colAgent = $type === 'Eau' ? 'ConsommationEau' : 'ConsommationElect';
+            $a = isset($agent[$id]) && $agent[$id][$colAgent] !== null
+               ? (float) $agent[$id][$colAgent]
                 : null;
 
             $cGroupe = null; $dernierMois = 0; $nbAnom = 0;

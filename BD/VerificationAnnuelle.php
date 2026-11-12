@@ -11,20 +11,54 @@ function vaAnneesDisponibles()
 }
 
 
-// Valeurs du fichier de l'agent (lignes intégrées seulement) : [ID_Client => ligne]. Le dépôt de l'agent est
-// par CLIENT (eau + électricité). Si un fichier a été importé deux fois, la ligne la plus récente écrase la précédente.
+// Valeurs du fichier de l'agent : [ID_Client => ['ConsommationEau' => .., 'ConsommationElect' => .., 'Fichier_Source' => ..]].
+// Seules les lignes intégrées comptent (les lignes rejetées sont ignorées).
+// Une ligne = un contrat (un compteur) : on garde la dernière ligne de chaque contrat, puis on additionne
+// par client et par type (un client peut avoir plusieurs contrats, par exemple une maison et une résidence
+// secondaire). Un type sans aucun contrat relevé vaut NULL (= « pas relevé »).
+// Anciens dépôts par client (ID_Contrat vide) : la dernière ligne du client donne l'eau et l'électricité.
 function vaReleveAgent($annee)
 {
     $lignes = consoSelect(
-        "SELECT ID_Client, ConsommationEau, ConsommationElect, Fichier_Source
+        "SELECT ID_Client, ID_Contrat, ConsommationEau, ConsommationElect, Fichier_Source
            FROM consommation_annuelle
-          WHERE Annee = ? AND Statut_Import = 'Integre' AND ID_Client IS NOT NULL   -- les lignes rejetées (Personne 4) ne comptent pas
+          WHERE Annee = ? AND Statut_Import = 'Integre'
           ORDER BY Date_saisie ASC, ID_Consommation_Annuelle ASC",
         'i', [$annee]
     );
-    $par = [];
+
+    $parContrat = [];     // dernière ligne de chaque contrat
+    $parClient  = [];     // dernière ligne d'un ancien dépôt par client
     foreach ($lignes as $l) {
-        $par[(int) $l['ID_Client']] = $l;
+        if ($l['ID_Contrat'] !== null) {
+            $parContrat[(int) $l['ID_Contrat']] = $l;
+        } else {
+            $parClient[(int) $l['ID_Client']] = $l;
+        }
+    }
+
+    $par = [];
+    foreach ($parClient as $id => $l) {
+        $par[$id] = ['ID_Client' => $id, 'ConsommationEau' => $l['ConsommationEau'],
+                     'ConsommationElect' => $l['ConsommationElect'], 'Fichier_Source' => $l['Fichier_Source']];
+    }
+    $remplace = [];       // [client][colonne] : l'ancienne valeur par client est remplacée par les contrats
+    foreach ($parContrat as $l) {
+        $id = (int) $l['ID_Client'];
+        foreach (['ConsommationEau', 'ConsommationElect'] as $col) {
+            if ($l[$col] === null) {
+                continue;
+            }
+            if (!isset($par[$id])) {
+                $par[$id] = ['ID_Client' => $id, 'ConsommationEau' => null, 'ConsommationElect' => null, 'Fichier_Source' => $l['Fichier_Source']];
+            }
+            if (empty($remplace[$id][$col])) {
+                $par[$id][$col] = 0.0;
+                $remplace[$id][$col] = true;
+            }
+            $par[$id][$col] += (float) $l[$col];
+        }
+        $par[$id]['Fichier_Source'] = $l['Fichier_Source'];
     }
     return $par;
 }
@@ -39,56 +73,46 @@ function vaIndexVerifies($annee)
            FROM consommation_mensuelle cm
            JOIN compteur c ON c.ID_Compteur = cm.ID_Compteur
           WHERE cm.Statut_Traitement = 'Verifie' AND cm.Annee <= ?
-          ORDER BY cm.ID_Compteur, cm.Annee, cm.Mois, cm.ID_Consommation_Mensuelle",
+          ORDER BY cm.ID_Compteur, cm.Annee, cm.Mois",
         'i', [$annee]
     );
 }
 
 
-// Contrats qui chevauchent l'année (actifs ou résiliés en cours d'année), avec quartier et type d'activité.
-// [ID_Contrat => ligne]
-function vaContrats($annee)
+// Saisies de l'année encore en anomalie / ressaisie : [ID_Client => nombre]
+function vaAnomaliesEnAttente($annee)
 {
     $r = consoSelect(
-        "SELECT ct.ID_Contrat, ct.ID_Client, ct.ID_Compteur, ct.Date_Debut, ct.Date_Fin, ct.Statut,
-                q.ID_Quartier, q.Nom AS Quartier, q.Ville, ta.Libelle AS Type_Activite, cp.Type_Compteur
-           FROM contrat ct
-           JOIN quartier q       ON q.ID_Quartier = ct.ID_Quartier
-           JOIN type_activite ta ON ta.ID_Type_Activite = q.ID_Type_Activite
-           JOIN compteur cp      ON cp.ID_Compteur = ct.ID_Compteur
-          WHERE ct.Date_Debut <= ? AND (ct.Date_Fin IS NULL OR ct.Date_Fin >= ?)
-          ORDER BY ct.ID_Contrat",
-        'ss', [(int) $annee . '-12-31', (int) $annee . '-01-01']
+        "SELECT ID_Client, COUNT(*) AS nb FROM consommation_mensuelle
+          WHERE Annee = ? AND Statut_Traitement <> 'Verifie' GROUP BY ID_Client",
+        'i', [$annee]
     );
     $out = [];
     foreach ($r as $l) {
-        $out[(int) $l['ID_Contrat']] = $l;
+        $out[(int) $l['ID_Client']] = (int) $l['nb'];
     }
     return $out;
 }
 
 
-// Relevés de l'année encore en anomalie / ressaisie (le contrat est retrouvé côté PHP : compteur + mois + client)
-function vaReleveEnAnomalie($annee)
+// Factures de l'année non payées : [ID_Client][type] = ['nb' => , 'total' => ]
+function vaImpayes($annee)
 {
-    return consoSelect(
-        "SELECT ID_Client, ID_Compteur, Mois FROM consommation_mensuelle
-          WHERE Annee = ? AND Statut_Traitement <> 'Verifie'",
-        'i', [$annee]
-    );
-}
-
-
-// Factures de l'année non payées (le contrat est retrouvé côté PHP : compteur + mois + client)
-function vaFacturesImpayees($annee)
-{
-    return consoSelect(
-        "SELECT cm.ID_Client, cm.ID_Compteur, cm.Mois, f.Montant_TTC
+    $r = consoSelect(
+        "SELECT cm.ID_Client, c.Type_Compteur, COUNT(*) AS nb, SUM(f.Montant_TTC) AS total
            FROM facture f
            JOIN consommation_mensuelle cm ON cm.ID_Consommation_Mensuelle = f.ID_Consommation_Mensuelle
-          WHERE cm.Annee = ? AND f.Statut_Paiement <> 'Payee'",
+           JOIN compteur c ON c.ID_Compteur = cm.ID_Compteur
+          WHERE cm.Annee = ? AND f.Statut_Paiement <> 'Payee'
+          GROUP BY cm.ID_Client, c.Type_Compteur",
         'i', [$annee]
     );
+    $out = [];
+    foreach ($r as $l) {
+        $type = $l['Type_Compteur'] === 'Eau' ? 'Eau' : 'Electricite';
+        $out[(int) $l['ID_Client']][$type] = ['nb' => (int) $l['nb'], 'total' => (float) $l['total']];
+    }
+    return $out;
 }
 
 
@@ -110,4 +134,41 @@ function vaDerniereNotification($idClient, $annee)
         'is', [$idClient, '%vérification annuelle ' . (int) $annee . '%']
     );
     return $r[0]['d'] ?? null;
+}
+// Contrats en cours pendant l'année
+function vaContrats($annee)
+{
+    return consoSelect(
+        "SELECT ct.ID_Contrat, ct.ID_Client, ct.ID_Compteur, ct.ID_Quartier,
+                q.Nom AS Quartier, q.Ville, t.Libelle AS Type_Activite,
+                ct.Statut, ct.Date_Debut, ct.Date_Fin, cp.Type_Compteur
+           FROM contrat ct
+           JOIN compteur cp       ON cp.ID_Compteur = ct.ID_Compteur
+           JOIN quartier q        ON q.ID_Quartier = ct.ID_Quartier
+           JOIN type_activite t   ON t.ID_Type_Activite = q.ID_Type_Activite
+          WHERE ct.Date_Debut <= ? AND (ct.Date_Fin IS NULL OR ct.Date_Fin >= ?)",
+        'ss', [$annee . '-12-31', $annee . '-01-01']
+    );
+}
+
+// Saisies de l'année encore en anomalie
+function vaReleveEnAnomalie($annee)
+{
+    return consoSelect(
+        "SELECT ID_Client, ID_Compteur, Mois FROM consommation_mensuelle
+          WHERE Annee = ? AND Statut_Traitement <> 'Verifie'",
+        'i', [$annee]
+    );
+}
+
+// Factures de l'année non payées
+function vaFacturesImpayees($annee)
+{
+    return consoSelect(
+        "SELECT cm.ID_Client, cm.ID_Compteur, cm.Mois, f.Montant_TTC
+           FROM facture f
+           JOIN consommation_mensuelle cm ON cm.ID_Consommation_Mensuelle = f.ID_Consommation_Mensuelle
+          WHERE cm.Annee = ? AND f.Statut_Paiement <> 'Payee'",
+        'i', [$annee]
+    );
 }

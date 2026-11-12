@@ -89,6 +89,10 @@ switch ($page) {
         }
         require __DIR__ . '/IHM/agent/depot_detail.php';
         break;
+        case 'agent_tournee':
+    $d = preparerPageTournee();
+    include 'IHM/agent/tournee.php';
+    break;
 
     // ---- Gestion des agents par le fournisseur (Personne 4) ----
     case 'agents':
@@ -294,7 +298,7 @@ switch ($page) {
         exigerRole('agent');
         header('Content-Type: text/plain; charset=utf-8');
         header('Content-Disposition: attachment; filename="modele_releves.txt"');
-        echo "1, 0.0, 0.0\n";
+        echo "1001;0.0\n";
         exit;
 
     case 'verification_annuelle':
@@ -323,7 +327,7 @@ switch ($page) {
         $d = preparerPageReclamationsFournisseur();
         require __DIR__ . '/IHM/fournisseur/fournisseurReclamtion.php';
         break;
-    // ---- Contrats (Personne 1) ----
+    // ---- Contrats  ----
     case 'contrats':
         exigerRole('fournisseur');
         require_once __DIR__ . '/traitement/contrat.php';

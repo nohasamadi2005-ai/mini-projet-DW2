@@ -6,6 +6,7 @@ $initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1
 $nf = function ($v) {                       // 1234.5 -> "1 234,50"
     return $v === null || $v === '' ? '—' : number_format((float) $v, 2, ',', ' ');
 };
+$typeCompteur = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
 $badges = [
     'Integre' => ['integre', 'Intégré'],
     'Partiel' => ['partiel', 'Partiel'],
@@ -181,18 +182,27 @@ $badges = [
             <tr>
               <th class="num">Ligne</th>
               <th>Contenu de la ligne</th>
+              <th>Contrat</th>
               <th>Client</th>
               <th>Motif du rejet</th>
             </tr>
           </thead>
           <tbody>
             <?php if (empty($d['rejetees'])): ?>
-              <tr><td colspan="4" class="vide">Aucune ligne rejetée : tout le fichier a été intégré.</td></tr>
+              <tr><td colspan="5" class="vide">Aucune ligne rejetée : tout le fichier a été intégré.</td></tr>
             <?php else: ?>
               <?php foreach ($d['rejetees'] as $l): ?>
                 <tr>
                   <td class="num"><?= $l['Numero_Ligne'] !== null ? (int) $l['Numero_Ligne'] : '—' ?></td>
                   <td><code class="brut"><?= htmlspecialchars($l['Ligne_Brute'] ?? '—') ?></code></td>
+                  <td>
+                    <?php if ($l['ID_Contrat'] !== null): ?>
+                      n° <?= (int) $l['ID_Contrat'] ?><br>
+                      <span class="muted"><?= htmlspecialchars($typeCompteur[$l['Type_Compteur']] ?? '') ?></span>
+                    <?php else: ?>
+                      <span class="muted">—</span>
+                    <?php endif; ?>
+                  </td>
                   <td>
                     <?php if ($l['ID_Client'] !== null): ?>
                       <?= htmlspecialchars(trim($l['Prenom'] . ' ' . $l['Nom'])) ?><br>
@@ -222,6 +232,7 @@ $badges = [
           <thead>
             <tr>
               <th class="num">Ligne</th>
+              <th>Contrat</th>
               <th>Client</th>
               <th class="num">Eau (m³)</th>
               <th class="num">Électricité (kWh)</th>
@@ -229,11 +240,19 @@ $badges = [
           </thead>
           <tbody>
             <?php if (empty($d['integrees'])): ?>
-              <tr><td colspan="4" class="vide">Aucune ligne intégrée dans ce dépôt.</td></tr>
+              <tr><td colspan="5" class="vide">Aucune ligne intégrée dans ce dépôt.</td></tr>
             <?php else: ?>
               <?php foreach ($d['integrees'] as $l): ?>
                 <tr>
                   <td class="num"><?= $l['Numero_Ligne'] !== null ? (int) $l['Numero_Ligne'] : '—' ?></td>
+                  <td>
+                    <?php if ($l['ID_Contrat'] !== null): ?>
+                      n° <?= (int) $l['ID_Contrat'] ?><br>
+                      <span class="muted"><?= htmlspecialchars($typeCompteur[$l['Type_Compteur']] ?? '') ?></span>
+                    <?php else: ?>
+                      <span class="muted">ancien dépôt</span>
+                    <?php endif; ?>
+                  </td>
                   <td>
                     <strong><?= htmlspecialchars(trim($l['Prenom'] . ' ' . $l['Nom'])) ?></strong><br>
                     <span class="muted">Client n° <?= (int) $l['ID_Client'] ?></span>

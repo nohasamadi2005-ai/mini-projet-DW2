@@ -11,7 +11,8 @@
  * Fonctions :
  *   insererLigneImport(...)                    -> enregistre UNE ligne (intégrée ou rejetée)
  *   insererConsommationAnnuelle(...)           -> ancienne fonction, conservée (= ligne intégrée)
- *   getEtatClientsPourAgent($idAgent)          -> pour contrôler les lignes : [ID_Client => état]
+ *   getEtatContratsPourAgent($idAgent, $annee) -> pour contrôler les lignes : [ID_Contrat => état]
+ *   getEtatClientsPourAgent($idAgent)          -> (ancien dépôt par client) [ID_Client => état]
  *   getImportsAgent($idAgent, $search)         -> un dépôt (fichier) par ligne, avec nb intégrées / rejetées
  *   getStatistiquesImports($idAgent)           -> chiffres des cartes de l'historique
  *   getDetailDepot($idAgent, $fichier)         -> détail d'un dépôt : lignes intégrées et lignes rejetées
@@ -25,14 +26,15 @@ require_once __DIR__ . '/Consommation.php';   // consoSelect, consoExecuter
 
 /*
  * Enregistre une ligne du fichier.
- *   $idClient   : NULL si la ligne n'a pas de client valide (rejet « client introuvable », etc.)
+ *   $idClient   : NULL si la ligne n'a pas de client valide (rejet « contrat introuvable », etc.)
+ *   $idContrat  : le contrat relevé par la ligne (NULL pour un ancien dépôt par client ou un rejet sans contrat)
  *   $consoEau / $consoElect : NULL si les valeurs n'ont pas pu être lues
  *   $numeroLigne : numéro de la ligne dans le fichier ; $ligneBrute : son texte tel quel
  *   $statut     : 'Integre' ou 'Rejete' ; $motif : obligatoire pour un rejet
  * Retourne true si la ligne est enregistrée.
  */
 function insererLigneImport($idClient, $idAgent, $annee, $consoEau, $consoElect, $fichierSource,
-                            $numeroLigne = null, $ligneBrute = null, $statut = 'Integre', $motif = null)
+                            $numeroLigne = null, $ligneBrute = null, $statut = 'Integre', $motif = null, $idContrat = null)
 {
     if (!in_array($statut, ['Integre', 'Rejete'], true)) {
         return false;
@@ -44,6 +46,7 @@ function insererLigneImport($idClient, $idAgent, $annee, $consoEau, $consoElect,
     }
 
     $idClient    = ($idClient === null || $idClient === '') ? null : (int) $idClient;
+    $idContrat   = ($idContrat === null || $idContrat === '') ? null : (int) $idContrat;
     $consoEau    = ($consoEau === null)   ? null : (float) $consoEau;
     $consoElect  = ($consoElect === null) ? null : (float) $consoElect;
     $numeroLigne = ($numeroLigne === null) ? null : (int) $numeroLigne;
@@ -54,11 +57,11 @@ function insererLigneImport($idClient, $idAgent, $annee, $consoEau, $consoElect,
         return (bool) consoExecuter(
             "INSERT INTO consommation_annuelle
                     (ID_Client, ID_Agent, Annee, ConsommationEau, ConsommationElect, Date_saisie,
-                     Fichier_Source, Numero_Ligne, Ligne_Brute, Statut_Import, Motif_Rejet)
-             VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?)",
-            'iiiddsisss',
+                     Fichier_Source, Numero_Ligne, Ligne_Brute, Statut_Import, Motif_Rejet, ID_Contrat)
+             VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?)",
+            'iiiddsisssi',
             [$idClient, (int) $idAgent, (int) $annee, $consoEau, $consoElect,
-             $fichierSource, $numeroLigne, $ligneBrute, $statut, $motif]
+             $fichierSource, $numeroLigne, $ligneBrute, $statut, $motif, $idContrat]
         );
     } catch (Throwable $e) {
         error_log('insererLigneImport : ' . $e->getMessage());
@@ -108,6 +111,37 @@ function getEtatClientsPourAgent($idAgent)
         $etat[(int) $r['ID_Client']] = [
             'contrats_actifs' => (int) $r['contrats_actifs'],
             'dans_tournee'    => (int) $r['dans_tournee'],
+        ];
+    }
+    return $etat;
+}
+
+
+/*
+ * Pour chaque contrat : son client, son type de compteur, s'il est en cours pendant l'année,
+ * et s'il est dans les quartiers de l'agent.
+ *   [ID_Contrat => ['client' => id, 'type' => 'Eau'|'Electricite', 'valide_annee' => bool, 'dans_tournee' => bool]]
+ * Un contrat absent du tableau n'existe pas. Une seule requête pour tout le fichier.
+ */
+function getEtatContratsPourAgent($idAgent, $annee)
+{
+    $annee = (int) $annee;
+    $rows = consoSelect(
+        "SELECT ct.ID_Contrat, ct.ID_Client, cp.Type_Compteur,
+                (ct.Date_Debut <= ? AND (ct.Date_Fin IS NULL OR ct.Date_Fin >= ?)) AS valide_annee,
+                (aq.ID_Quartier IS NOT NULL) AS dans_tournee
+           FROM contrat ct
+           JOIN compteur cp            ON cp.ID_Compteur = ct.ID_Compteur
+           LEFT JOIN agent_quartier aq ON aq.ID_Quartier = ct.ID_Quartier AND aq.ID_Agent = ?",
+        'ssi', [$annee . '-12-31', $annee . '-01-01', (int) $idAgent]
+    );
+    $etat = [];
+    foreach ($rows as $r) {
+        $etat[(int) $r['ID_Contrat']] = [
+            'client'       => (int) $r['ID_Client'],
+            'type'         => $r['Type_Compteur'],
+            'valide_annee' => (bool) $r['valide_annee'],
+            'dans_tournee' => (bool) $r['dans_tournee'],
         ];
     }
     return $etat;
@@ -173,29 +207,40 @@ function getImportsAgent($idAgent = null, $search = '')
     return $imports;
 }
 
-// [Fichier_Source => 'Al Manar, Hay Jadid'] : quartiers des clients des lignes intégrées du fichier
+// [Fichier_Source => 'Al Manar, Hay Jadid'] : quartiers des contrats des lignes intégrées du fichier
+// (anciens dépôts sans contrat : quartiers des contrats actifs du client)
 function getZonesDesFichiers($idAgent = null)
 {
+    $filtre = '';
     $types  = '';
     $params = [];
-    $filtre = '';
     if ($idAgent) {
         $filtre = ' AND ca.ID_Agent = ?';
-        $types  = 'i';
-        $params = [(int) $idAgent];
+        $types  = 'ii';
+        $params = [(int) $idAgent, (int) $idAgent];
+    }
+    $rows = consoSelect(
+        "SELECT DISTINCT ca.Fichier_Source, q.Nom
+           FROM consommation_annuelle ca
+           JOIN contrat ct ON ct.ID_Contrat = ca.ID_Contrat
+           JOIN quartier q ON q.ID_Quartier = ct.ID_Quartier
+          WHERE ca.Statut_Import = 'Integre' AND ca.Fichier_Source IS NOT NULL" . $filtre . "
+         UNION
+         SELECT DISTINCT ca.Fichier_Source, q.Nom
+           FROM consommation_annuelle ca
+           JOIN contrat ct ON ct.ID_Client = ca.ID_Client AND ct.Statut = 'Actif'
+           JOIN quartier q ON q.ID_Quartier = ct.ID_Quartier
+          WHERE ca.ID_Contrat IS NULL AND ca.Statut_Import = 'Integre' AND ca.Fichier_Source IS NOT NULL" . $filtre,
+        $types ?: null, $params
+    );
+    $noms = [];
+    foreach ($rows as $r) {
+        $noms[$r['Fichier_Source']][] = $r['Nom'];
     }
     $out = [];
-    foreach (consoSelect(
-        "SELECT ca.Fichier_Source,
-                GROUP_CONCAT(DISTINCT q.Nom ORDER BY q.Nom SEPARATOR ', ') AS Zone
-           FROM consommation_annuelle ca
-           JOIN contrat ct  ON ct.ID_Client = ca.ID_Client AND ct.Statut = 'Actif'
-           JOIN quartier q  ON q.ID_Quartier = ct.ID_Quartier
-          WHERE ca.Statut_Import = 'Integre' AND ca.Fichier_Source IS NOT NULL" . $filtre . "
-          GROUP BY ca.Fichier_Source",
-        $types ?: null, $params
-    ) as $r) {
-        $out[$r['Fichier_Source']] = $r['Zone'];
+    foreach ($noms as $fichier => $liste) {
+        sort($liste);
+        $out[$fichier] = implode(', ', $liste);
     }
     return $out;
 }
@@ -229,18 +274,20 @@ function getStatistiquesImports($idAgent = null)
 /*
  * Détail d'un dépôt de l'agent : null si ce fichier n'existe pas pour cet agent.
  * Sinon : ['fichier', 'annee', 'date_import', 'integrees' => [...], 'rejetees' => [...]]
- * Chaque ligne : Numero_Ligne, ID_Client, Nom, Prenom, ConsommationEau, ConsommationElect,
+ * Chaque ligne : Numero_Ligne, ID_Contrat, Type_Compteur, ID_Client, Nom, Prenom, ConsommationEau, ConsommationElect,
  *                Statut_Import, Motif_Rejet, Ligne_Brute, Date_saisie.
  * (Nom et Prenom sont NULL quand le client est introuvable.)
  */
 function getDetailDepot($idAgent, $fichier)
 {
     $lignes = consoSelect(
-        "SELECT ca.Numero_Ligne, ca.ID_Client, cl.Nom, cl.Prenom,
+        "SELECT ca.Numero_Ligne, ca.ID_Contrat, cp.Type_Compteur, ca.ID_Client, cl.Nom, cl.Prenom,
                 ca.ConsommationEau, ca.ConsommationElect,
                 ca.Statut_Import, ca.Motif_Rejet, ca.Ligne_Brute, ca.Annee, ca.Date_saisie
            FROM consommation_annuelle ca
-           LEFT JOIN client cl ON cl.ID_Client = ca.ID_Client
+           LEFT JOIN client cl   ON cl.ID_Client   = ca.ID_Client
+           LEFT JOIN contrat ct  ON ct.ID_Contrat  = ca.ID_Contrat
+           LEFT JOIN compteur cp ON cp.ID_Compteur = ct.ID_Compteur
           WHERE ca.ID_Agent = ? AND ca.Fichier_Source = ?
           ORDER BY (ca.Numero_Ligne IS NULL), ca.Numero_Ligne, ca.ID_Consommation_Annuelle",
         'is', [(int) $idAgent, (string) $fichier]

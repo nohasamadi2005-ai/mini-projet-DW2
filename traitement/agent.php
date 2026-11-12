@@ -1,11 +1,44 @@
 <?php
+/*
+ * DÉPÔT DU RELEVÉ ANNUEL PAR L'AGENT — traitement (Personne 4)
+ *
+ * Format du fichier .txt : UNE LIGNE PAR CONTRAT (un contrat = un compteur : eau OU électricité)
+ *       ID_Contrat ; consommation de l'année (m³ pour l'eau, kWh pour l'électricité)
+ *   - séparateurs acceptés : ;  ,  ou tabulation
+ *   - le séparateur décimal est le POINT (157.8) : une virgule décimale (157,8) ferait 3 colonnes
+ *   - les lignes vides et celles qui commencent par # sont ignorées
+ *
+ * Chaque ligne est contrôlée. Une ligne valide est enregistrée avec Statut_Import = 'Integre',
+ * une ligne refusée est enregistrée avec Statut_Import = 'Rejete' et son motif :
+ *   1. Format invalide            (il n'y a pas exactement 2 colonnes)
+ *   2. ID contrat invalide        (pas un entier positif)
+ *   3. Consommation invalide      (pas un nombre, négatif ou trop grand)
+ *   4. Contrat introuvable
+ *   5. Contrat non en cours       (la période du contrat ne touche pas l'année du dépôt)
+ *   6. Hors de votre tournée      (le contrat n'est pas dans les quartiers de l'agent)
+ *   7. Doublon dans le fichier    (contrat déjà intégré plus haut dans le même fichier)
+ *
+ * Le dépôt est « tout ou rien » : si l'enregistrement en base échoue, rien n'est gardé.
+ *
+ * traiterDepotReleve()  -> appelée par index.php (page agent_depot) ; lit $_POST / $_FILES
+ *                          et renvoie ['erreurs' => [], 'succes' => '', 'fichier' => nom|null,
+ *                                      'nb_integrees' => n, 'nb_rejetees' => n]
+ * importerFichierReleve() -> la logique, sans dépendre de HTTP
+ *
+ * Pages de l'espace agent (appelées par index.php) :
+ *   preparerPageTournee()        -> page « Ma tournée »              (IHM/agent/tournee.php)
+ *   envoyerFeuilleTournee()      -> télécharge la feuille de tournée (.txt), puis exit
+ *   preparerPageDetailDepot()    -> détail d'un dépôt                (IHM/agent/depot_detail.php)
+ *   preparerPageAgents()         -> écran fournisseur « Agents »     (IHM/fournisseur/agents.php)
+ *   traiterActionAgents()        -> enregistre les quartiers d'un agent (POST)
+ */
 require_once __DIR__ . '/../BD/AgentImport.php';
 require_once __DIR__ . '/../BD/Agent.php';
-
 
 const DEPOT_TAILLE_MAX = 10 * 1024 * 1024;   // 10 Mo (affiché dans le formulaire)
 const DEPOT_LIGNES_MAX = 5000;
 const DEPOT_VALEUR_MAX = 9999999999.99;      // limite de decimal(12,2)
+
 
 // =====================================================================
 //  PARTIE HTTP
@@ -95,10 +128,11 @@ function traiterDepotReleve()
     return $res;
 }
 
+
 // =====================================================================
 //  LOGIQUE D'IMPORT
 // =====================================================================
- 
+
 /*
  * Lit le fichier, contrôle chaque ligne et l'enregistre (intégrée ou rejetée).
  * $nomFichier = valeur stockée dans Fichier_Source.
@@ -108,7 +142,7 @@ function traiterDepotReleve()
 function importerFichierReleve($chemin, $nomFichier, $idAgent, $annee)
 {
     $echec = fn($msg) => ['integrees' => 0, 'rejetees' => 0, 'erreur' => $msg];
- 
+
     $contenu = @file_get_contents($chemin);
     if ($contenu === false) {
         return $echec("Impossible de lire le fichier.");
@@ -117,112 +151,113 @@ function importerFichierReleve($chemin, $nomFichier, $idAgent, $annee)
         return $echec("Ce fichier n'est pas un fichier texte.");
     }
     $contenu = preg_replace('/^\xEF\xBB\xBF/', '', $contenu);          // BOM UTF-8 éventuel
- 
+
     $lignes = preg_split('/\r\n|\r|\n/', $contenu);
     if (count($lignes) > DEPOT_LIGNES_MAX) {
         return $echec("Le fichier contient plus de " . DEPOT_LIGNES_MAX . " lignes.");
     }
- 
-    $etat = getEtatClientsPourAgent($idAgent);   // [ID_Client => contrats actifs / dans la tournée]
-    $vus  = [];                                   // clients déjà intégrés dans ce fichier : [ID_Client => n° de ligne]
+
+    $etat = getEtatContratsPourAgent($idAgent, $annee);   // [ID_Contrat => client, type, en cours, dans la tournée]
+    $vus  = [];                                            // contrats déjà intégrés dans ce fichier : [ID_Contrat => n° de ligne]
     $nbInt = 0;
     $nbRej = 0;
- 
+
     $cnx = consoConnexion();
     mysqli_begin_transaction($cnx);
- 
+
     foreach ($lignes as $i => $brut) {
         $numero = $i + 1;
         $ligne  = trim(versUtf8($brut));
-        if ($ligne === '' || $ligne[0] === '#') {
-            continue;                              // ligne vide ou commentaire : ignorée
+               if ($ligne === '' || $ligne[0] === '#' || preg_match('/^\d+\s*[,;\t]\s*$/', $ligne)) {
+            continue;                              // vide, commentaire, ou contrat non rempli : ignorée
         }
- 
-        $a = analyserLigneReleve($ligne, $etat, $vus);
- 
+        $a = analyserLigneReleve($ligne, $etat, $vus, $annee);
+
         $statut = $a['motif'] === null ? 'Integre' : 'Rejete';
         $motif  = $a['motif'];
         if ($motif !== null && $a['doublon_de'] !== null) {
             $motif .= " (déjà en ligne {$a['doublon_de']})";
         }
- 
+
         if (!insererLigneImport($a['client'], $idAgent, $annee, $a['eau'], $a['elec'],
-                                $nomFichier, $numero, $ligne, $statut, $motif)) {
+                                $nomFichier, $numero, $ligne, $statut, $motif, $a['contrat'])) {
             mysqli_rollback($cnx);
             return $echec("Erreur d'enregistrement à la ligne $numero : le dépôt a été annulé, rien n'a été enregistré.");
         }
- 
+
         if ($statut === 'Integre') {
-            $vus[(int) $a['client']] = $numero;
+            $vus[(int) $a['contrat']] = $numero;
             $nbInt++;
         } else {
             $nbRej++;
         }
     }
- 
+
     if ($nbInt + $nbRej === 0) {
         mysqli_rollback($cnx);
         return $echec("Aucune ligne de relevé trouvée dans le fichier.");
     }
- 
+
     mysqli_commit($cnx);
     return ['integrees' => $nbInt, 'rejetees' => $nbRej, 'erreur' => null];
 }
- 
+
 /*
  * Contrôle UNE ligne (déjà nettoyée). Retourne :
- *   'client' => ID_Client à enregistrer (NULL si inconnu ou illisible)
- *   'eau', 'elec' => valeurs lues (NULL si illisibles)
+ *   'contrat' => ID_Contrat à enregistrer (NULL si inconnu ou illisible)
+ *   'client'  => son client (NULL si le contrat est inconnu)
+ *   'eau', 'elec' => la valeur lue, rangée selon le type du compteur du contrat (l'autre reste NULL)
  *   'motif' => NULL si la ligne est valide, sinon le motif du rejet
- *   'doublon_de' => n° de la ligne déjà intégrée pour ce client (motif « doublon »), sinon NULL
+ *   'doublon_de' => n° de la ligne déjà intégrée pour ce contrat (motif « doublon »), sinon NULL
  */
-function analyserLigneReleve($ligne, $etat, $vus)
+function analyserLigneReleve($ligne, $etat, $vus, $annee)
 {
-    $r = ['client' => null, 'eau' => null, 'elec' => null, 'motif' => null, 'doublon_de' => null];
- 
-    $p = array_map('trim', preg_split('/[,;\t]+/', $ligne));
- 
-    // 1. Exactement 3 colonnes (sinon une virgule décimale décalerait silencieusement les valeurs)
-    if (count($p) !== 3) {
-        $r['motif'] = "Format invalide : 3 colonnes attendues (ID client ; eau ; électricité), "
+    $r = ['contrat' => null, 'client' => null, 'eau' => null, 'elec' => null, 'motif' => null, 'doublon_de' => null];
+
+    $p = array_map('trim', preg_split('/[,;\t]/', $ligne));
+
+    // 1. Exactement 2 colonnes (sinon une virgule décimale décalerait silencieusement les valeurs)
+    if (count($p) !== 2) {
+        $r['motif'] = "Format invalide : 2 colonnes attendues (ID contrat ; consommation), "
                     . count($p) . " trouvée(s). Utilisez le point comme séparateur décimal.";
         return $r;
     }
- 
-    // 2. ID client
+
+    // 2. ID contrat
     if (!ctype_digit($p[0]) || (int) $p[0] <= 0 || strlen($p[0]) > 9) {
-        $r['motif'] = "ID client invalide";
+        $r['motif'] = "ID contrat invalide";
         return $r;
     }
     $id = (int) $p[0];
-    $r['client'] = isset($etat[$id]) ? $id : null;     // un client inconnu ne peut pas être référencé en base
- 
-    // 3. Consommations
-    $okEau  = estConsommationValide($p[1]);
-    $okElec = estConsommationValide($p[2]);
-    $r['eau']  = $okEau  ? (float) $p[1] : null;
-    $r['elec'] = $okElec ? (float) $p[2] : null;
-    if (!$okEau || !$okElec) {
-        $r['motif'] = "Consommation invalide (" . (!$okEau ? "eau" : "électricité")
-                    . " : nombre positif attendu)";
+    $c  = $etat[$id] ?? null;
+       if ($c !== null && !$c['dans_tournee']) {
+         $c = null;      // hors tournée = même réponse que « introuvable » (pas de fuite d'infos)
+       }
+      if ($c !== null) {
+         $r['contrat'] = $id;
+         $r['client']  = $c['client'];
+       }
+
+    // 3. Consommation
+    if (!estConsommationValide($p[1])) {
+        $r['motif'] = "Consommation invalide (nombre positif attendu)";
         return $r;
     }
- 
-    // 4. Client existant ?
-    if (!isset($etat[$id])) {
-        $r['motif'] = "Client introuvable (ID $id)";
+    if ($c !== null) {
+        $r[$c['type'] === 'Eau' ? 'eau' : 'elec'] = (float) $p[1];
+    }
+
+    // 4. Contrat existant ?
+    if ($c === null) {
+      $r['motif'] = "Contrat introuvable dans votre tournée (ID $id)";
         return $r;
     }
-    // 5. Contrat actif ?
-    if ($etat[$id]['contrats_actifs'] === 0) {
-        $r['motif'] = "Aucun contrat actif";
+    // 5. Contrat en cours pendant l'année du dépôt ?
+    if (!$c['valide_annee']) {
+        $r['motif'] = "Contrat non en cours en $annee";
         return $r;
     }
-    // 6. Dans la tournée de l'agent ?
-    if ($etat[$id]['dans_tournee'] === 0) {
-        $r['motif'] = "Hors de votre tournée";
-        return $r;
-    }
+    
     // 7. Déjà dans ce fichier ?
     if (isset($vus[$id])) {
         $r['motif'] = "Doublon dans le fichier";
@@ -231,12 +266,12 @@ function analyserLigneReleve($ligne, $etat, $vus)
     }
     return $r;
 }
- 
+
 function estConsommationValide($texte)
 {
     return is_numeric($texte) && (float) $texte >= 0 && (float) $texte <= DEPOT_VALEUR_MAX;
 }
- 
+
 // Texte non UTF-8 (fichier .txt enregistré en ANSI / Windows-1252) -> UTF-8
 function versUtf8($texte)
 {
@@ -246,6 +281,11 @@ function versUtf8($texte)
     $conv = @iconv('Windows-1252', 'UTF-8//IGNORE', $texte);
     return $conv === false ? '' : $conv;
 }
+
+
+// =====================================================================
+//  OUTILS COMMUNS DE L'ESPACE AGENT
+// =====================================================================
 
 // Années proposées dans les listes : les 2 dernières, l'année courante, la suivante, + celles qui ont des dépôts
 function anneesAgent()
@@ -306,63 +346,52 @@ function preparerPageTournee()
 }
 
 /*
- * Texte de la feuille de tournée : une ligne par CLIENT (ses contrats eau + électricité sont
- * regroupés), au format du dépôt « ID_Client ; eau ; électricité » avec les valeurs à remplir.
- * Par défaut seulement les clients encore à relever ; $tous = true -> toute la tournée.
- * Les lignes # (quartier, nom, adresse, compteurs) sont des commentaires ignorés au dépôt.
+ * Texte de la feuille de tournée : UNE LIGNE PAR CONTRAT, au format du dépôt « ID_Contrat ; consommation »,
+ * avec la valeur à compléter. Par défaut seulement les contrats encore à relever ; $tous = true -> toute la tournée.
+ * Les lignes # (quartier, client, compteur, adresse) sont des commentaires ignorés au dépôt.
  */
 function genererFeuilleTournee($idAgent, $annee, $tous = false)
 {
     $agent   = getAgentParId($idAgent);
     $tournee = getTourneeAgent($idAgent, $annee);
-    $libelle = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
+    $unite   = ['Eau' => 'eau, m3', 'Electricite' => 'électricité, kWh'];
 
-    $clients = [];
-    foreach ($tournee as $l) {
-        if (!$tous && $l['Releve']) {
-            continue;
-        }
-        $c = (int) $l['ID_Client'];
-        if (!isset($clients[$c])) {
-            $clients[$c] = [
-                'nom'      => trim($l['Prenom'] . ' ' . $l['Nom']),
-                'quartier' => $l['Quartier'] . ' (' . $l['Ville'] . ')',
-                'adresses' => [],
-                'types'    => [],
-            ];
-        }
-        if (!empty($l['Adresse_Branchement'])) {
-            $clients[$c]['adresses'][$l['Adresse_Branchement']] = true;
-        }
-        $clients[$c]['types'][$libelle[$l['Type_Compteur']] ?? $l['Type_Compteur']] = true;
-    }
+    $contrats = array_values(array_filter($tournee, function ($l) use ($tous) {
+        return $tous || !$l['Releve'];
+    }));
 
     $nomAgent = $agent ? trim($agent['Prenom'] . ' ' . $agent['Nom']) : 'Agent';
     $out = [
         "# FLUXIO - Feuille de tournée $annee",
         "# Agent : $nomAgent   |   Générée le " . date('d/m/Y H:i'),
-        "# " . ($tous ? "Tous les clients de la tournée" : "Clients encore à relever") . " : " . count($clients),
+        "# " . ($tous ? "Tous les contrats de la tournée" : "Contrats encore à relever") . " : " . count($contrats),
         "#",
-        "# À REMPLIR : une ligne par client    ID_Client ; eau (m3) ; électricité (kWh)",
-        "# Exemple rempli : 12;157.8;2555      (point décimal, pas de virgule)",
-        "# Supprimez les lignes des clients que vous n'avez pas relevés. Les lignes # sont ignorées.",
+        "# À REMPLIR : une ligne par contrat    ID_Contrat ; consommation de l'année",
+        "#             (m3 pour un compteur d'eau, kWh pour un compteur d'électricité)",
+        "# Exemple rempli : 1001;157.8      (point décimal, pas de virgule)",
+        "# Supprimez les lignes des contrats que vous n'avez pas relevés. Les lignes # sont ignorées.",
         "# Puis déposez ce fichier dans « Déposer un relevé annuel », année $annee.",
         "#",
     ];
-    if (!$clients) {
-        $out[] = "# Tournée complète : tous les clients sont déjà relevés pour $annee.";
+    if (!$contrats) {
+        $out[] = "# Tournée complète : tous les contrats sont déjà relevés pour $annee.";
     }
 
     $quartierCourant = null;
-    foreach ($clients as $id => $c) {
-        if ($c['quartier'] !== $quartierCourant) {
-            $quartierCourant = $c['quartier'];
+    foreach ($contrats as $l) {
+        $quartier = $l['Quartier'] . ' (' . $l['Ville'] . ')';
+        if ($quartier !== $quartierCourant) {
+            $quartierCourant = $quartier;
             $out[] = "";
-            $out[] = "# ===== Quartier : $quartierCourant =====";
+            $out[] = "# ===== Quartier : $quartier =====";
         }
-        $out[] = "# " . $c['nom'] . " | " . (implode(' / ', array_keys($c['adresses'])) ?: 'adresse non renseignée')
-               . " | compteurs : " . implode(', ', array_keys($c['types']));
-        $out[] = "$id;;";
+        $note = '';
+        if ($l['Statut_Contrat'] === 'Resilie' && !empty($l['Date_Fin'])) {
+            $note = " | résilié le " . date('d/m/Y', strtotime($l['Date_Fin']));
+        }
+        $out[] = "# " . trim($l['Prenom'] . ' ' . $l['Nom']) . " | " . ($unite[$l['Type_Compteur']] ?? $l['Type_Compteur'])
+               . " | " . ($l['Adresse_Branchement'] ?: 'adresse non renseignée') . $note;
+        $out[] = (int) $l['ID_Contrat'] . ";";
     }
     return implode("\r\n", $out) . "\r\n";
 }
@@ -458,4 +487,3 @@ function traiterActionAgents()
             'texte' => "Impossible d'enregistrer les quartiers de {$agent['Prenom']} {$agent['Nom']}."];
     }
 }
- 

@@ -45,7 +45,7 @@ function consoSelect($sql, $types = null, $params = [])
 }
 
 
-function consoExecuter($sql, $types, $params)
+/*function consoExecuter($sql, $types, $params)
 {
     $cnx = consoConnexion();
     $stmt = mysqli_prepare($cnx, $sql);
@@ -60,6 +60,37 @@ function consoExecuter($sql, $types, $params)
     mysqli_stmt_execute($stmt);
 
     $retour = mysqli_stmt_insert_id($stmt) ?: mysqli_stmt_affected_rows($stmt);
+    mysqli_stmt_close($stmt);
+
+    return $retour;
+}*/
+
+function consoExecuter($sql, $types, $params)
+{
+    $cnx = consoConnexion();
+
+    $stmt = mysqli_prepare($cnx, $sql);
+
+    if (!$stmt) {
+        throw new RuntimeException(
+            "Erreur préparation SQL : " . mysqli_error($cnx)
+        );
+    }
+
+    if (!mysqli_stmt_bind_param($stmt, $types, ...$params)) {
+        $erreur = mysqli_stmt_error($stmt);
+        mysqli_stmt_close($stmt);
+        throw new RuntimeException("Erreur bind_param : " . $erreur);
+    }
+
+    if (!mysqli_stmt_execute($stmt)) {
+        $erreur = mysqli_stmt_error($stmt);
+        mysqli_stmt_close($stmt);
+        throw new RuntimeException("Erreur INSERT : " . $erreur);
+    }
+
+    $retour = mysqli_stmt_insert_id($stmt) ?: mysqli_stmt_affected_rows($stmt);
+
     mysqli_stmt_close($stmt);
 
     return $retour;

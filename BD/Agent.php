@@ -16,10 +16,8 @@
  *   getTourneeAgent($idAgent, $annee)      -> contrats actifs à relever + statut « relevé »
  *   getProgressionTournee($idAgent, $annee, $tournee = null) -> total / relevés / restants / %
  *
- * Règle « relevé » : un contrat est relevé pour une année si son client a au moins une ligne
- * intégrée (Statut_Import = 'Integre') dans consommation_annuelle pour cette année.
- * Le fichier de l'agent contient une ligne par client (eau + électricité), donc les deux
- * contrats d'un même client (eau et électricité) passent « relevés » ensemble.
+ * Règle « relevé » : un contrat est relevé pour une année si une ligne intégrée (Statut_Import = 'Integre')
+ * du fichier de l'agent porte son ID_Contrat (une ligne du fichier = un contrat = un compteur).
  */
 require_once __DIR__ . '/connexion.php';
 require_once __DIR__ . '/Consommation.php';   // consoConnexion, consoSelect, consoExecuter
@@ -174,9 +172,14 @@ function setQuartiersAgent($idAgent, $idsQuartiers)
 // =====================================================================
 
 /*
- * Contrats actifs situés dans les quartiers de l'agent, pour l'année donnée.
+ * Contrats situés dans les quartiers de l'agent et EN COURS pendant l'année donnée
+ * (début du contrat <= 31/12 et fin du contrat vide ou >= 01/01 : un contrat résilié en cours
+ * d'année est donc relevé aussi).
  * Chaque ligne : ID_Contrat, ID_Client, Nom, Prenom, ID_Compteur, Type_Compteur, ID_Quartier,
- *   Quartier, Ville, Adresse_Branchement, Releve (0/1), Date_Releve (date du dépôt ou NULL).
+ *   Quartier, Ville, Adresse_Branchement, Statut_Contrat, Date_Debut, Date_Fin,
+ *   Releve (0/1), Date_Releve (date du dépôt ou NULL).
+ * Un contrat est relevé si une ligne intégrée porte son ID_Contrat pour cette année
+ * (ou, pour les anciens dépôts sans contrat, une ligne intégrée de son client).
  */
 function getTourneeAgent($idAgent, $annee)
 {
@@ -186,20 +189,23 @@ function getTourneeAgent($idAgent, $annee)
         "SELECT ct.ID_Contrat, ct.ID_Client, cl.Nom, cl.Prenom,
                 ct.ID_Compteur, cp.Type_Compteur,
                 ct.ID_Quartier, q.Nom AS Quartier, q.Ville, ct.Adresse_Branchement,
+                ct.Statut AS Statut_Contrat, ct.Date_Debut, ct.Date_Fin,
                 EXISTS (SELECT 1 FROM consommation_annuelle ca
-                         WHERE ca.ID_Client = ct.ID_Client AND ca.Annee = ?
-                           AND ca.Statut_Import = 'Integre') AS Releve,
+                         WHERE ca.Annee = ? AND ca.Statut_Import = 'Integre'
+                           AND (ca.ID_Contrat = ct.ID_Contrat
+                                OR (ca.ID_Contrat IS NULL AND ca.ID_Client = ct.ID_Client))) AS Releve,
                 (SELECT MAX(ca.Date_saisie) FROM consommation_annuelle ca
-                  WHERE ca.ID_Client = ct.ID_Client AND ca.Annee = ?
-                    AND ca.Statut_Import = 'Integre') AS Date_Releve
+                  WHERE ca.Annee = ? AND ca.Statut_Import = 'Integre'
+                    AND (ca.ID_Contrat = ct.ID_Contrat
+                         OR (ca.ID_Contrat IS NULL AND ca.ID_Client = ct.ID_Client))) AS Date_Releve
            FROM contrat ct
            JOIN agent_quartier aq ON aq.ID_Quartier = ct.ID_Quartier AND aq.ID_Agent = ?
            JOIN client cl         ON cl.ID_Client   = ct.ID_Client
            JOIN compteur cp       ON cp.ID_Compteur = ct.ID_Compteur
            JOIN quartier q        ON q.ID_Quartier  = ct.ID_Quartier
-          WHERE ct.Statut = 'Actif'
+          WHERE ct.Date_Debut <= ? AND (ct.Date_Fin IS NULL OR ct.Date_Fin >= ?)
           ORDER BY q.Ville, q.Nom, cl.Nom, cl.Prenom, ct.ID_Contrat",
-        'iii', [$annee, $annee, $idAgent]
+        'iiiss', [$annee, $annee, $idAgent, $annee . '-12-31', $annee . '-01-01']
     );
 }
 
