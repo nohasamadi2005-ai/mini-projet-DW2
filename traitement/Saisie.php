@@ -244,8 +244,10 @@ if ($s === 'Verifie') {
     $etat = 'verifie';
 } elseif ( $s === 'Saisie_Fournisseur') {
     $etat = 'rejete';
-    } else {
-    $etat = 'anomalie';
+   } else {
+    $etat = (detecterAnomalie((float) $saisie['Consommation'], $c['Type_Compteur']) === 'Surconsommation')
+        ? 'surconso'
+        : 'anomalie';
 }
       }else {
             $etat = $ouverte ? 'libre' : 'ferme';

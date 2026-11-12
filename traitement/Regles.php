@@ -12,7 +12,7 @@ if (!defined('FENETRE_TOUJOURS_OUVERTE')) {
 
 
 if (!defined('DATE_SIMULEE')) {
-    define('DATE_SIMULEE', '2026-12-19');
+    define('DATE_SIMULEE', '2027-01-19');
 
 }
 
