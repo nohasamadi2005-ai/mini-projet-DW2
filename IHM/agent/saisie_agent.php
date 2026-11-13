@@ -3,7 +3,6 @@ $user = $_SESSION['user'] ?? ['nom' => 'Utilisateur', 'prenom' => 'Agent'];
 $initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 $resultatTraitement = $resultatTraitement ?? ['erreurs' => [], 'succes' => ''];
 
-// Récupérer le dernier fichier importé par cet agent pour le bouton de téléchargement
 require_once __DIR__ . '/../../BD/AgentImport.php';
 $agentId = $user['id'] ?? 1;
 $fichiersImportes = getImportsAgent($agentId);
@@ -19,7 +18,6 @@ $dernierFichier = !empty($fichiersImportes) ? $fichiersImportes[0]['Nom_Fichier'
   * { box-sizing: border-box; }
   body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: #f4f6f9; color: #14213d; display: flex; min-height: 100vh; }
 
-  /* Sidebar */
   .sidebar { width: 260px; background: #0a2540; color: #fff; display: flex; flex-direction: column; justify-content: space-between; padding: 24px; position: fixed; height: 100vh; }
   .logo-area { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
   .logo-icon { background: #38bdf8; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; color: #fff; box-shadow: 0 4px 12px rgba(56,189,248,0.3); }
@@ -36,7 +34,6 @@ $dernierFichier = !empty($fichiersImportes) ? $fichiersImportes[0]['Nom_Fichier'
   .help-box a { color: #38bdf8; text-decoration: none; font-weight: 600; font-size: 12px; }
   .logout-btn { display: flex; align-items: center; gap: 10px; color: #ef4444; text-decoration: none; font-size: 14px; font-weight: 600; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); }
 
-  /* Main Content */
   .main-content { margin-left: 260px; flex: 1; display: flex; flex-direction: column; }
   .topbar { background: #fff; padding: 16px 32px; display: flex; justify-content: flex-end; align-items: center; border-bottom: 1px solid #e2e8f0; }
   .user-profile { display: flex; align-items: center; gap: 12px; }
@@ -45,13 +42,11 @@ $dernierFichier = !empty($fichiersImportes) ? $fichiersImportes[0]['Nom_Fichier'
   .user-info h4 { margin: 0; font-size: 14px; color: #14213d; }
   .user-info span { font-size: 12px; color: #6b7a90; }
 
-  /* Body Container Centered */
   .content-body { padding: 32px; max-width: 900px; width: 100%; margin: 0 auto; }
   .page-header h1 { margin: 4px 0 8px; font-size: 24px; color: #14213d; }
   .page-header p { color: #6b7a90; margin: 0 0 24px; font-size: 14px; }
   .small-tag { font-size: 12px; font-weight: 700; color: #0284c7; letter-spacing: 0.08em; text-transform: uppercase; }
 
-  /* Card Layout */
   .card { background: #fff; border-radius: 12px; padding: 24px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px; }
 
   .upload-box { border: 2px dashed #93c5fd; border-radius: 12px; padding: 40px; text-align: center; background: #f8fafc; cursor: pointer; margin-bottom: 20px; transition: 0.2s; }
@@ -63,18 +58,15 @@ $dernierFichier = !empty($fichiersImportes) ? $fichiersImportes[0]['Nom_Fichier'
   .submit-btn { width: 100%; background: #38bdf8; color: #fff; border: 0; padding: 14px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; transition: 0.2s; }
   .submit-btn:hover { background: #0284c7; }
 
-  /* Green Download Button */
   .download-model-btn { display: block; text-align: center; background: #10b981; color: #fff; border: 0; padding: 14px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; transition: 0.2s; width: 100%; }
   .download-model-btn:hover { background: #059669; }
 
-  /* Alerts */
   .erreur { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
   .ok { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
 </style>
 </head>
 <body>
 
-  <!-- Sidebar -->
   <div class="sidebar">
     <div>
       <div class="logo-area">
@@ -92,15 +84,19 @@ $dernierFichier = !empty($fichiersImportes) ? $fichiersImportes[0]['Nom_Fichier'
       </div>
     </div>
     <div>
-      
+      <div class="help-box">
+        <strong>Besoin d'aide ?</strong>
+        <p>Notre équipe vous répond du lundi au vendredi.</p>
+        <a href="#">Centre d'aide</a>
+      </div>
       <a href="index.php?page=logout" class="logout-btn">Se déconnecter</a>
     </div>
   </div>
 
-  <!-- Main Content -->
   <div class="main-content">
     <div class="topbar">
       <div class="user-profile">
+        <div class="notification-icon">🔔</div>
         <div class="avatar"><?= htmlspecialchars($initials) ?></div>
         <div class="user-info">
           <h4><?= htmlspecialchars($user['prenom'] . ' ' . $user['nom']) ?></h4>
@@ -131,7 +127,6 @@ $dernierFichier = !empty($fichiersImportes) ? $fichiersImportes[0]['Nom_Fichier'
       <?php endif; ?>
 
       <form method="post" action="index.php?page=agent_depot" enctype="multipart/form-data">
-        <!-- Main Card: Upload -->
         <div class="card">
           <h3>Importer un nouveau fichier</h3>
           <p style="color: #6b7a90; font-size: 13px; margin-bottom: 20px;">Le fichier sera contrôlé avant son intégration.</p>
@@ -167,7 +162,6 @@ $dernierFichier = !empty($fichiersImportes) ? $fichiersImportes[0]['Nom_Fichier'
           <button type="submit" class="submit-btn">Importer le fichier</button>
         </div>
 
-        <!-- Green Button: Télécharger le dernier fichier importé -->
         <?php if ($dernierFichier): ?>
         <div class="card" style="padding: 16px;">
           <a href="uploads/<?= htmlspecialchars($dernierFichier) ?>" class="download-model-btn" download>

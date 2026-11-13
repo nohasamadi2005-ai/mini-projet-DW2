@@ -1,13 +1,11 @@
 <?php
 require_once __DIR__ . '/../../traitement/auth.php';
 exigerRole('fournisseur');
-// $d est préparé dans index.php (case 'contrats') par preparerPageContrats()
 if (!function_exists('h')) {
     function h($s) { return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8'); }
 }
 $f = $d['filtres'];
 
-// Zones groupées par type d'activité (pour les listes déroulantes)
 $zonesParType = [];
 foreach ($d['quartiers'] as $q) {
     $zonesParType[$q['Type_Activite']][] = $q;
@@ -25,15 +23,25 @@ function optionsZones($zonesParType, $selection = 0)
     }
     return $html;
 }
-function optionsClients($clients, $selection = 0, $exclure = 0)
+function champClient($name, $client = null)
 {
-    $html = '<option value="">— Choisir le client —</option>';
-    foreach ($clients as $c) {
-        if ((int) $c['ID_Client'] === (int) $exclure) continue;
-        $html .= '<option value="' . (int) $c['ID_Client'] . '"' . ((int) $c['ID_Client'] === (int) $selection ? ' selected' : '')
-               . '>#' . (int) $c['ID_Client'] . ' — ' . h($c['Prenom'] . ' ' . $c['Nom']) . '</option>';
-    }
-    return $html;
+    $json = $client ? h(json_encode(clientPourJs($client), JSON_UNESCAPED_UNICODE)) : '';
+    ob_start(); ?>
+    <div class="client-picker" data-initial="<?= $json ?>">
+        <input type="hidden" name="<?= h($name) ?>" class="cp-id">
+        <div class="cp-recherche">
+            <div class="input-group">
+                <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                <input type="text" class="form-control cp-texte" autocomplete="off" spellcheck="false"
+                       placeholder="Nom, prénom, CIN, téléphone ou n° client…"
+                       role="combobox" aria-autocomplete="list" aria-expanded="false">
+            </div>
+            <div class="cp-liste" role="listbox"></div>
+            <div class="invalid-feedback cp-erreur">Choisissez le client dans les propositions.</div>
+        </div>
+        <div class="cp-choisi" style="display:none"></div>
+    </div>
+    <?php return ob_get_clean();
 }
 function badgeActivite($libelle)
 {
@@ -110,6 +118,28 @@ $libresJs = array_map(fn($c) => [
         .btn-xs { padding: 3px 8px; font-size: 12px; }
         .aide { font-size: 12px; color: #64748B; }
         .zone-imposee { background: #F1F5F9; pointer-events: none; }
+
+        .cp-recherche { position: relative; }
+        .cp-liste { display: none; position: absolute; z-index: 1080; left: 0; right: 0; top: calc(100% + 4px);
+                    background: #fff; border: 1px solid #E2E8F0; border-radius: 10px; box-shadow: 0 12px 28px rgba(15,33,55,.14);
+                    max-height: 320px; overflow-y: auto; }
+        .cp-liste.ouverte { display: block; }
+        .cp-item { padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #F1F5F9; }
+        .cp-item:last-child { border-bottom: 0; }
+        .cp-item.actif, .cp-item:hover { background: #EFF6FF; }
+        .cp-item .cp-nom { font-weight: 600; color: #0F2137; font-size: 14px; }
+        .cp-item .cp-nom mark { padding: 0; background: #FEF08A; border-radius: 2px; }
+        .cp-item .cp-num { color: #64748B; font-weight: 500; font-size: 12px; margin-left: 4px; }
+        .cp-details { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: #475569; margin-top: 2px; }
+        .cp-details i { color: #94A3B8; width: 12px; }
+        .cp-homonyme { background: #FEF3C7; color: #B45309; font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 10px; margin-left: 6px; }
+        .cp-vide { padding: 12px; font-size: 13px; color: #64748B; }
+        .cp-choisi { border: 1px solid #BFDBFE; background: #EFF6FF; border-radius: 10px; padding: 10px 12px;
+                     display: flex; align-items: flex-start; gap: 10px; }
+        .cp-choisi .cp-avatar { width: 34px; height: 34px; border-radius: 50%; background: #1890FF; color: #fff; font-weight: 700;
+                                font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .client-picker.is-invalid .cp-texte { border-color: #DC3545; }
+        .client-picker.is-invalid .cp-erreur { display: block; }
     </style>
 </head>
 <body>
@@ -118,7 +148,7 @@ $libresJs = array_map(fn($c) => [
     <div class="sidebar-brand">
         <div class="logo-icon"><i class="fa-solid fa-droplet"></i></div>
         <div>
-            <div class="brand-text">Gestion des Factures</div>
+            <div class="brand-text">Fluxio</div>
             <div class="brand-sub">Eau & Électricité</div>
         </div>
     </div>
@@ -146,7 +176,6 @@ $libresJs = array_map(fn($c) => [
     <div class="header">
         <h1><i class="fa-solid fa-file-signature text-primary"></i> Gestion des contrats</h1>
         <div class="d-flex align-items-center gap-3">
-            <span style="font-weight: 600; color: #64748B; font-size: 13px;">Aujourd'hui : <?= h(date('d/m/Y', strtotime($d['aujourdhui']))) ?></span>
             <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#mCreer"><i class="fa-solid fa-plus"></i> Nouveau contrat</button>
         </div>
     </div>
@@ -171,7 +200,6 @@ $libresJs = array_map(fn($c) => [
             </div>
         <?php endif; ?>
 
-        <!-- Chiffres -->
         <div class="row g-3 mb-4">
             <?php foreach ([
                 ['Contrats actifs', $d['stats']['actifs'] ?? 0, 'text-success'],
@@ -187,7 +215,6 @@ $libresJs = array_map(fn($c) => [
             <?php endforeach; ?>
         </div>
 
-        <!-- Filtres -->
         <form method="GET" action="index.php" class="row g-2 mb-3 align-items-end">
             <input type="hidden" name="page" value="contrats">
             <?php if ($f['client']): ?><input type="hidden" name="client" value="<?= (int) $f['client'] ?>"><?php endif; ?>
@@ -215,7 +242,6 @@ $libresJs = array_map(fn($c) => [
             </div>
         </form>
 
-        <!-- Liste -->
         <div class="table-card">
             <div class="table-responsive">
                 <table class="table mb-0 align-middle">
@@ -277,7 +303,6 @@ $libresJs = array_map(fn($c) => [
 </div>
 
 <?php
-// Bloc « compteur du nouveau contrat » (création et déménagement)
 function blocCompteur($prefixe, $zonesParType, $typeImpose = null)
 {
     ob_start(); ?>
@@ -312,22 +337,17 @@ function blocCompteur($prefixe, $zonesParType, $typeImpose = null)
         <select name="quartier" class="form-select sel-zone"><?= optionsZones($zonesParType) ?></select>
         <div class="aide info-zone mt-1"></div>
     </div>
-    <div class="mb-2">
-        <label class="form-label mb-0">Adresse du logement / local</label>
-        <input type="text" name="adresse" class="form-control in-adresse" placeholder="Vide = adresse du client">
-    </div>
     <?php return ob_get_clean();
 }
 ?>
 
-<!-- Nouveau contrat -->
 <div class="modal fade" id="mCreer" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <form method="POST" action="index.php?page=contrat_action">
         <input type="hidden" name="action" value="creer"><input type="hidden" name="retour" value="<?= h($d['retour']) ?>">
         <div class="modal-header"><h5 class="modal-title"><i class="fa-solid fa-plus"></i> Nouveau contrat</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body">
-            <div class="mb-2"><label class="form-label mb-0">Client</label>
-                <select name="client" class="form-select" required><?= optionsClients($d['clients'], $f['client']) ?></select></div>
+            <div class="mb-3"><label class="form-label mb-0">Client</label>
+                <?= champClient('client', $d['clientFiltre']) ?></div>
             <?= blocCompteur('cr', $zonesParType) ?>
             <div class="mb-2"><label class="form-label mb-0">Date de début</label>
                 <input type="date" name="date_debut" class="form-control" value="<?= h($d['aujourdhui']) ?>" max="<?= h($d['aujourdhui']) ?>" required></div>
@@ -336,7 +356,6 @@ function blocCompteur($prefixe, $zonesParType, $typeImpose = null)
     </form>
 </div></div></div>
 
-<!-- Résilier -->
 <div class="modal fade" id="mResilier" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <form method="POST" action="index.php?page=contrat_action">
         <input type="hidden" name="action" value="resilier"><input type="hidden" name="retour" value="<?= h($d['retour']) ?>">
@@ -351,7 +370,6 @@ function blocCompteur($prefixe, $zonesParType, $typeImpose = null)
     </form>
 </div></div></div>
 
-<!-- Transférer : nouvel occupant, même compteur -->
 <div class="modal fade" id="mTransferer" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <form method="POST" action="index.php?page=contrat_action">
         <input type="hidden" name="action" value="transferer"><input type="hidden" name="retour" value="<?= h($d['retour']) ?>">
@@ -362,14 +380,13 @@ function blocCompteur($prefixe, $zonesParType, $typeImpose = null)
             <p class="aide">Le logement change d'occupant : le contrat actuel est clôturé et un nouveau contrat est ouvert
                 sur <strong>le même compteur</strong> (même zone, même adresse) pour le nouveau client.</p>
             <div class="mb-2"><label class="form-label mb-0">Nouveau titulaire</label>
-                <select name="nouveau_client" class="form-select" required><?= optionsClients($d['clients']) ?></select></div>
+                <?= champClient('nouveau_client') ?></div>
             <?= blocCloture($d, 'Date du transfert', 'Index relevé le jour du transfert') ?>
         </div>
         <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button><button class="btn btn-primary">Transférer</button></div>
     </form>
 </div></div></div>
 
-<!-- Déménager : même client, nouveau logement -->
 <div class="modal fade" id="mDemenager" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
     <form method="POST" action="index.php?page=contrat_action">
         <input type="hidden" name="action" value="demenager"><input type="hidden" name="retour" value="<?= h($d['retour']) ?>">
@@ -392,7 +409,6 @@ function blocCompteur($prefixe, $zonesParType, $typeImpose = null)
     </form>
 </div></div></div>
 
-<!-- Corriger la zone d'un compteur -->
 <div class="modal fade" id="mZone" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
     <form method="POST" action="index.php?page=contrat_action">
         <input type="hidden" name="action" value="zone"><input type="hidden" name="retour" value="<?= h($d['retour']) ?>">
@@ -428,12 +444,11 @@ const LIBRES = <?= json_encode($libresJs, JSON_UNESCAPED_UNICODE) ?>;
 const ZONES  = <?= json_encode($zonesJs, JSON_UNESCAPED_UNICODE) ?>;
 const fmt = n => Number(n).toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-// Bloc compteur : liste des compteurs libres (filtrée par type), zone imposée si le compteur a déjà eu un contrat
 function initBlocCompteur(modal, typeImpose) {
     const sel = modal.querySelector('.sel-libre');
     if (!sel) return;
     const zone = modal.querySelector('.sel-zone'), infoZone = modal.querySelector('.info-zone');
-    const infoLibre = modal.querySelector('.info-libre'), adresse = modal.querySelector('.in-adresse');
+    const infoLibre = modal.querySelector('.info-libre');
     const libres = LIBRES.filter(c => !typeImpose || c.type === typeImpose);
     sel.innerHTML = '<option value="">— Choisir un compteur libre —</option>' + libres.map(c =>
         `<option value="${c.id}">n° ${c.id} — ${c.type === 'Eau' ? 'Eau' : 'Électricité'} — index ${fmt(c.index)}`
@@ -458,7 +473,6 @@ function initBlocCompteur(modal, typeImpose) {
                 zone.value = c.quartier; zone.classList.add('zone-imposee');
                 infoZone.textContent = 'Zone imposée : ce compteur est déjà installé dans cette zone.';
             }
-            if (c.adresse && !adresse.value) adresse.value = c.adresse;
         }
     };
     modal.querySelectorAll('input[name="mode"]').forEach(r => r.onchange = majMode);
@@ -467,7 +481,145 @@ function initBlocCompteur(modal, typeImpose) {
 }
 initBlocCompteur(document.getElementById('mCreer'), null);
 
-// Remplit les modales Résilier / Transférer / Déménager / Zone avec le contrat cliqué
+const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[ch]));
+const sansAccent = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+function surligner(texte, saisie) {
+    const mots = saisie.trim().split(/\s+/).filter(m => m.length > 0).map(sansAccent);
+    const base = sansAccent(texte);
+    const marque = new Array(texte.length).fill(false);
+    mots.forEach(m => { let i = base.indexOf(m); while (m && i >= 0) { for (let k = i; k < i + m.length; k++) marque[k] = true; i = base.indexOf(m, i + m.length); } });
+    let html = '', ouvert = false;
+    [...texte].forEach((ch, i) => {
+        if (marque[i] && !ouvert) { html += '<mark>'; ouvert = true; }
+        if (!marque[i] && ouvert) { html += '</mark>'; ouvert = false; }
+        html += esc(ch);
+    });
+    return html + (ouvert ? '</mark>' : '');
+}
+
+function detailsClient(c) {
+    const d = [];
+    d.push(`<span><i class="fa-solid fa-id-card"></i> ${c.cin ? esc(c.cin) : '<em>CIN non renseigné</em>'}</span>`);
+    if (c.telephone) d.push(`<span><i class="fa-solid fa-phone"></i> ${esc(c.telephone)}</span>`);
+    if (c.adresse)   d.push(`<span><i class="fa-solid fa-location-dot"></i> ${esc(c.adresse)}</span>`);
+    else if (c.email) d.push(`<span><i class="fa-solid fa-envelope"></i> ${esc(c.email)}</span>`);
+    d.push(`<span><i class="fa-solid fa-file-signature"></i> ${c.actifs} contrat${c.actifs > 1 ? 's' : ''} actif${c.actifs > 1 ? 's' : ''}</span>`);
+    return `<div class="cp-details">${d.join('')}</div>`;
+}
+
+class ClientPicker {
+    constructor(racine) {
+        this.racine = racine;
+        this.id     = racine.querySelector('.cp-id');
+        this.texte  = racine.querySelector('.cp-texte');
+        this.liste  = racine.querySelector('.cp-liste');
+        this.bloc   = racine.querySelector('.cp-recherche');
+        this.choisi = racine.querySelector('.cp-choisi');
+        this.exclu = 0; this.resultats = []; this.actif = -1; this.minuteur = null; this.requete = null;
+        racine.picker = this;
+
+        this.texte.addEventListener('input', () => this.planifier());
+        this.texte.addEventListener('keydown', e => this.clavier(e));
+        this.texte.addEventListener('focus', () => { if (this.resultats.length) this.ouvrir(); });
+        document.addEventListener('click', e => { if (!racine.contains(e.target)) this.fermer(); });
+        this.liste.addEventListener('mousedown', e => {
+            const item = e.target.closest('.cp-item');
+            if (item) { e.preventDefault(); this.choisir(this.resultats[+item.dataset.i]); }
+        });
+        racine.closest('form').addEventListener('submit', e => {
+            if (!this.id.value) { e.preventDefault(); racine.classList.add('is-invalid'); this.texte.focus(); }
+        });
+        if (racine.dataset.initial) this.choisir(JSON.parse(racine.dataset.initial));
+    }
+    planifier() {
+        this.id.value = ''; this.racine.classList.remove('is-invalid');
+        clearTimeout(this.minuteur);
+        const q = this.texte.value.trim();
+        if (q.length < 2 && !/^\d+$/.test(q)) { this.resultats = []; this.fermer(); return; }
+        this.minuteur = setTimeout(() => this.chercher(q), 200);
+    }
+    async chercher(q) {
+        if (this.requete) this.requete.abort();
+        this.requete = new AbortController();
+        this.liste.innerHTML = '<div class="cp-vide"><span class="spinner-border spinner-border-sm me-2"></span>Recherche…</div>';
+        this.ouvrir();
+        try {
+            const r = await fetch('index.php?page=contrat_clients&q=' + encodeURIComponent(q),
+                                  {signal: this.requete.signal, headers: {'Accept': 'application/json'}});
+            if (!r.ok || !(r.headers.get('content-type') || '').includes('json')) throw new Error('session');
+            const liste = (await r.json()).filter(c => c.id !== this.exclu);
+            if (q !== this.texte.value.trim()) return;
+            this.afficher(liste, q);
+        } catch (e) {
+            if (e.name === 'AbortError') return;
+            this.liste.innerHTML = '<div class="cp-vide text-danger">Recherche impossible. Rechargez la page (session expirée ?).</div>';
+        }
+    }
+    afficher(liste, q) {
+        this.resultats = liste; this.actif = liste.length ? 0 : -1;
+        if (!liste.length) {
+            this.liste.innerHTML = `<div class="cp-vide">Aucun client ne correspond à « ${esc(q)} ».<br>
+                <a href="index.php?page=gestion_client">Créer le client dans Gestion Clients</a></div>`;
+            return;
+        }
+        const parNom = {};
+        liste.forEach(c => { const k = sansAccent(c.nom); parNom[k] = (parNom[k] || 0) + 1; });
+        this.liste.innerHTML = liste.map((c, i) => `
+            <div class="cp-item${i === 0 ? ' actif' : ''}" data-i="${i}" role="option">
+                <div><span class="cp-nom">${surligner(c.nom, q)}</span><span class="cp-num">#${c.id}</span>
+                    ${parNom[sansAccent(c.nom)] > 1 ? '<span class="cp-homonyme" title="Plusieurs clients portent ce nom : vérifiez le CIN">Homonyme</span>' : ''}</div>
+                ${detailsClient(c)}
+            </div>`).join('');
+        this.ouvrir();
+    }
+    clavier(e) {
+        const ouverte = this.liste.classList.contains('ouverte');
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            if (!this.resultats.length) return;
+            e.preventDefault();
+            if (!ouverte) this.ouvrir();
+            this.actif = (this.actif + (e.key === 'ArrowDown' ? 1 : -1) + this.resultats.length) % this.resultats.length;
+            this.liste.querySelectorAll('.cp-item').forEach((el, i) => el.classList.toggle('actif', i === this.actif));
+            this.liste.querySelector('.cp-item.actif')?.scrollIntoView({block: 'nearest'});
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (ouverte && this.actif >= 0) this.choisir(this.resultats[this.actif]);
+        } else if (e.key === 'Escape' && ouverte) {
+            e.preventDefault(); e.stopPropagation(); this.fermer();
+        }
+    }
+    choisir(c) {
+        if (!c) return;
+        this.id.value = c.id;
+        this.racine.classList.remove('is-invalid');
+        this.fermer();
+        const initiales = c.nom.split(/\s+/).map(m => m[0] || '').join('').slice(0, 2).toUpperCase();
+        this.choisi.innerHTML = `
+            <div class="cp-avatar">${esc(initiales)}</div>
+            <div class="flex-grow-1"><div><span class="cp-nom fw-semibold">${esc(c.nom)}</span>
+                <span class="text-muted small">client #${c.id}</span></div>${detailsClient(c)}</div>
+            <button type="button" class="btn btn-sm btn-outline-primary cp-changer">Changer</button>`;
+        this.choisi.querySelector('.cp-changer').onclick = () => this.vider(true);
+        this.bloc.style.display = 'none'; this.choisi.style.display = '';
+    }
+    vider(focus) {
+        this.id.value = ''; this.texte.value = ''; this.resultats = []; this.fermer();
+        this.racine.classList.remove('is-invalid');
+        this.choisi.style.display = 'none'; this.bloc.style.display = '';
+        if (focus) this.texte.focus();
+    }
+    reinitialiser(exclu) { this.exclu = exclu || 0; this.vider(false); }
+    ouvrir() { this.liste.classList.add('ouverte'); this.texte.setAttribute('aria-expanded', 'true'); }
+    fermer() { this.liste.classList.remove('ouverte'); this.texte.setAttribute('aria-expanded', 'false'); }
+}
+document.querySelectorAll('.client-picker').forEach(p => new ClientPicker(p));
+
+['mCreer', 'mTransferer'].forEach(id => document.getElementById(id).addEventListener('shown.bs.modal', e => {
+    const t = e.target.querySelector('.cp-texte');
+    if (t && t.offsetParent) t.focus();
+}));
+
 document.querySelectorAll('[data-ct]').forEach(btn => btn.addEventListener('click', () => {
     const ct = JSON.parse(btn.dataset.ct), modal = document.querySelector(btn.dataset.bsTarget);
     modal.querySelectorAll('.in-id').forEach(e => e.value = ct.id);
@@ -480,9 +632,8 @@ document.querySelectorAll('[data-ct]').forEach(btn => btn.addEventListener('clic
     modal.querySelectorAll('.txt-compteur').forEach(e => e.textContent = 'n° ' + ct.compteur);
     modal.querySelectorAll('.txt-zone').forEach(e => e.textContent = ct.zone);
     modal.querySelectorAll('.sel-zone-corr').forEach(e => e.value = ct.quartier);
-    modal.querySelectorAll('select[name="nouveau_client"] option').forEach(o => o.hidden = (o.value === String(ct.idClient)));
+    modal.querySelectorAll('.client-picker').forEach(p => p.picker.reinitialiser(ct.idClient));
     if (modal.id === 'mDemenager') {
-        modal.querySelector('.in-adresse').value = '';
         modal.querySelector('.sel-zone').value = '';
         initBlocCompteur(modal, ct.type);
     }

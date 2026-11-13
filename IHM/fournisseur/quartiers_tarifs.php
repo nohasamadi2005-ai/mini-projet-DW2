@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/../../traitement/auth.php';
 exigerRole('fournisseur');
-// $d est préparé dans index.php (case 'quartiers_tarifs') par preparerPageQuartiersTarifs()
 if (!function_exists('h')) {
     function h($s) { return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8'); }
 }
@@ -99,7 +98,7 @@ $sim = $d['sim'];
     <div class="sidebar-brand">
         <div class="logo-icon"><i class="fa-solid fa-droplet"></i></div>
         <div>
-            <div class="brand-text">Gestion des Factures</div>
+            <div class="brand-text">Fluxio</div>
             <div class="brand-sub">Eau & Électricité</div>
         </div>
     </div>
@@ -143,7 +142,6 @@ $sim = $d['sim'];
             </div>
         <?php endif; ?>
 
-        <!-- ============ 1. QUARTIERS ============ -->
         <section class="bloc" id="quartiers">
             <h2><i class="fa-solid fa-location-dot"></i> Quartiers</h2>
             <p class="aide mb-3">Chaque quartier a un seul type d'activité, qui détermine le tarif de ses contrats.
@@ -204,7 +202,6 @@ $sim = $d['sim'];
             </div>
         </section>
 
-        <!-- ============ 2. TYPES D'ACTIVITE : SEUILS + REDEVANCES ============ -->
         <section class="bloc" id="types">
             <h2><i class="fa-solid fa-gauge-high"></i> Seuils d'alerte &amp; redevances fixes</h2>
             <p class="aide mb-3">Le seuil mensuel déclenche une alerte « Surconsommation » à la saisie.
@@ -234,7 +231,6 @@ $sim = $d['sim'];
             </div>
         </section>
 
-        <!-- ============ 3. TRANCHES ============ -->
         <section class="bloc" id="tranches">
             <h2><i class="fa-solid fa-layer-group"></i> Tranches de prix</h2>
             <p class="aide mb-3">Les tranches sont affichées par bornes croissantes ; deux tranches ne peuvent pas avoir la même borne.
@@ -302,7 +298,6 @@ $sim = $d['sim'];
             </div>
         </section>
 
-        <!-- ============ 4. SIMULATEUR ============ -->
         <section class="bloc" id="simulateur">
             <h2><i class="fa-solid fa-calculator"></i> Simulateur de facture</h2>
             <p class="aide mb-3">Combien paie un abonné pour une consommation mensuelle donnée ? (calcul avec les tarifs enregistrés ci-dessus)</p>
@@ -362,7 +357,6 @@ $sim = $d['sim'];
     </div>
 </div>
 
-<!-- Modale : modifier un quartier -->
 <div class="modal fade" id="mQuartier" tabindex="-1">
     <div class="modal-dialog">
         <form method="post" action="index.php?page=tarifs_action" class="modal-content">

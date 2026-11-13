@@ -1,11 +1,7 @@
 <?php
-// Affectation / libération des compteurs (fichier ajouté, rien n'est supprimé de BD/Client.php).
-// Principe : un compteur reste attaché à sa maison. Quand le client change, le compteur
-// garde son historique : l'index précédent est lu sur le compteur (voir getReferencePrecedente).
 require_once __DIR__ . '/connexion.php';
-require_once __DIR__ . '/../traitement/Regles.php';   // maintenant() : date simulée de l'application
+require_once __DIR__ . '/../traitement/Regles.php';
 
-// Compteur correspondant à un numéro (ou null s'il n'existe pas)
 function getCompteurParNumero($numero)
 {
     $cnx  = Connexion();
@@ -20,7 +16,6 @@ function getCompteurParNumero($numero)
     return $row ?: null;
 }
 
-// Compteurs libres (sans client) d'un type, avec leur dernier index connu
 function getCompteursLibres($type)
 {
     $type = ($type === 'Eau') ? 'Eau' : 'Electricite';
@@ -50,7 +45,6 @@ function getCompteursLibres($type)
     return $liste;
 }
 
-// Dernier index connu d'un compteur : dernier relevé vérifié, sinon l'index initial
 function dernierIndexCompteur($cnx, $idCompteur)
 {
     $stmt = mysqli_prepare($cnx,
@@ -69,9 +63,6 @@ function dernierIndexCompteur($cnx, $idCompteur)
     return $ligne ? (float) $ligne['idx'] : 0.0;
 }
 
-// Libère un compteur et clôture son contrat actif (index de fin = dernier index connu).
-// Depuis l'ajout des contrats, l'historique d'un compteur = ses contrats (table contrat,
-// qui remplace historique_compteur). L'écran normal pour cela est index.php?page=contrats.
 function libererCompteurAvecHistorique($cnx, $idCompteur, $idClient)
 {
     $indexFin = dernierIndexCompteur($cnx, $idCompteur);
@@ -89,9 +80,6 @@ function libererCompteurAvecHistorique($cnx, $idCompteur, $idClient)
     mysqli_stmt_execute($stmt);
 }
 
-// Ouvre un contrat : le client reçoit le compteur à cette date, avec cet index.
-// Zone : celle du dernier contrat du compteur (il ne bouge pas), sinon une zone
-// résidentielle de la ville du client (à corriger ensuite dans l'écran Contrats).
 function ouvrirHistoriqueCompteur($cnx, $idCompteur, $idClient, $indexDebut)
 {
     $date = date('Y-m-d', function_exists('maintenant') ? maintenant() : time());
@@ -106,20 +94,12 @@ function ouvrirHistoriqueCompteur($cnx, $idCompteur, $idClient, $indexDebut)
     mysqli_stmt_execute($stmt);
 }
 
-// Change le compteur d'un client pour un type donné.
-//  - champ vide            : le compteur actuel est libéré (statut inactif, sans client)
-//  - numéro d'un compteur libre : il est affecté au client, son index actuel est conservé
-//  - numéro inconnu        : nouveau compteur créé avec un index initial aléatoire entre 0 et 5
-//                            (le paramètre $indexInitial est conservé pour compatibilité mais ignoré)
-//  - numéro d'un autre client   : refusé
-// Retourne null si tout va bien, sinon un message d'erreur.
 function changerCompteurClient($idClient, $typeCompteur, $nouveauNumero, $indexInitial = 0)
 {
     $idClient      = (int) $idClient;
     $type          = ($typeCompteur === 'Eau') ? 'Eau' : 'Electricite';
     $nouveauNumero = trim((string) $nouveauNumero);
 
-    // Plusieurs compteurs affichés ("101, 102") : champ non modifié, on ne touche à rien
     if (strpos($nouveauNumero, ',') !== false) {
         return null;
     }
@@ -127,11 +107,10 @@ function changerCompteurClient($idClient, $typeCompteur, $nouveauNumero, $indexI
             || (int) $nouveauNumero < 1 || (int) $nouveauNumero > 2147483647)) {
         return "le numéro du compteur doit être un nombre.";
     }
-    $indexInitial = random_int(0, 5);       // compteur neuf : index initial aléatoire entre 0 et 5
+    $indexInitial = random_int(0, 5);
 
     $cnx = Connexion();
     try {
-        // Compteur actuel du client pour ce type
         $stmt = mysqli_prepare($cnx,
             "SELECT ID_Compteur FROM compteur WHERE ID_Client = ? AND Type_Compteur = ? LIMIT 1");
         mysqli_stmt_bind_param($stmt, "is", $idClient, $type);
@@ -139,7 +118,6 @@ function changerCompteurClient($idClient, $typeCompteur, $nouveauNumero, $indexI
         $ligne  = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
         $actuel = $ligne ? (int) $ligne['ID_Compteur'] : 0;
 
-        // Champ vidé : on libère le compteur actuel
         if ($nouveauNumero === '') {
             if ($actuel) {
                 mysqli_begin_transaction($cnx);
@@ -151,10 +129,9 @@ function changerCompteurClient($idClient, $typeCompteur, $nouveauNumero, $indexI
 
         $nouveau = (int) $nouveauNumero;
         if ($nouveau === $actuel) {
-            return null;                                   // rien à changer
+            return null;
         }
 
-        // Vérifications avant de toucher à quoi que ce soit
         $stmt = mysqli_prepare($cnx,
             "SELECT ID_Compteur, ID_Client, Type_Compteur FROM compteur WHERE ID_Compteur = ?");
         mysqli_stmt_bind_param($stmt, "i", $nouveau);
@@ -174,15 +151,15 @@ function changerCompteurClient($idClient, $typeCompteur, $nouveauNumero, $indexI
 
         mysqli_begin_transaction($cnx);
 
-        if ($actuel) {                                     // l'ancien compteur reste à sa place, sans client
+        if ($actuel) {
             libererCompteurAvecHistorique($cnx, $actuel, $idClient);
         }
 
-        if ($existant) {                                   // compteur existant : historique et index conservés
+        if ($existant) {
             $stmt = mysqli_prepare($cnx,
                 "UPDATE compteur SET ID_Client = ?, statut = 'actif' WHERE ID_Compteur = ?");
             mysqli_stmt_bind_param($stmt, "ii", $idClient, $nouveau);
-        } else {                                           // nouveau compteur
+        } else {
             $date = date('Y-m-d');
             $stmt = mysqli_prepare($cnx,
                 "INSERT INTO compteur (ID_Compteur, ID_Client, Type_Compteur, Index_Initial, Date_Installation, statut)
@@ -191,7 +168,6 @@ function changerCompteurClient($idClient, $typeCompteur, $nouveauNumero, $indexI
         }
         mysqli_stmt_execute($stmt);
 
-        // Traçabilité : le client reçoit ce compteur à cette date, avec cet index
         ouvrirHistoriqueCompteur($cnx, $nouveau, $idClient,
             $existant ? dernierIndexCompteur($cnx, $nouveau) : (float) $indexInitial);
 

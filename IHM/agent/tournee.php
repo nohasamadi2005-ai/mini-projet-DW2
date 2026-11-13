@@ -1,7 +1,4 @@
 <?php
-/** @var array $d données préparées par preparerPageDetailDepot() (traitement/agent.php) */
-
-// Page « Ma tournée » — données préparées par preparerPageTournee() (traitement/agent.php) dans $d
 $user     = $_SESSION['user'] ?? ['nom' => 'Utilisateur', 'prenom' => 'Agent'];
 $initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 
@@ -13,7 +10,6 @@ $pct         = (int) $progression['pourcentage'];
 $urlFeuille  = 'index.php?page=agent_tournee_export&annee=' . urlencode($annee);
 
 $libelleType = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
-require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et afficherPagination()
 ?>
 <!doctype html>
 <html lang="fr">
@@ -25,7 +21,6 @@ require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et
   * { box-sizing: border-box; }
   body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: #f4f6f9; color: #14213d; display: flex; min-height: 100vh; }
 
-  /* Sidebar */
   .sidebar { width: 260px; background: #0a2540; color: #fff; display: flex; flex-direction: column; justify-content: space-between; padding: 24px; position: fixed; height: 100vh; }
   .logo-area { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
   .logo-icon { background: #38bdf8; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; color: #fff; box-shadow: 0 4px 12px rgba(56,189,248,0.4); }
@@ -42,7 +37,6 @@ require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et
   .help-box a { color: #38bdf8; text-decoration: none; font-weight: 600; font-size: 12px; }
   .logout-btn { display: flex; align-items: center; gap: 10px; color: #ef4444; text-decoration: none; font-size: 14px; font-weight: 600; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); }
 
-  /* Main Content */
   .main-content { margin-left: 260px; flex: 1; display: flex; flex-direction: column; }
   .topbar { background: #fff; padding: 16px 32px; display: flex; justify-content: flex-end; align-items: center; border-bottom: 1px solid #e2e8f0; }
   .user-profile { display: flex; align-items: center; gap: 12px; }
@@ -62,7 +56,6 @@ require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et
   .lien-tous { display: block; margin-top: 6px; font-size: 12px; color: #6b7a90; text-align: right; }
   .lien-tous a { color: #0284c7; text-decoration: none; }
 
-  /* Progression */
   .progress-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 22px 24px; margin-bottom: 20px; }
   .progress-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
   .progress-top strong { font-size: 15px; }
@@ -106,7 +99,6 @@ require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et
 </head>
 <body>
 
-  <!-- Sidebar -->
   <div class="sidebar">
     <div>
       <div class="logo-area">
@@ -124,14 +116,19 @@ require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et
       </div>
     </div>
     <div>
+      <div class="help-box">
+        <strong>Besoin d'aide ?</strong>
+        <p>Notre équipe vous répond du lundi au vendredi.</p>
+        <a href="#">Centre d'aide</a>
+      </div>
       <a href="index.php?page=logout" class="logout-btn">Se déconnecter</a>
     </div>
   </div>
 
-  <!-- Main Content -->
   <div class="main-content">
     <div class="topbar">
       <div class="user-profile">
+        <div class="notification-icon">🔔</div>
         <div class="avatar"><?= htmlspecialchars($initials) ?></div>
         <div class="user-info">
           <h4><?= htmlspecialchars($user['prenom'] . ' ' . $user['nom']) ?></h4>
@@ -156,14 +153,6 @@ require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et
         </div>
       </div>
 
-      <?php if (empty($quartiers)): ?>
-        <div class="progress-card">
-          <strong>Aucun quartier ne vous est affecté pour le moment.</strong>
-          <p class="progress-note">Votre tournée est vide : demandez au fournisseur de vous affecter des quartiers.</p>
-        </div>
-      <?php else: ?>
-
-      <!-- Progression -->
       <div class="progress-card">
         <div class="progress-top">
           <strong>Progression du relevé <?= (int) $annee ?></strong>
@@ -206,12 +195,11 @@ require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et
         <?php endforeach; ?>
       </div>
 
-      <!-- Liste des contrats -->
       <div class="table-container">
         <div class="table-header">
           <div>
             <h3>Contrats à relever</h3>
-            <span><?= (int) $d['pagination']['total'] ?> contrat(s)<?= $d['pagination']['pages'] > 1 ? ' · page ' . (int) $d['pagination']['page'] . ' / ' . (int) $d['pagination']['pages'] : '' ?></span>
+            <span><?= count($lignes) ?> contrat(s) affiché(s)</span>
           </div>
           <form method="get" action="index.php" class="filtres">
             <input type="hidden" name="page" value="agent_tournee">
@@ -272,10 +260,9 @@ require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et
             <?php endif; ?>
           </tbody>
         </table>
-        <?php afficherPagination($d['pagination']); ?>
       </div>
 
-      <?php endif; ?>
+      
     </div>
   </div>
 

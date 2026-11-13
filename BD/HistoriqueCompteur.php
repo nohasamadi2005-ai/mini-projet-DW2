@@ -1,11 +1,8 @@
 <?php
 require_once __DIR__ . '/Consommation.php';
 
-// Historique des affectations de compteurs (filtrable par client et/ou par compteur)
 function getHistoriqueCompteurs($idClient = 0, $idCompteur = 0)
 {
-    // Depuis l'ajout des contrats, l'historique d'un compteur = la liste de ses contrats
-    // (la table contrat remplace historique_compteur ; mêmes noms de colonnes ci-dessous).
     $sql = "SELECT h.ID_Contrat AS ID_Historique, h.ID_Contrat, h.ID_Compteur, h.ID_Client, h.Date_Debut, h.Date_Fin,
                    h.Index_Debut, h.Index_Fin, h.Statut, h.Motif_Fin,
                    q.Nom AS Quartier, q.Ville, t.Libelle AS Type_Activite,

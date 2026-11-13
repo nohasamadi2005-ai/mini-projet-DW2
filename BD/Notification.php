@@ -1,8 +1,6 @@
 <?php
 require_once __DIR__ . '/Consommation.php';
 
-// Table notification : ID_Notification, ID_Client, ID_Admin, ID_Anomalie, ID_Reclamation, ID_Facture, Message, Date_Envoi
-
 function creerNotification($idClient, $idAdmin, $message)
 {
     return consoExecuter(

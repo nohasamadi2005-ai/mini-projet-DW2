@@ -5,7 +5,6 @@ require_once __DIR__ . '/../../BD/connexion.php';
 
 $idClient = $_SESSION['user']['id'];
 
-// Notifications destinées au client (avec facture / réclamation liées si présentes)
 $cnx = Connexion();
 $sql = "SELECT ID_Notification, ID_Facture, ID_Reclamation, Message, Date_Envoi, Lu
         FROM notification
@@ -21,14 +20,12 @@ while ($row = mysqli_fetch_assoc($res)) {
     $notifications[] = $row;
 }
 
-// Marquer les notifications comme lues (on garde l'état "non lu" d'avant pour l'affichage)
 $sqlUpdate = "UPDATE notification SET Lu = 1 WHERE ID_Client = ? AND Lu = 0";
 $stmtUpd = mysqli_prepare($cnx, $sqlUpdate);
 mysqli_stmt_bind_param($stmtUpd, "i", $idClient);
 mysqli_stmt_execute($stmtUpd);
 mysqli_close($cnx);
 
-// Date lisible : Aujourd'hui / Hier / date complète
 function libelleDateNotif($date)
 {
     $t = strtotime($date);
@@ -42,12 +39,10 @@ function libelleDateNotif($date)
     return date('d/m/Y à H:i', $t);
 }
 
-// Catégorie, titre, couleur, icône et boutons de chaque notification
 function decrireNotification($n)
 {
     $m = $n['Message'];
 
-    // 1) Réponse à une réclamation (testée en premier : ses messages peuvent contenir "surconsommation" ou "bloquée")
     if (!empty($n['ID_Reclamation'])) {
         $titre = 'Réponse à votre réclamation';
         if (preg_match('/REC-\d+/', $m, $r)) {
@@ -56,12 +51,10 @@ function decrireNotification($n)
         return ['cat' => 'reclamation', 'classe' => 'c-reponse', 'icone' => 'message', 'titre' => $titre,
                 'boutons' => [['Voir mes réclamations', 'index.php?page=reclamations', 'btn-n-prim']]];
     }
-    // 2) Saisie refusée / bloquée : il faut ressaisir
     if (strpos($m, 'refusé') !== false || strpos($m, 'refusée') !== false || strpos($m, 'bloqué') !== false) {
         return ['cat' => 'alerte', 'classe' => 'c-urgent', 'icone' => 'saisie', 'titre' => 'Action requise : resaisie',
                 'boutons' => [['Effectuer la resaisie maintenant', 'index.php?page=saisie', 'btn-n-danger']]];
     }
-    // 3) Surconsommation : orienter vers une réclamation
     if (mb_stripos($m, 'surconsommation') !== false) {
         $lien = 'index.php?page=reclamations';
         if (!empty($n['ID_Facture'])) {
@@ -70,13 +63,11 @@ function decrireNotification($n)
         return ['cat' => 'alerte', 'classe' => 'c-alerte', 'icone' => 'eclair', 'titre' => 'Surconsommation détectée',
                 'boutons' => [['Déposer une réclamation', $lien, 'btn-n-warn']]];
     }
-    // 4) Autre notification liée à une facture
     if (!empty($n['ID_Facture'])) {
         return ['cat' => 'facture', 'classe' => 'c-facture', 'icone' => 'facture', 'titre' => 'À propos d’une facture',
                 'boutons' => [['Voir mes factures', 'index.php?page=factures', 'btn-n-prim'],
                               ['Faire une réclamation', 'index.php?page=reclamations&facture=' . (int) $n['ID_Facture'], 'btn-n-light']]];
     }
-    // 5) Information simple
     return ['cat' => 'info', 'classe' => 'c-info', 'icone' => 'cloche', 'titre' => 'Information', 'boutons' => []];
 }
 
@@ -184,7 +175,6 @@ function icone($nom)
     .carte { overflow-x:auto; } table.hist { min-width:780px; }
   }
 
-  /* --- Réclamations --- */
   .alerte { padding:12px 16px; border-radius:10px; margin-bottom:18px; font-weight:600; }
   .alerte.succes { background:#eafaf1; color:#14653a; border:1px solid #b7e8cd; }
   .alerte.erreur { background:#fdecec; color:#9b1c1c; border:1px solid #f4c2c2; }
@@ -215,7 +205,6 @@ function icone($nom)
   [hidden] { display:none !important; }
   @media (max-width:900px) { .grille { grid-template-columns:1fr; } }
 
-  /* --- Notifications --- */
   .n-barre { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:18px 0 14px; }
   .n-filtres { display:flex; gap:8px; flex-wrap:wrap; }
   .n-filtres button { border:1px solid var(--line); background:#fff; color:var(--mut); padding:7px 14px; border-radius:20px; font-weight:600; font-size:13px; cursor:pointer; }

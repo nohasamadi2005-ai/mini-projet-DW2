@@ -29,7 +29,6 @@ function creerClient($nom, $prenom, $adresse, $telephone, $email, $hash,
     return false;
 }
 
-/** Retourne le client portant ce CIN (ou null) : sert au contrôle d'unicité. */
 function trouverClientParCin($cin)
 {
     $cnx  = Connexion();
@@ -39,7 +38,6 @@ function trouverClientParCin($cin)
     return mysqli_fetch_assoc(mysqli_stmt_get_result($stmt)) ?: null;
 }
 
-/** Retourne le client portant cet ICE (ou null). */
 function trouverClientParIce($ice)
 {
     $cnx  = Connexion();
@@ -126,7 +124,7 @@ function ajouterClientAvecCompteur($nom, $prenom, $adresse, $telephone, $email, 
         }
         
         mysqli_close($cnx);
-        return $idClient;          // ID du client créé (toujours « vrai »)
+        return $idClient;
     }
     mysqli_close($cnx);
     return false;

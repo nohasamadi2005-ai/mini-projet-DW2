@@ -4,14 +4,12 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/Regles.php';
 require_once __DIR__ . '/../BD/Consommation.php';
 require_once __DIR__ . '/Facture.php';
-require_once __DIR__ . '/../BD/Contrat.php';   // [P3] contrat actif de chaque compteur
+require_once __DIR__ . '/../BD/Contrat.php';
 
 const PHOTOS_DOSSIER   = __DIR__ . '/../uploads/compteurs/';
 const PHOTOS_URL       = 'uploads/compteurs/';
-const PHOTO_TAILLE_MAX = 5 * 1024 * 1024;   // 5 Mo
+const PHOTO_TAILLE_MAX = 5 * 1024 * 1024;
 
-
-// type : 'succes' (vert) | 'anomalie' (orange) | 'erreur' (rouge)
 function retourSaisie($type, $texte, $idCompteur = 0)
 {
     $_SESSION['flash'] = ['type' => $type, 'texte' => $texte];
@@ -80,7 +78,6 @@ function traiterSaisie()
         retourSaisie('erreur', 'La saisie est fermée. Elle est ouverte du 18 à la fin de chaque mois.', $idCompteur);
     }
 
-    // [Contrats - P1] Relevé du mois fait par l'ancien titulaire (clôture de son contrat)
     if ($existante && !$resaisie && (int) $existante['ID_Client'] !== $idClient) {
         retourSaisie('erreur', 'Ce compteur vous a été attribué ce mois-ci : son relevé de ' . nomMois($mois) . ' ' . $annee
             . ' a été fait à la clôture du contrat précédent. Votre première saisie se fera le mois prochain.', $idCompteur);
@@ -158,7 +155,6 @@ if ($typeAnomalie === 'Surconsommation') {
         }
     }
 
-    // [P3] Message précis : consommation, seuil du type d'activité du contrat, quartier
     $uniteMsg = estEau($compteur['Type_Compteur']) ? 'm³' : 'kWh';
     $ctMsg    = getContratActifDuCompteur($idCompteur);
     $seuilMsg = seuilMax($compteur['Type_Compteur'], getTypeActiviteDuCompteur($idCompteur));
@@ -173,7 +169,7 @@ if ($typeAnomalie === 'Surconsommation') {
     );
 }
  
-if ($typeAnomalie) {   // Index négatif
+if ($typeAnomalie) {
     retourSaisie(
         'anomalie',
         'Anomalie détectée : votre index est inférieur à celui du mois précédent. Le fournisseur va vérifier votre saisie.',
@@ -211,7 +207,6 @@ function preparerPageSaisie()
     $compteurs = [];
     $payload   = [];
 
-    // [P3] Contrats actifs du client, indexés par compteur : une seule requête.
     $contratsParCompteur = [];
     foreach (getContratsDuClient($idClient, true) as $ct) {
         $contratsParCompteur[(int) $ct['ID_Compteur']] = $ct;
@@ -224,8 +219,6 @@ function preparerPageSaisie()
 
         $resaisie = getSaisieEnResaisie($id);
         $saisie   = $resaisie ?: getSaisie($id, $moisNow, $anneeNow);
-        // [Contrats - P1] Compteur repris ce mois-ci (transfert / nouveau contrat) : le relevé du mois
-        // est le relevé de clôture de l'ancien titulaire. On ne l'affiche pas au nouveau titulaire.
         $reprise = !$resaisie && $saisie && (int) $saisie['ID_Client'] !== $idClient;
         if ($reprise) {
             $saisie = null;
@@ -253,13 +246,12 @@ if ($s === 'Verifie') {
             $etat = $ouverte ? 'libre' : 'ferme';
         }
 
-        $ct = $contratsParCompteur[$id] ?? null;   // [P3]
+        $ct = $contratsParCompteur[$id] ?? null;
         $facture = null;
         if ($saisie) {
             $fa = getFactureDeSaisie($saisie['ID_Consommation_Mensuelle']);
             if ($fa) {
                 $payee    = $fa['Statut_Paiement'] === 'Payee';
-                // [P3] Détail par tranche + redevance (Personne 2), selon le type d'activité du contrat
                 $lignes = [];
                 try {
                     $lignes = lignesFacture(
@@ -301,7 +293,6 @@ if ($s === 'Verifie') {
             }
         }
 
-        // [P3] Contrat / quartier / logement de ce compteur
         $ct = $contratsParCompteur[$id] ?? null;
 
         $etatsLib = ['libre' => ['À saisir', 'a-saisir'], 'verifie' => ['Saisi ✓', 'ok'],
@@ -315,7 +306,6 @@ if ($s === 'Verifie') {
             'quartier' => $ct ? $ct['Quartier'] . ' (' . $ct['Ville'] . ')' : null,
             'activite' => $ct ? $ct['Type_Activite'] : null,
             'adresse'  => $ct ? trim((string) $ct['Adresse_Branchement']) : '',
-            // Un logement / local = même quartier + même adresse de branchement
             'groupe'   => $ct ? $ct['ID_Quartier'] . '|' . mb_strtolower(trim((string) $ct['Adresse_Branchement'])) : 'aucun',
             'id'     => $id,
             'label'  => $eau ? 'Eau' : 'Électricité',
@@ -339,8 +329,6 @@ if ($s === 'Verifie') {
         ];
     }
 
-  
-    // [P3] Regroupement des compteurs par logement / local (ex. les 2 maisons de Nouha)
     $groupes = [];
     foreach ($compteurs as $c) {
         $k = $c['groupe'];

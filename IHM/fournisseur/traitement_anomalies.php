@@ -5,7 +5,6 @@ require_once __DIR__ . '/../../BD/Anomalie.php';
 
 $anomalies = getAnomaliesEnAttente();
 
-// 4650.00 -> « 4 650 »
 $fmt = fn($v) => rtrim(rtrim(number_format((float) $v, 2, ',', ' '), '0'), ',');
 
 $totalAnomalies = count($anomalies);
@@ -81,7 +80,7 @@ foreach ($anomalies as $a) {
         <div class="sidebar-brand">
             <div class="logo-icon"><i class="fa-solid fa-droplet"></i></div>
             <div>
-                <div class="brand-text">Gestion des Factures</div>
+                <div class="brand-text">Fluxio</div>
                 <div class="brand-sub">Eau & Électricité</div>
             </div>
         </div>
@@ -194,8 +193,6 @@ foreach ($anomalies as $a) {
                                 <?php foreach ($anomalies as $a): ?>
                                     <?php 
                                         $nbRefus = intval($a['Nb_Refus'] ?? 0);
-                                        // RÈGLE MÉTIER : Corriger & Facturer apparaît dès que la 2e saisie du client
-                                        // est encore négative (statut 'Saisie_Fournisseur' posé par Saisie.php)
                                         $peutCorrigerDirectement = (($a['Statut_Traitement'] ?? '') === 'Saisie_Fournisseur');
                                     ?>
                                     <tr>
@@ -244,7 +241,6 @@ foreach ($anomalies as $a) {
                                         </td>
                                         <td class="text-end pe-4">
                                             <?php if ($peutCorrigerDirectement): ?>
-                                                <!-- Affiché UNIQUEMENT si Statut = Saisie_Fournisseur -->
                                                 <button type="button" class="btn btn-sm btn-primary font-weight-bold" data-bs-toggle="modal" data-bs-target="#modalCorrection<?= $a['ID_Consommation_Mensuelle'] ?>">
                                                     <i class="fa-solid fa-pen-to-square me-1"></i> Corriger & Facturer
                                                 </button>
@@ -305,7 +301,6 @@ foreach ($anomalies as $a) {
                                                 </div>
 
                                             <?php elseif (($a['Type_Anomalie'] ?? '') === 'Surconsommation'): ?>
-                                                <!-- Action Surconsommation : Alerter le client -->
                                                 <form method="POST" action="index.php?page=traiter_anomalie" class="d-inline">
                                                     <input type="hidden" name="id_consommation" value="<?= $a['ID_Consommation_Mensuelle'] ?>">
                                                     <input type="hidden" name="id_client" value="<?= $a['ID_Client'] ?>">
@@ -316,7 +311,6 @@ foreach ($anomalies as $a) {
                                                 </form>
 
                                             <?php else: ?>
-                                                <!-- Affiché uniquement après la 1ère saisie erronée (une seule resaisie possible) -->
                                                 <button type="button" class="btn btn-sm btn-danger font-weight-bold" data-bs-toggle="modal" data-bs-target="#modalResaisie<?= $a['ID_Consommation_Mensuelle'] ?>">
                                                     <i class="fa-solid fa-rotate-left me-1"></i> Demander Resaisie
                                                 </button>

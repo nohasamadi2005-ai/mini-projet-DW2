@@ -1,13 +1,10 @@
 <?php
-
 require_once __DIR__ . '/../BD/AgentImport.php';
 require_once __DIR__ . '/../BD/Agent.php';
 
-const DEPOT_TAILLE_MAX = 10 * 1024 * 1024;   // 10 Mo (affiché dans le formulaire)
+const DEPOT_TAILLE_MAX = 10 * 1024 * 1024;
 const DEPOT_LIGNES_MAX = 5000;
-const DEPOT_VALEUR_MAX = 9999999999.99;      // limite de decimal(12,2)
-
-//  PARTIE HTTP
+const DEPOT_VALEUR_MAX = 9999999999.99;
 
 function traiterDepotReleve()
 {
@@ -29,7 +26,6 @@ function traiterDepotReleve()
         return $res;
     }
 
-    // --- Le fichier envoyé ---
     $f = $_FILES['fichier_txt'] ?? null;
     if (!$f || $f['error'] !== UPLOAD_ERR_OK) {
         $codes = [
@@ -52,7 +48,6 @@ function traiterDepotReleve()
         return $res;
     }
 
-    // --- Sauvegarde sous un nom unique (un 2e dépôt du même nom n'écrase plus le 1er) ---
     $slug = trim(substr(preg_replace('/[^A-Za-z0-9_-]+/', '_', pathinfo($nomOrigine, PATHINFO_FILENAME)), 0, 40), '_');
     if ($slug === '') {
         $slug = 'releve';
@@ -69,10 +64,9 @@ function traiterDepotReleve()
         return $res;
     }
 
-    // --- Import ---
     $r = importerFichierReleve($chemin, $nomFichier, $idAgent, $annee);
     if ($r['erreur'] !== null) {
-        @unlink($chemin);                       // rien n'a été gardé en base : on ne garde pas le fichier
+        @unlink($chemin);
         $res['erreurs'][] = $r['erreur'];
         return $res;
     }
@@ -92,7 +86,6 @@ function traiterDepotReleve()
     }
     return $res;
 }
-//  LOGIQUE D'IMPORT
 
 function importerFichierReleve($chemin, $nomFichier, $idAgent, $annee)
 {
@@ -105,15 +98,15 @@ function importerFichierReleve($chemin, $nomFichier, $idAgent, $annee)
     if (strpos($contenu, "\0") !== false) {
         return $echec("Ce fichier n'est pas un fichier texte.");
     }
-    $contenu = preg_replace('/^\xEF\xBB\xBF/', '', $contenu);         
+    $contenu = preg_replace('/^\xEF\xBB\xBF/', '', $contenu);
 
     $lignes = preg_split('/\r\n|\r|\n/', $contenu);
     if (count($lignes) > DEPOT_LIGNES_MAX) {
         return $echec("Le fichier contient plus de " . DEPOT_LIGNES_MAX . " lignes.");
     }
 
-    $etat = getEtatContratsPourAgent($idAgent, $annee);   // [ID_Contrat => client, type, en cours, dans la tournée]
-    $vus  = [];                                            // contrats déjà intégrés dans ce fichier : [ID_Contrat => n° de ligne]
+    $etat = getEtatContratsPourAgent($idAgent, $annee);
+    $vus  = [];
     $nbInt = 0;
     $nbRej = 0;
 
@@ -123,10 +116,9 @@ function importerFichierReleve($chemin, $nomFichier, $idAgent, $annee)
     foreach ($lignes as $i => $brut) {
         $numero = $i + 1;
         $ligne  = trim(versUtf8($brut));
-        if ($ligne === '' || $ligne[0] === '#') {
-            continue;                              // ligne vide ou commentaire : ignorée
+               if ($ligne === '' || $ligne[0] === '#' || preg_match('/^\d+\s*[,;\t]\s*$/', $ligne)) {
+            continue;
         }
-
         $a = analyserLigneReleve($ligne, $etat, $vus, $annee);
 
         $statut = $a['motif'] === null ? 'Integre' : 'Rejete';
@@ -158,33 +150,32 @@ function importerFichierReleve($chemin, $nomFichier, $idAgent, $annee)
     return ['integrees' => $nbInt, 'rejetees' => $nbRej, 'erreur' => null];
 }
 
-
 function analyserLigneReleve($ligne, $etat, $vus, $annee)
 {
     $r = ['contrat' => null, 'client' => null, 'eau' => null, 'elec' => null, 'motif' => null, 'doublon_de' => null];
 
-    $p = array_map('trim', preg_split('/[,;\t]+/', $ligne));
+    $p = array_map('trim', preg_split('/[,;\t]/', $ligne));
 
-    // 1. Exactement 2 colonnes (sinon une virgule décimale décalerait silencieusement les valeurs)
     if (count($p) !== 2) {
         $r['motif'] = "Format invalide : 2 colonnes attendues (ID contrat ; consommation), "
                     . count($p) . " trouvée(s). Utilisez le point comme séparateur décimal.";
         return $r;
     }
 
-    // 2. ID contrat
     if (!ctype_digit($p[0]) || (int) $p[0] <= 0 || strlen($p[0]) > 9) {
         $r['motif'] = "ID contrat invalide";
         return $r;
     }
     $id = (int) $p[0];
     $c  = $etat[$id] ?? null;
-    if ($c !== null) {
-        $r['contrat'] = $id;                    // un contrat inconnu ne peut pas être référencé en base
-        $r['client']  = $c['client'];
-    }
+       if ($c !== null && !$c['dans_tournee']) {
+         $c = null;
+       }
+      if ($c !== null) {
+         $r['contrat'] = $id;
+         $r['client']  = $c['client'];
+       }
 
-    // 3. Consommation
     if (!estConsommationValide($p[1])) {
         $r['motif'] = "Consommation invalide (nombre positif attendu)";
         return $r;
@@ -193,22 +184,15 @@ function analyserLigneReleve($ligne, $etat, $vus, $annee)
         $r[$c['type'] === 'Eau' ? 'eau' : 'elec'] = (float) $p[1];
     }
 
-    // 4. Contrat existant ?
     if ($c === null) {
-        $r['motif'] = "Contrat introuvable (ID $id)";
+      $r['motif'] = "Contrat introuvable dans votre tournée (ID $id)";
         return $r;
     }
-    // 5. Contrat en cours pendant l'année du dépôt ?
     if (!$c['valide_annee']) {
         $r['motif'] = "Contrat non en cours en $annee";
         return $r;
     }
-    // 6. Dans la tournée de l'agent ?
-    if (!$c['dans_tournee']) {
-        $r['motif'] = "Hors de votre tournée";
-        return $r;
-    }
-    // 7. Déjà dans ce fichier ?
+    
     if (isset($vus[$id])) {
         $r['motif'] = "Doublon dans le fichier";
         $r['doublon_de'] = $vus[$id];
@@ -222,7 +206,6 @@ function estConsommationValide($texte)
     return is_numeric($texte) && (float) $texte >= 0 && (float) $texte <= DEPOT_VALEUR_MAX;
 }
 
-// Texte non UTF-8 (fichier .txt enregistré en ANSI / Windows-1252) -> UTF-8
 function versUtf8($texte)
 {
     if (preg_match('//u', $texte)) {
@@ -232,106 +215,6 @@ function versUtf8($texte)
     return $conv === false ? '' : $conv;
 }
 
-
-//  PAGINATION (espace agent)
-
-const PAGINATION_PAR_PAGE = 10;
-
-function paginer($items, $parPage = PAGINATION_PAR_PAGE, $param = 'p')
-{
-    $items   = array_values((array) $items);
-    $total   = count($items);
-    $parPage = max(1, (int) $parPage);
-    $pages   = max(1, (int) ceil($total / $parPage));
-    $page    = min(max((int) ($_GET[$param] ?? 1), 1), $pages);     // numéro invalide -> page 1 ou dernière page
-    $debut   = ($page - 1) * $parPage;
-
-    return [
-        'items'    => array_slice($items, $debut, $parPage),
-        'page'     => $page,
-        'pages'    => $pages,
-        'total'    => $total,
-        'par_page' => $parPage,
-        'debut'    => $total ? $debut + 1 : 0,
-        'fin'      => min($debut + $parPage, $total),
-    ];
-}
-
-function afficherPagination($pg, $param = 'p', $ancre = '')
-{
-    if ($pg['pages'] <= 1) {
-        return;                                   // une seule page : rien à afficher
-    }
-
-    static $cssAffiche = false;
-    if (!$cssAffiche) {
-        $cssAffiche = true;
-        echo '<style>
-  .pagination { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
-  .pagination .info { font-size: 13px; color: #6b7a90; }
-  .pagination .pages { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-  .pagination .pages a, .pagination .pages span { min-width: 34px; height: 34px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; border: 1px solid #e2e8f0; background: #fff; color: #14213d; }
-  .pagination .pages a:hover { background: #eff6ff; border-color: #bfdbfe; color: #0284c7; }
-  .pagination .pages .cur { background: #0284c7; border-color: #0284c7; color: #fff; }
-  .pagination .pages .off { color: #cbd5e1; background: #f8fafc; }
-  .pagination .pages .dots { border: 0; background: transparent; color: #94a3b8; min-width: 20px; padding: 0; }
-</style>';
-    }
-
-    $q = $_GET;
-    unset($q[$param]);
-    $lien = function ($n) use ($q, $param, $ancre) {
-        $q2 = $q;
-        if ($n > 1) {
-            $q2[$param] = $n;
-        }
-        return 'index.php?' . htmlspecialchars(http_build_query($q2)) . ($ancre !== '' ? '#' . $ancre : '');
-    };
-
-    // pages affichées : la première, la dernière et celles autour de la page courante
-    $affichees = [1, $pg['pages']];
-    for ($i = $pg['page'] - 1; $i <= $pg['page'] + 1; $i++) {
-        if ($i > 1 && $i < $pg['pages']) {
-            $affichees[] = $i;
-        }
-    }
-    $affichees = array_unique($affichees);
-    sort($affichees);
-
-    echo '<div class="pagination">';
-    echo '<div class="info">Affichage ' . (int) $pg['debut'] . '–' . (int) $pg['fin'] . ' sur ' . (int) $pg['total'] . '</div>';
-    echo '<div class="pages">';
-
-    echo $pg['page'] > 1
-        ? '<a href="' . $lien($pg['page'] - 1) . '">‹ Précédent</a>'
-        : '<span class="off">‹ Précédent</span>';
-
-    $precedente = 0;
-    foreach ($affichees as $n) {
-        if ($n - $precedente === 2) {
-            echo '<a href="' . $lien($precedente + 1) . '">' . ($precedente + 1) . '</a>';     // une seule page cachée : on l'affiche
-        } elseif ($n - $precedente > 2) {
-            echo '<span class="dots">…</span>';
-        }
-        echo $n === $pg['page']
-            ? '<span class="cur">' . $n . '</span>'
-            : '<a href="' . $lien($n) . '">' . $n . '</a>';
-        $precedente = $n;
-    }
-
-    echo $pg['page'] < $pg['pages']
-        ? '<a href="' . $lien($pg['page'] + 1) . '">Suivant ›</a>'
-        : '<span class="off">Suivant ›</span>';
-
-    echo '</div></div>';
-}
-
-
-// =====================================================================
-//  OUTILS COMMUNS DE L'ESPACE AGENT
-// =====================================================================
-
-// Années proposées dans les listes : les 2 dernières, l'année courante, la suivante, + celles qui ont des dépôts
 function anneesAgent()
 {
     $courante = (int) date('Y');
@@ -344,15 +227,11 @@ function anneesAgent()
     return $annees;
 }
 
-// Année demandée dans l'URL (?annee=...), sinon l'année courante
 function anneeDemandee($annees)
 {
     $annee = (int) ($_GET['annee'] ?? date('Y'));
     return in_array($annee, $annees, true) ? $annee : (int) date('Y');
 }
-
-
-//  « MA TOURNÉE »
 
 function preparerPageTournee()
 {
@@ -370,8 +249,6 @@ function preparerPageTournee()
         return $filtre === 'tous' || ($filtre === 'releve') === (bool) $l['Releve'];
     }));
 
-    $pg = paginer($lignes, PAGINATION_PAR_PAGE, 'p');      // 10 contrats par page (?p=2)
-
     return [
         'agent'       => getAgentParId($idAgent),
         'annee'       => $annee,
@@ -379,11 +256,9 @@ function preparerPageTournee()
         'filtre'      => $filtre,
         'quartiers'   => getQuartiersAgent($idAgent),
         'progression' => getProgressionTournee($idAgent, $annee, $tournee),
-        'lignes'      => $pg['items'],
-        'pagination'  => $pg,
+        'lignes'      => $lignes,
     ];
 }
-
 
 function genererFeuilleTournee($idAgent, $annee, $tous = false)
 {
@@ -431,7 +306,6 @@ function genererFeuilleTournee($idAgent, $annee, $tous = false)
     return implode("\r\n", $out) . "\r\n";
 }
 
-// Télécharge la feuille de tournée (?page=agent_tournee_export&annee=2027[&tous=1]) puis termine
 function envoyerFeuilleTournee()
 {
     $idAgent = (int) ($_SESSION['user']['id'] ?? 0);
@@ -443,12 +317,9 @@ function envoyerFeuilleTournee()
     header('Content-Type: text/plain; charset=utf-8');
     header('Content-Disposition: attachment; filename="feuille_tournee_' . $annee . '_agent' . $idAgent . '.txt"');
     header('Content-Length: ' . (strlen($contenu) + 3));
-    echo "\xEF\xBB\xBF" . $contenu;      // BOM : Notepad affiche bien les accents
+    echo "\xEF\xBB\xBF" . $contenu;
     exit;
 }
-
-
-//  DÉTAIL D'UN DÉPÔT
 
 function preparerPageDetailDepot()
 {
@@ -465,14 +336,39 @@ function preparerPageDetailDepot()
     $detail['nb_rejetees']  = count($detail['rejetees']);
     $detail['statut'] = $detail['nb_rejetees'] === 0 ? 'Integre'
                       : ($detail['nb_integrees'] === 0 ? 'Rejete' : 'Partiel');
-
-    // 10 lignes par page et par tableau (?pr=2 pour les rejetées, ?pi=2 pour les intégrées)
-    $pr = paginer($detail['rejetees'], PAGINATION_PAR_PAGE, 'pr');
-    $pi = paginer($detail['integrees'], PAGINATION_PAR_PAGE, 'pi');
-    $detail['rejetees']    = $pr['items'];
-    $detail['integrees']   = $pi['items'];
-    $detail['pg_rejetees']  = $pr;
-    $detail['pg_integrees'] = $pi;
     return $detail;
 }
 
+function preparerPageAgents()
+{
+    $flash = $_SESSION['flash_agents'] ?? null;
+    unset($_SESSION['flash_agents']);
+
+    return [
+        'agents'       => getAgents(),
+        'quartiers'    => getQuartiersPourAffectation(),
+        'affectations' => getAffectationsQuartiers(),
+        'flash'        => $flash,
+    ];
+}
+
+function traiterActionAgents()
+{
+    $idAgent = (int) ($_POST['id_agent'] ?? 0);
+    $ids     = $_POST['quartiers'] ?? [];
+    if (!is_array($ids)) {
+        $ids = [];
+    }
+
+    $agent = getAgentParId($idAgent);
+    if (!$agent) {
+        $_SESSION['flash_agents'] = ['type' => 'erreur', 'texte' => "Agent introuvable."];
+    } elseif (setQuartiersAgent($idAgent, $ids)) {
+        $nb = count(getQuartiersAgent($idAgent));
+        $_SESSION['flash_agents'] = ['type' => 'ok',
+            'texte' => "Tournée de {$agent['Prenom']} {$agent['Nom']} enregistrée : $nb quartier(s)."];
+    } else {
+        $_SESSION['flash_agents'] = ['type' => 'erreur',
+            'texte' => "Impossible d'enregistrer les quartiers de {$agent['Prenom']} {$agent['Nom']}."];
+    }
+}

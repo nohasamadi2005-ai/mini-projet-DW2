@@ -14,7 +14,7 @@ function seConnecter($role, $email, $motDePasse) {
         $user = trouverClientParEmail($email);
     } elseif ($role === 'fournisseur') {
         $user = trouverFournisseurParEmail($email);
-    } elseif ($role === 'agent') { // <--- AJOUTÉ
+    } elseif ($role === 'agent') {
         $user = trouverAgentParEmail($email);
     } else {
         return false;
@@ -23,7 +23,7 @@ function seConnecter($role, $email, $motDePasse) {
     if ($user && password_verify($motDePasse, $user['mdp'])) {
         session_regenerate_id(true);
 
-        $idUser = $user['id'] ?? $user['ID_Client'] ?? $user['ID_Admin'] ?? $user['ID_Fournisseur'] ?? $user['ID_Agent'] ?? null; // <--- ID_Agent ajouté
+        $idUser = $user['id'] ?? $user['ID_Client'] ?? $user['ID_Admin'] ?? $user['ID_Fournisseur'] ?? $user['ID_Agent'] ?? null;
 
         $_SESSION['user'] = [
             'id'     => $idUser,
@@ -78,13 +78,11 @@ function erreurMotDePasse($mdp)
     return null;
 }
 
-/** CIN marocain : 1 ou 2 lettres suivies de 5 ou 6 chiffres (ex. AB123456, K98765). */
 function formatCinValide($cin)
 {
     return (bool) preg_match('/^[A-Z]{1,2}[0-9]{5,6}$/', $cin);
 }
 
-/** ICE (Identifiant Commun de l'Entreprise) : exactement 15 chiffres. */
 function formatIceValide($ice)
 {
     return (bool) preg_match('/^[0-9]{15}$/', $ice);
@@ -140,7 +138,6 @@ function inscrireClient($nom, $prenom, $adresse, $telephone, $email, $mdp, $mdp2
     }
 
     if (!$erreurs) {
-        // Un particulier n'a ni raison sociale ni ICE.
         $rs  = $typeClient === 'entreprise' ? $raisonSociale : null;
         $iceBd = $typeClient === 'entreprise' ? $ice : null;
 
@@ -286,8 +283,8 @@ function changerMotDePasse($ancien, $nouveau, $nouveau2)
 
 function pageAccueil($role)
 {
-    if ($role === 'fournisseur') return 'tableau_bord';
-    if ($role === 'agent') return 'saisie_agent'; // Remplacez par la page d'accueil de l'agent
+    if ($role === 'fournisseur') return 'gestion_client';
+    if ($role === 'agent') return 'saisie_agent';
     return 'saisie';
 }
 

@@ -15,7 +15,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email          = trim($_POST['email'] ?? '');
         $password       = $_POST['password'] ?? '';
         
-        // Les compteurs se gèrent par contrat : on crée le client, puis on ouvre l'écran Contrats
         if (!empty($nom) && !empty($prenom) && !empty($email) && !empty($password)) {
             try {
                 $idClient = ajouterClientAvecCompteur($nom, $prenom, $adresse, $telephone, $email, $password, '', '');
@@ -50,8 +49,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   
             modifierClient($idClient, $nom, $prenom, $adresse, $telephone, $email);
 
-         
-            // Les compteurs ne se modifient plus ici : écran Contrats (index.php?page=contrats)
             $_SESSION['client_msg'] = ['type' => 'succes', 'texte' => 'Client mis à jour.'];
         }
 

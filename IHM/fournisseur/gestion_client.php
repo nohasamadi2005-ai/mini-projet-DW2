@@ -132,7 +132,7 @@ $finAffichage = min($debut + $parPage, $totalClients);
         <div class="sidebar-brand">
             <div class="logo-icon"><i class="fa-solid fa-droplet"></i></div>
             <div>
-                <div class="brand-text">Gestion des Factures</div>
+                <div class="brand-text">Fluxio</div>
                 <div class="brand-sub">Eau & Électricité</div>
             </div>
         </div>
@@ -261,7 +261,6 @@ $finAffichage = min($debut + $parPage, $totalClients);
         </div>
     </div>
 
-    <!-- Modale d'Ajout -->
     <div id="addModal" class="modal">
         <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
             <h2>Ajouter un nouveau client</h2>
@@ -286,7 +285,6 @@ $finAffichage = min($debut + $parPage, $totalClients);
         </div>
     </div>
 
-    <!-- Modale de Modification -->
     <div id="editModal" class="modal">
         <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
             <h2>Modifier le client</h2>

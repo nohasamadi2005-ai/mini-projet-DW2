@@ -1,12 +1,10 @@
 <?php
-/** @var array $d données préparées par preparerPageDetailDepot() (traitement/agent.php) */
 $user     = $_SESSION['user'] ?? ['nom' => 'Utilisateur', 'prenom' => 'Agent'];
 $initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 
-$nf = function ($v) {                       // 1234.5 -> "1 234,50"
+$nf = function ($v) {
     return $v === null || $v === '' ? '—' : number_format((float) $v, 2, ',', ' ');
 };
-require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et afficherPagination()
 $typeCompteur = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
 $badges = [
     'Integre' => ['integre', 'Intégré'],
@@ -25,7 +23,6 @@ $badges = [
   * { box-sizing: border-box; }
   body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: #f4f6f9; color: #14213d; display: flex; min-height: 100vh; }
 
-  /* Sidebar */
   .sidebar { width: 260px; background: #0a2540; color: #fff; display: flex; flex-direction: column; justify-content: space-between; padding: 24px; position: fixed; height: 100vh; }
   .logo-area { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
   .logo-icon { background: #38bdf8; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; color: #fff; box-shadow: 0 4px 12px rgba(56,189,248,0.4); }
@@ -42,7 +39,6 @@ $badges = [
   .help-box a { color: #38bdf8; text-decoration: none; font-weight: 600; font-size: 12px; }
   .logout-btn { display: flex; align-items: center; gap: 10px; color: #ef4444; text-decoration: none; font-size: 14px; font-weight: 600; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); }
 
-  /* Main Content */
   .main-content { margin-left: 260px; flex: 1; display: flex; flex-direction: column; min-width: 0; }
   .topbar { background: #fff; padding: 16px 32px; display: flex; justify-content: flex-end; align-items: center; border-bottom: 1px solid #e2e8f0; }
   .user-profile { display: flex; align-items: center; gap: 12px; }
@@ -91,7 +87,6 @@ $badges = [
 </head>
 <body>
 
-  <!-- Sidebar -->
   <div class="sidebar">
     <div>
       <div class="logo-area">
@@ -109,11 +104,15 @@ $badges = [
       </div>
     </div>
     <div>
+      <div class="help-box">
+        <strong>Besoin d'aide ?</strong>
+        <p>Notre équipe vous répond du lundi au vendredi.</p>
+        <a href="#">Centre d'aide</a>
+      </div>
       <a href="index.php?page=logout" class="logout-btn">Se déconnecter</a>
     </div>
   </div>
 
-  <!-- Main Content -->
   <div class="main-content">
     <div class="topbar">
       <div class="user-profile">
@@ -164,8 +163,7 @@ $badges = [
         </div>
       </div>
 
-      <!-- Lignes rejetées -->
-      <div class="table-container" id="rejetees">
+      <div class="table-container">
         <div class="table-header">
           <div>
             <h3>Lignes rejetées</h3>
@@ -213,11 +211,9 @@ $badges = [
             <?php endif; ?>
           </tbody>
         </table>
-        <?php afficherPagination($d['pg_rejetees'], 'pr', 'rejetees'); ?>
       </div>
 
-      <!-- Lignes intégrées -->
-      <div class="table-container" id="integrees">
+      <div class="table-container">
         <div class="table-header">
           <div>
             <h3>Lignes intégrées</h3>
@@ -261,7 +257,6 @@ $badges = [
             <?php endif; ?>
           </tbody>
         </table>
-        <?php afficherPagination($d['pg_integrees'], 'pi', 'integrees'); ?>
       </div>
     </div>
   </div>

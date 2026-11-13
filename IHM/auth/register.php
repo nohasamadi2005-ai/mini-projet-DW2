@@ -98,7 +98,6 @@ $roleSaisi = $roleSaisi ?? 'client';
   }
   if (role) { role.addEventListener('change', maj); maj(); }
 
-  // Champs entreprise : visibles seulement si « Entreprise », et alors obligatoires.
   const typeClient = document.getElementById('type_client');
   const blocEntreprise = document.getElementById('champsEntreprise');
   function majType() {

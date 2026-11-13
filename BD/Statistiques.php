@@ -1,15 +1,6 @@
 <?php
-/*  Statistiques du tableau de bord fournisseur (Personne 5).
-    Aucune vue SQL : la jointure  relevé -> contrat -> quartier -> type d'activité
-    est écrite UNE seule fois, dans statFromReleves(), et réutilisée par toutes les requêtes.
-    (consommation_mensuelle n'a pas d'ID_Contrat : on rattache le relevé au contrat du MÊME
-    compteur ET du MÊME CLIENT qui couvre le mois du relevé. Le filtre sur le client est
-    indispensable en cas de transfert dans le mois : le relevé de clôture de l'ancien client
-    reste ainsi sur son contrat et n'est pas attribué au nouveau.)                                                              */
 require_once __DIR__ . '/Consommation.php';
 
-
-// Début / fin du mois d'un relevé, en SQL
 const STAT_DEBUT_MOIS = "STR_TO_DATE(CONCAT(cm.Annee, '-', cm.Mois, '-01'), '%Y-%m-%d')";
 
 function statFromReleves($jointure = 'JOIN')
@@ -28,7 +19,6 @@ function statFromReleves($jointure = 'JOIN')
             JOIN compteur cp      ON cp.ID_Compteur = cm.ID_Compteur";
 }
 
-// $annee = 0 -> toutes les années
 function statFiltreAnnee()
 {
     return " (? = 0 OR cm.Annee = ?) ";
@@ -42,8 +32,6 @@ function statAnnees()
     ));
 }
 
-
-// Chiffre d'affaires par type d'activité : facturé, encaissé, impayé
 function statCAParTypeActivite($annee)
 {
     return consoSelect(
@@ -61,8 +49,6 @@ function statCAParTypeActivite($annee)
     );
 }
 
-
-// Consommation par quartier (relevés vérifiés), eau en m³ et électricité en kWh séparées
 function statConsoParQuartier($annee)
 {
     return consoSelect(
@@ -77,8 +63,6 @@ function statConsoParQuartier($annee)
     );
 }
 
-
-// Impayés par quartier
 function statImpayesParQuartier($annee)
 {
     return consoSelect(

@@ -1,25 +1,6 @@
 <?php
-/*
- * CONTRATS — accès à la base (Personne 1)
- *
- * Un contrat = un client + un compteur + un quartier (zone), du Date_Debut au Date_Fin.
- * Règles tenues par ce fichier et par traitement/contrat.php :
- *   - au plus UN contrat actif par compteur (garanti aussi par la base) ;
- *   - compteur.ID_Client = titulaire du contrat actif (NULL si le compteur est libre) ;
- *   - un compteur ne bouge pas : tous ses contrats sont dans le même quartier.
- *
- * Fonctions utilisées par les autres membres de l'équipe :
- *   getContratsDuClient($idClient, $actifsSeulement = false)  -> liste des contrats du client
- *   getContratParId($idContrat)                               -> un contrat (ou null)
- *   getContratActifDuCompteur($idCompteur)                    -> contrat actif du compteur (ou null)
- *   getContratsDuCompteur($idCompteur)                        -> tous les contrats du compteur (historique)
- * Chaque contrat renvoyé contient : ID_Contrat, ID_Client, Nom, Prenom, ID_Compteur, Type_Compteur,
- *   ID_Quartier, Quartier, Ville, ID_Type_Activite, Type_Activite, Adresse_Branchement,
- *   Date_Debut, Date_Fin, Index_Debut, Index_Fin, Statut, Motif_Fin, Dernier_Index.
- */
-require_once __DIR__ . '/Consommation.php';   // Connexion, consoSelect, consoExecuter
+require_once __DIR__ . '/Consommation.php';
 
-// Dernier index valable d'un compteur (même règle que getReferencePrecedente)
 const SQL_DERNIER_INDEX = "COALESCE((SELECT cm.Index_Actuel FROM consommation_mensuelle cm
                                       WHERE cm.ID_Compteur = cp.ID_Compteur
                                         AND (cm.Statut_Traitement = 'Verifie'
@@ -39,12 +20,6 @@ const SQL_CONTRAT = "SELECT ct.ID_Contrat, ct.ID_Client, ct.ID_Compteur, ct.ID_Q
                        JOIN quartier q       ON q.ID_Quartier = ct.ID_Quartier
                        JOIN type_activite t  ON t.ID_Type_Activite = q.ID_Type_Activite";
 
-
-// =====================================================================
-//  LECTURE
-// =====================================================================
-
-// Filtres possibles : client, quartier, activite (type d'activité), statut, type (compteur), q (recherche)
 function filtreContratsSql($f)
 {
     $where = [];
@@ -115,7 +90,6 @@ function getContratsDuCompteur($idCompteur)
         'i', [(int) $idCompteur]);
 }
 
-// Chiffres pour les cartes en haut de l'écran
 function statistiquesContrats()
 {
     $r = consoSelect(
@@ -130,14 +104,66 @@ function statistiquesContrats()
     return array_map('intval', $r[0] ?? []);
 }
 
-// Clients pour les listes déroulantes
-function getClientsPourContrat()
+function clientAColonneCin()
 {
-    return consoSelect("SELECT ID_Client, Nom, Prenom, Adresse FROM client ORDER BY Nom, Prenom");
+    static $existe = null;
+    if ($existe === null) {
+        $existe = (bool) consoSelect("SHOW COLUMNS FROM client LIKE 'CIN'");
+    }
+    return $existe;
 }
 
-// Un compteur avec ce qu'il faut savoir pour lui créer un contrat :
-// titulaire actuel, dernier index, zone et adresse de son dernier contrat, fin du dernier contrat.
+function sqlClientPourContrat()
+{
+    return "SELECT cl.ID_Client, cl.Nom, cl.Prenom, cl.Adresse, cl.Telephone, cl.Email, "
+         . (clientAColonneCin() ? "cl.CIN" : "NULL") . " AS CIN,
+                (SELECT COUNT(*) FROM contrat x WHERE x.ID_Client = cl.ID_Client AND x.Statut = 'Actif') AS Nb_Actifs
+           FROM client cl";
+}
+
+function getClientPourContrat($idClient)
+{
+    $r = consoSelect(sqlClientPourContrat() . " WHERE cl.ID_Client = ?", 'i', [(int) $idClient]);
+    return $r[0] ?? null;
+}
+
+function rechercherClientsPourContrat($texte, $limite = 10)
+{
+    $mots = array_slice(preg_split('/\s+/', trim((string) $texte), -1, PREG_SPLIT_NO_EMPTY), 0, 5);
+    if (!$mots) {
+        return [];
+    }
+    $champs = ['cl.Nom', 'cl.Prenom', 'cl.Email', "REPLACE(cl.Telephone, ' ', '')"];
+    if (clientAColonneCin()) {
+        $champs[] = 'cl.CIN';
+    }
+    $where = [];
+    $types = '';
+    $params = [];
+    foreach ($mots as $mot) {
+        $like = '%' . addcslashes($mot, '%_\\') . '%';
+        $ou = [];
+        foreach ($champs as $c) {
+            $ou[] = "$c LIKE ?";
+            $types .= 's';
+            $params[] = $like;
+        }
+        if (ctype_digit($mot)) {
+            $ou[] = 'cl.ID_Client = ?';
+            $types .= 'i';
+            $params[] = (int) $mot;
+        }
+        $where[] = '(' . implode(' OR ', $ou) . ')';
+    }
+    $debut = addcslashes($mots[0], '%_\\') . '%';
+    $types .= 'issi';
+    array_push($params, ctype_digit($mots[0]) ? (int) $mots[0] : 0, $debut, $debut, (int) $limite);
+
+    return consoSelect(sqlClientPourContrat() . ' WHERE ' . implode(' AND ', $where)
+        . " ORDER BY (cl.ID_Client = ?) DESC, (cl.Nom LIKE ? OR cl.Prenom LIKE ?) DESC, cl.Nom, cl.Prenom, cl.ID_Client
+            LIMIT ?", $types, $params);
+}
+
 function getCompteurPourContrat($idCompteur)
 {
     $r = consoSelect(
@@ -153,7 +179,6 @@ function getCompteurPourContrat($idCompteur)
     return $r[0] ?? null;
 }
 
-// Compteurs libres (sans contrat actif), avec la même information
 function getCompteursLibresPourContrat()
 {
     return consoSelect(
@@ -167,7 +192,6 @@ function getCompteursLibresPourContrat()
     );
 }
 
-// Dernier relevé valable d'un compteur (ou null)
 function getDernierReleveCompteur($idCompteur)
 {
     $r = consoSelect(
@@ -180,7 +204,6 @@ function getDernierReleveCompteur($idCompteur)
     return $r[0] ?? null;
 }
 
-// Relevés du compteur encore en attente de traitement (bloquent une résiliation)
 function compterRelevesEnAttente($idCompteur)
 {
     $r = consoSelect(
@@ -193,7 +216,6 @@ function compterRelevesEnAttente($idCompteur)
     return (int) ($r[0]['n'] ?? 0);
 }
 
-// Factures impayées d'un client sur un compteur : ['nb' => , 'montant' => ]
 function getImpayesContrat($idClient, $idCompteur)
 {
     $r = consoSelect(
@@ -205,11 +227,6 @@ function getImpayesContrat($idClient, $idCompteur)
     );
     return ['nb' => (int) ($r[0]['nb'] ?? 0), 'montant' => (float) ($r[0]['montant'] ?? 0)];
 }
-
-
-// =====================================================================
-//  ÉCRITURE — chaque fonction reçoit la connexion $cnx de la transaction
-// =====================================================================
 
 function executerContrat($cnx, $sql, $types, $params)
 {
@@ -246,7 +263,6 @@ function cloturerContrat($cnx, $idContrat, $dateFin, $indexFin, $motif)
         'sdsi', [$dateFin, (float) $indexFin, $motif, (int) $idContrat]);
 }
 
-// Le compteur prend le titulaire du contrat actif (NULL = compteur libre)
 function definirTitulaireCompteur($cnx, $idCompteur, $idClient)
 {
     if ($idClient) {
@@ -258,7 +274,6 @@ function definirTitulaireCompteur($cnx, $idCompteur, $idClient)
     }
 }
 
-// Correction de la zone d'un compteur : s'applique à tous ses contrats (le compteur ne bouge pas)
 function changerZoneCompteur($idCompteur, $idQuartier)
 {
     return consoExecuter("UPDATE contrat SET ID_Quartier = ? WHERE ID_Compteur = ?",

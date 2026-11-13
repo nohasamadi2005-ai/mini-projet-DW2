@@ -1,16 +1,12 @@
 <?php
 require_once __DIR__ . '/Regles.php';
 require_once __DIR__ . '/../BD/Facture.php';
-require_once __DIR__ . '/../BD/Contrat.php';   // [P3] contrats du client (filtre des factures)
+require_once __DIR__ . '/../BD/Contrat.php';
 
-/**
- * Génère une facture si le relevé est validé ou corrigé
- */
 function genererFacture($idConso)
 {
     $s = getSaisiePourFacture($idConso);
     
-    // Accepter les statuts 'Verifie', 'Anomalie' et 'Saisie_Fournisseur'
     if (!$s || !in_array($s['Statut_Traitement'], ['Verifie', 'Anomalie', 'Saisie_Fournisseur'])) {
         return null;
     }
@@ -20,7 +16,7 @@ function genererFacture($idConso)
     }
 
     if (getFactureDeSaisie($idConso)) {
-        return null; // Déjà facturée
+        return null;
     }
 
     [$ht, $tva, $ttc] = calculerMontants((float) $s['Consommation'], $s['Type_Compteur'], getTypeActiviteDuCompteur($s['ID_Compteur']));
@@ -32,12 +28,6 @@ function genererFacture($idConso)
     return insererFacture($idConso, $date, $debut, $fin, $ht, $tva, $ttc);
 }
 
-/**
- * [P3] Lignes d'affichage d'une facture à partir de detailMontants() (Personne 2) :
- * la tranche appliquée, puis la redevance fixe. Renvoie [] si le détail est indisponible
- * (la facture garde alors son affichage simple, sur une ligne).
- * Rappel : le prix de la tranche atteinte s'applique à TOUTE la consommation.
- */
 function lignesFacture($detail, $unite, $typeActivite)
 {
     if (!is_array($detail) || empty($detail['lignes'])) {
@@ -65,15 +55,11 @@ function lignesFacture($detail, $unite, $typeActivite)
     return $rows;
 }
 
-/**
- * Prépare la liste des factures pour l'IHM client
- */
 function preparerPageFactures()
 {
     $idClient = (int) $_SESSION['user']['id'];
     $factures = [];
 
-    // [P3] Contrats du client (pour le filtre) ; on n'accepte qu'un contrat qui lui appartient
     $contrats = [];
     $idsValides = [];
     foreach (getContratsDuClient($idClient) as $ct) {
@@ -106,7 +92,6 @@ function preparerPageFactures()
         ];
         [$statutLabel, $statutClasse] = $statuts[$f['Statut_Paiement']] ?? $statuts['Impayee'];
 
-        // Sécurité si les fonctions utilitaires manquent
         $dateFormatted = function_exists('dateFr') ? dateFr($f['Date_Facture']) : date('d/m/Y', strtotime($f['Date_Facture']));
         $periodeFormatted = function_exists('periodeFr') 
             ? periodeFr($f['Periode_Debut'], $f['Periode_Fin'], $f['Mois'], $f['Annee']) 
@@ -139,9 +124,6 @@ function preparerPageFactures()
     return compact('factures', 'contrats', 'filtre');
 }
 
-/**
- * Prépare les données détaillées d'une facture imprimable / visualisable
- */
 function preparerFactureImprimable($idFacture, $idClient)
 {
     $f = getFactureDuClient($idFacture, $idClient);
@@ -166,7 +148,6 @@ function preparerFactureImprimable($idFacture, $idClient)
     $indexPrecFormatted = function_exists('formaterIndex') ? formaterIndex($f['Index_Precedent']) : number_format((float)$f['Index_Precedent'], 2, ',', ' ');
     $indexActFormatted = function_exists('formaterIndex') ? formaterIndex($f['Index_Actuel']) : number_format((float)$f['Index_Actuel'], 2, ',', ' ');
 
-    // [P3] Détail par tranche + redevance (Personne 2). Calculé avec les tarifs actuels du type d'activité.
     $lignes = [];
     if (function_exists('detailMontants')) {
         try {

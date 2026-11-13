@@ -6,7 +6,7 @@ require_once __DIR__ . '/../BD/Reclamation.php';
 
 const TYPES_RECLAMATION     = ['Fuite externe', 'Facture', 'Déménagement', 'Saisie bloquée', 'Autre'];
 const SOUS_TYPES_FACTURE    = ['Fuite interne', 'Surconsommation', 'Autre'];
-const RECL_PHOTO_MAX        = 5 * 1024 * 1024;                       // 5 Mo
+const RECL_PHOTO_MAX        = 5 * 1024 * 1024;
 const RECL_PHOTOS_DOSSIER   = __DIR__ . '/../uploads/reclamations/';
 const RECL_PHOTOS_URL       = 'uploads/reclamations/';
 
@@ -25,8 +25,6 @@ function messageReclamation($type, $texte)
     exit;
 }
 
-// Enregistre la photo (JPG/PNG, 5 Mo max) et retourne son chemin, null si aucune photo,
-// ou termine par un message d'erreur.
 function enregistrerPhotoReclamation($idClient)
 {
     $f = $_FILES['photo'] ?? null;
@@ -56,7 +54,6 @@ function enregistrerPhotoReclamation($idClient)
 
 function traiterReclamation()
 {
-    // Fichier plus gros que post_max_size : PHP vide alors $_POST
     if (empty($_POST) && !empty($_SERVER['CONTENT_LENGTH'])) {
         messageReclamation('erreur', 'Le fichier envoyé est trop lourd (5 Mo maximum).');
     }
@@ -123,7 +120,7 @@ function traiterReclamation()
     }
 
     if ($type === 'Fuite externe') {
-        $photo = enregistrerPhotoReclamation($idClient);     // facultative
+        $photo = enregistrerPhotoReclamation($idClient);
     }
 
     if (insererReclamationDetail($idClient, $idFacture ?: null, $typeBD, $desc, $sousType, $lieu, $photo)) {
@@ -180,7 +177,6 @@ function preparerPageReclamations()
         'factures'     => $factures,
         'reclamations' => $reclamations,
         'message'      => $msg,
-        // facture (et type de problème) présélectionnés, par exemple depuis une notification
         'preselection' => (int) ($_GET['facture'] ?? $_GET['id_facture'] ?? 0),
         'preSousType'  => in_array($_GET['sous_type'] ?? '', SOUS_TYPES_FACTURE, true) ? $_GET['sous_type'] : '',
         'types'        => TYPES_RECLAMATION,

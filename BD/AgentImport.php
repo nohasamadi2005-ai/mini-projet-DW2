@@ -1,10 +1,5 @@
 <?php
-
-require_once __DIR__ . '/Consommation.php';   // consoSelect, consoExecuter
-
-
-//  ÉCRITURE
-
+require_once __DIR__ . '/Consommation.php';
 
 function insererLigneImport($idClient, $idAgent, $annee, $consoEau, $consoElect, $fichierSource,
                             $numeroLigne = null, $ligneBrute = null, $statut = 'Integre', $motif = null, $idContrat = null)
@@ -42,7 +37,6 @@ function insererLigneImport($idClient, $idAgent, $annee, $consoEau, $consoElect,
     }
 }
 
-// Coupe un texte à $max caractères (sans casser les accents, même sans l'extension mbstring)
 function tronquerTexte($texte, $max)
 {
     $texte = (string) $texte;
@@ -53,9 +47,6 @@ function insererConsommationAnnuelle($idClient, $idAgent, $annee, $consoEau, $co
 {
     return insererLigneImport($idClient, $idAgent, $annee, $consoEau, $consoElect, $fichierSource);
 }
-
-//  CONTRÔLE DES LIGNES (utilisé par traitement/agent.php)
-
 
 function getEtatClientsPourAgent($idAgent)
 {
@@ -78,7 +69,6 @@ function getEtatClientsPourAgent($idAgent)
     }
     return $etat;
 }
-
 
 function getEtatContratsPourAgent($idAgent, $annee)
 {
@@ -103,10 +93,6 @@ function getEtatContratsPourAgent($idAgent, $annee)
     }
     return $etat;
 }
-
-
-//  LECTURE (historique)
-
 
 function getImportsAgent($idAgent = null, $search = '')
 {
@@ -157,7 +143,6 @@ function getImportsAgent($idAgent = null, $search = '')
     return $imports;
 }
 
-
 function getZonesDesFichiers($idAgent = null)
 {
     $filtre = '';
@@ -194,7 +179,6 @@ function getZonesDesFichiers($idAgent = null)
     return $out;
 }
 
-// Chiffres de l'historique : fichiers déposés, relevés intégrés, lignes rejetées
 function getStatistiquesImports($idAgent = null)
 {
     $where  = '';
@@ -219,7 +203,6 @@ function getStatistiquesImports($idAgent = null)
         'releves_rejetes'  => (int) ($d['releves_rejetes'] ?? 0),
     ];
 }
-
 
 function getDetailDepot($idAgent, $fichier)
 {

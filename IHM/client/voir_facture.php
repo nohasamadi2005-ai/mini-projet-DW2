@@ -1,5 +1,4 @@
 <?php
-/** @var array $facture Données préparées par preparerFactureImprimable() */
 if (!function_exists('h')) {
     function h($s) { return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8'); }
 }

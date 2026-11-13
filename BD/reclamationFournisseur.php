@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/Consommation.php';
 
-// Liste des réclamations (toutes, ou filtrées par statut)
 function getToutesReclamations($statut = '')
 {
     $sql = "SELECT r.ID_Reclamation, r.ID_Client, r.ID_Facture, r.Date_Reclamation, r.Type_Reclamation,
@@ -32,7 +31,6 @@ function getReclamationParId($id)
     return $r[0] ?? null;
 }
 
-// Nombre de réclamations par statut : ['Ouverte' => n, 'En cours' => n, ...]
 function compterReclamationsParStatut()
 {
     $out = ['Ouverte' => 0, 'En cours' => 0, 'Traitee' => 0, 'Rejetee' => 0];

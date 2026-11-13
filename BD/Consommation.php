@@ -44,27 +44,6 @@ function consoSelect($sql, $types = null, $params = [])
     return $donnees;
 }
 
-
-/*function consoExecuter($sql, $types, $params)
-{
-    $cnx = consoConnexion();
-    $stmt = mysqli_prepare($cnx, $sql);
-
-    // Vérification de la préparation de la requête
-    if (!$stmt) {
-        error_log("Erreur SQL dans consoExecuter: " . mysqli_error($cnx) . " | Requête: " . $sql);
-        die("Erreur de préparation SQL : " . mysqli_error($cnx));
-    }
-
-    mysqli_stmt_bind_param($stmt, $types, ...$params);
-    mysqli_stmt_execute($stmt);
-
-    $retour = mysqli_stmt_insert_id($stmt) ?: mysqli_stmt_affected_rows($stmt);
-    mysqli_stmt_close($stmt);
-
-    return $retour;
-}*/
-
 function consoExecuter($sql, $types, $params)
 {
     $cnx = consoConnexion();
