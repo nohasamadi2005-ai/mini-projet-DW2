@@ -1,31 +1,10 @@
 <?php
-/*
- * AGENT — accès à la base (Personne 4)
- *
- * Comptes agent (existant) :
- *   trouverAgentParEmail($email), creerAgent(...), modifierMotDePasseAgent($id, $hash)
- *
- * Agents et quartiers (nouveau) :
- *   getAgents()                            -> tous les agents + nombre de quartiers
- *   getAgentParId($idAgent)                -> un agent (ou null)
- *   getQuartiersAgent($idAgent)            -> les quartiers de la tournée d'un agent
- *   getAffectationsQuartiers()             -> [ID_Quartier => ID_Agent] (écran fournisseur « Agents »)
- *   setQuartiersAgent($idAgent, $ids)      -> remplace les quartiers d'un agent
- *
- * Tournée (nouveau) :
- *   getTourneeAgent($idAgent, $annee)      -> contrats actifs à relever + statut « relevé »
- *   getProgressionTournee($idAgent, $annee, $tournee = null) -> total / relevés / restants / %
- *
- * Règle « relevé » : un contrat est relevé pour une année si une ligne intégrée (Statut_Import = 'Integre')
- * du fichier de l'agent porte son ID_Contrat (une ligne du fichier = un contrat = un compteur).
- */
+
 require_once __DIR__ . '/connexion.php';
 require_once __DIR__ . '/Consommation.php';   // consoConnexion, consoSelect, consoExecuter
 
 
-// =====================================================================
 //  COMPTES AGENT (existant, inchangé)
-// =====================================================================
 
 function trouverAgentParEmail($email)
 {
@@ -61,9 +40,7 @@ function modifierMotDePasseAgent($id, $hash)
 }
 
 
-// =====================================================================
 //  AGENTS ET QUARTIERS
-// =====================================================================
 
 // Tous les agents, avec le nombre de quartiers qui leur sont affectés
 function getAgents()
@@ -101,7 +78,6 @@ function getQuartiersAgent($idAgent)
     );
 }
 
-// Tous les quartiers (écran fournisseur « Agents »). Requête propre à cette page : elle ne dépend pas de BD/Quartier.php
 function getQuartiersPourAffectation()
 {
     return consoSelect(
@@ -122,13 +98,7 @@ function getAffectationsQuartiers()
     return $out;
 }
 
-/*
- * Remplace les quartiers d'un agent par la liste donnée ($idsQuartiers = tableau d'ID).
- * - Un quartier ne peut avoir qu'un agent : cocher un quartier déjà pris par un autre agent
- *   le lui retire et le donne à cet agent.
- * - Les ID inconnus sont ignorés. Tout est fait en transaction (tout ou rien).
- * Retourne true si c'est enregistré, false sinon (agent inconnu ou erreur SQL).
- */
+
 function setQuartiersAgent($idAgent, $idsQuartiers)
 {
     $idAgent = (int) $idAgent;
@@ -167,20 +137,9 @@ function setQuartiersAgent($idAgent, $idsQuartiers)
 }
 
 
-// =====================================================================
 //  TOURNÉE
-// =====================================================================
 
-/*
- * Contrats situés dans les quartiers de l'agent et EN COURS pendant l'année donnée
- * (début du contrat <= 31/12 et fin du contrat vide ou >= 01/01 : un contrat résilié en cours
- * d'année est donc relevé aussi).
- * Chaque ligne : ID_Contrat, ID_Client, Nom, Prenom, ID_Compteur, Type_Compteur, ID_Quartier,
- *   Quartier, Ville, Adresse_Branchement, Statut_Contrat, Date_Debut, Date_Fin,
- *   Releve (0/1), Date_Releve (date du dépôt ou NULL).
- * Un contrat est relevé si une ligne intégrée porte son ID_Contrat pour cette année
- * (ou, pour les anciens dépôts sans contrat, une ligne intégrée de son client).
- */
+
 function getTourneeAgent($idAgent, $annee)
 {
     $annee   = (int) $annee;
@@ -209,10 +168,7 @@ function getTourneeAgent($idAgent, $annee)
     );
 }
 
-/*
- * Progression de la tournée : ['total' => .., 'releves' => .., 'restants' => .., 'pourcentage' => ..]
- * On peut passer le résultat de getTourneeAgent() en 3e argument pour éviter une 2e requête.
- */
+
 function getProgressionTournee($idAgent, $annee, $tournee = null)
 {
     if ($tournee === null) {

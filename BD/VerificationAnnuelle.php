@@ -10,13 +10,6 @@ function vaAnneesDisponibles()
     ));
 }
 
-
-// Valeurs du fichier de l'agent : [ID_Client => ['ConsommationEau' => .., 'ConsommationElect' => .., 'Fichier_Source' => ..]].
-// Seules les lignes intégrées comptent (les lignes rejetées sont ignorées).
-// Une ligne = un contrat (un compteur) : on garde la dernière ligne de chaque contrat, puis on additionne
-// par client et par type (un client peut avoir plusieurs contrats, par exemple une maison et une résidence
-// secondaire). Un type sans aucun contrat relevé vaut NULL (= « pas relevé »).
-// Anciens dépôts par client (ID_Contrat vide) : la dernière ligne du client donne l'eau et l'électricité.
 function vaReleveAgent($annee)
 {
     $lignes = consoSelect(

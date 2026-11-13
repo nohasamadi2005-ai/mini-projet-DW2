@@ -1,38 +1,11 @@
 <?php
-/*
- * IMPORT DES RELEVÉS DE L'AGENT — accès à la base (Personne 4)
- *
- * Chaque ligne d'un fichier .txt déposé par un agent devient une ligne de
- * consommation_annuelle :
- *   - Statut_Import = 'Integre' : ligne valide, utilisée par la Vérification annuelle ;
- *   - Statut_Import = 'Rejete'  : ligne refusée, gardée avec son motif (Motif_Rejet),
- *                                 son numéro de ligne et son texte brut (Ligne_Brute).
- *
- * Fonctions :
- *   insererLigneImport(...)                    -> enregistre UNE ligne (intégrée ou rejetée)
- *   insererConsommationAnnuelle(...)           -> ancienne fonction, conservée (= ligne intégrée)
- *   getEtatContratsPourAgent($idAgent, $annee) -> pour contrôler les lignes : [ID_Contrat => état]
- *   getEtatClientsPourAgent($idAgent)          -> (ancien dépôt par client) [ID_Client => état]
- *   getImportsAgent($idAgent, $search)         -> un dépôt (fichier) par ligne, avec nb intégrées / rejetées
- *   getStatistiquesImports($idAgent)           -> chiffres des cartes de l'historique
- *   getDetailDepot($idAgent, $fichier)         -> détail d'un dépôt : lignes intégrées et lignes rejetées
- */
+
 require_once __DIR__ . '/Consommation.php';   // consoSelect, consoExecuter
 
 
-// =====================================================================
 //  ÉCRITURE
-// =====================================================================
 
-/*
- * Enregistre une ligne du fichier.
- *   $idClient   : NULL si la ligne n'a pas de client valide (rejet « contrat introuvable », etc.)
- *   $idContrat  : le contrat relevé par la ligne (NULL pour un ancien dépôt par client ou un rejet sans contrat)
- *   $consoEau / $consoElect : NULL si les valeurs n'ont pas pu être lues
- *   $numeroLigne : numéro de la ligne dans le fichier ; $ligneBrute : son texte tel quel
- *   $statut     : 'Integre' ou 'Rejete' ; $motif : obligatoire pour un rejet
- * Retourne true si la ligne est enregistrée.
- */
+
 function insererLigneImport($idClient, $idAgent, $annee, $consoEau, $consoElect, $fichierSource,
                             $numeroLigne = null, $ligneBrute = null, $statut = 'Integre', $motif = null, $idContrat = null)
 {
@@ -76,24 +49,14 @@ function tronquerTexte($texte, $max)
     return function_exists('mb_substr') ? mb_substr($texte, 0, $max) : substr($texte, 0, $max);
 }
 
-// Ancienne fonction (gardée pour ne rien casser) : une ligne intégrée sans détail
 function insererConsommationAnnuelle($idClient, $idAgent, $annee, $consoEau, $consoElect, $fichierSource)
 {
     return insererLigneImport($idClient, $idAgent, $annee, $consoEau, $consoElect, $fichierSource);
 }
 
-
-// =====================================================================
 //  CONTRÔLE DES LIGNES (utilisé par traitement/agent.php)
-// =====================================================================
 
-/*
- * Pour chaque client : combien de contrats actifs il a, et combien sont dans les quartiers de l'agent.
- *   [ID_Client => ['contrats_actifs' => n, 'dans_tournee' => m]]
- * Un client absent du tableau n'existe pas. Une seule requête pour tout le fichier.
- *   contrats_actifs = 0            -> « Aucun contrat actif »
- *   contrats_actifs > 0, dans_tournee = 0 -> « Hors de votre tournée »
- */
+
 function getEtatClientsPourAgent($idAgent)
 {
     $rows = consoSelect(
@@ -117,12 +80,6 @@ function getEtatClientsPourAgent($idAgent)
 }
 
 
-/*
- * Pour chaque contrat : son client, son type de compteur, s'il est en cours pendant l'année,
- * et s'il est dans les quartiers de l'agent.
- *   [ID_Contrat => ['client' => id, 'type' => 'Eau'|'Electricite', 'valide_annee' => bool, 'dans_tournee' => bool]]
- * Un contrat absent du tableau n'existe pas. Une seule requête pour tout le fichier.
- */
 function getEtatContratsPourAgent($idAgent, $annee)
 {
     $annee = (int) $annee;
@@ -148,16 +105,9 @@ function getEtatContratsPourAgent($idAgent, $annee)
 }
 
 
-// =====================================================================
 //  LECTURE (historique)
-// =====================================================================
 
-/*
- * Un dépôt (= un fichier + une année) par ligne, du plus récent au plus ancien.
- * Colonnes : Nom_Fichier, Date_Import, Annee, ID_Agent, Zone, Nb_Integres, Nb_Rejetes,
- *            Nb_Lignes, Nb_Releves (= Nb_Integres, ancien nom), Statut ('Integre' | 'Partiel' | 'Rejete').
- * $idAgent = null -> tous les agents. $search filtre sur le nom du fichier ou l'année.
- */
+
 function getImportsAgent($idAgent = null, $search = '')
 {
     $where  = ["Fichier_Source IS NOT NULL", "Fichier_Source <> ''"];
@@ -207,8 +157,7 @@ function getImportsAgent($idAgent = null, $search = '')
     return $imports;
 }
 
-// [Fichier_Source => 'Al Manar, Hay Jadid'] : quartiers des contrats des lignes intégrées du fichier
-// (anciens dépôts sans contrat : quartiers des contrats actifs du client)
+
 function getZonesDesFichiers($idAgent = null)
 {
     $filtre = '';
@@ -271,13 +220,7 @@ function getStatistiquesImports($idAgent = null)
     ];
 }
 
-/*
- * Détail d'un dépôt de l'agent : null si ce fichier n'existe pas pour cet agent.
- * Sinon : ['fichier', 'annee', 'date_import', 'integrees' => [...], 'rejetees' => [...]]
- * Chaque ligne : Numero_Ligne, ID_Contrat, Type_Compteur, ID_Client, Nom, Prenom, ConsommationEau, ConsommationElect,
- *                Statut_Import, Motif_Rejet, Ligne_Brute, Date_saisie.
- * (Nom et Prenom sont NULL quand le client est introuvable.)
- */
+
 function getDetailDepot($idAgent, $fichier)
 {
     $lignes = consoSelect(

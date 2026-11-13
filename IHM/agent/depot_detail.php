@@ -6,6 +6,7 @@ $initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1
 $nf = function ($v) {                       // 1234.5 -> "1 234,50"
     return $v === null || $v === '' ? '—' : number_format((float) $v, 2, ',', ' ');
 };
+require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et afficherPagination()
 $typeCompteur = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
 $badges = [
     'Integre' => ['integre', 'Intégré'],
@@ -108,11 +109,6 @@ $badges = [
       </div>
     </div>
     <div>
-      <div class="help-box">
-        <strong>Besoin d'aide ?</strong>
-        <p>Notre équipe vous répond du lundi au vendredi.</p>
-        <a href="#">Centre d'aide</a>
-      </div>
       <a href="index.php?page=logout" class="logout-btn">Se déconnecter</a>
     </div>
   </div>
@@ -169,7 +165,7 @@ $badges = [
       </div>
 
       <!-- Lignes rejetées -->
-      <div class="table-container">
+      <div class="table-container" id="rejetees">
         <div class="table-header">
           <div>
             <h3>Lignes rejetées</h3>
@@ -217,10 +213,11 @@ $badges = [
             <?php endif; ?>
           </tbody>
         </table>
+        <?php afficherPagination($d['pg_rejetees'], 'pr', 'rejetees'); ?>
       </div>
 
       <!-- Lignes intégrées -->
-      <div class="table-container">
+      <div class="table-container" id="integrees">
         <div class="table-header">
           <div>
             <h3>Lignes intégrées</h3>
@@ -264,6 +261,7 @@ $badges = [
             <?php endif; ?>
           </tbody>
         </table>
+        <?php afficherPagination($d['pg_integrees'], 'pi', 'integrees'); ?>
       </div>
     </div>
   </div>

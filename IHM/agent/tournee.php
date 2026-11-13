@@ -1,5 +1,6 @@
 <?php
-/** @var array $d données préparées par preparerPageTournee() (traitement/agent.php) */
+/** @var array $d données préparées par preparerPageDetailDepot() (traitement/agent.php) */
+
 // Page « Ma tournée » — données préparées par preparerPageTournee() (traitement/agent.php) dans $d
 $user     = $_SESSION['user'] ?? ['nom' => 'Utilisateur', 'prenom' => 'Agent'];
 $initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
@@ -12,6 +13,7 @@ $pct         = (int) $progression['pourcentage'];
 $urlFeuille  = 'index.php?page=agent_tournee_export&annee=' . urlencode($annee);
 
 $libelleType = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
+require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et afficherPagination()
 ?>
 <!doctype html>
 <html lang="fr">
@@ -122,11 +124,6 @@ $libelleType = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
       </div>
     </div>
     <div>
-      <div class="help-box">
-        <strong>Besoin d'aide ?</strong>
-        <p>Notre équipe vous répond du lundi au vendredi.</p>
-        <a href="#">Centre d'aide</a>
-      </div>
       <a href="index.php?page=logout" class="logout-btn">Se déconnecter</a>
     </div>
   </div>
@@ -135,7 +132,6 @@ $libelleType = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
   <div class="main-content">
     <div class="topbar">
       <div class="user-profile">
-        <div class="notification-icon">🔔</div>
         <div class="avatar"><?= htmlspecialchars($initials) ?></div>
         <div class="user-info">
           <h4><?= htmlspecialchars($user['prenom'] . ' ' . $user['nom']) ?></h4>
@@ -160,7 +156,12 @@ $libelleType = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
         </div>
       </div>
 
-      
+      <?php if (empty($quartiers)): ?>
+        <div class="progress-card">
+          <strong>Aucun quartier ne vous est affecté pour le moment.</strong>
+          <p class="progress-note">Votre tournée est vide : demandez au fournisseur de vous affecter des quartiers.</p>
+        </div>
+      <?php else: ?>
 
       <!-- Progression -->
       <div class="progress-card">
@@ -210,7 +211,7 @@ $libelleType = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
         <div class="table-header">
           <div>
             <h3>Contrats à relever</h3>
-            <span><?= count($lignes) ?> contrat(s) affiché(s)</span>
+            <span><?= (int) $d['pagination']['total'] ?> contrat(s)<?= $d['pagination']['pages'] > 1 ? ' · page ' . (int) $d['pagination']['page'] . ' / ' . (int) $d['pagination']['pages'] : '' ?></span>
           </div>
           <form method="get" action="index.php" class="filtres">
             <input type="hidden" name="page" value="agent_tournee">
@@ -271,9 +272,10 @@ $libelleType = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
             <?php endif; ?>
           </tbody>
         </table>
+        <?php afficherPagination($d['pagination']); ?>
       </div>
 
-      
+      <?php endif; ?>
     </div>
   </div>
 

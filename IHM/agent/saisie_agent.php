@@ -92,11 +92,7 @@ $dernierFichier = !empty($fichiersImportes) ? $fichiersImportes[0]['Nom_Fichier'
       </div>
     </div>
     <div>
-      <div class="help-box">
-        <strong>Besoin d'aide ?</strong>
-        <p>Notre équipe vous répond du lundi au vendredi.</p>
-        <a href="#">Centre d'aide</a>
-      </div>
+      
       <a href="index.php?page=logout" class="logout-btn">Se déconnecter</a>
     </div>
   </div>
@@ -105,7 +101,6 @@ $dernierFichier = !empty($fichiersImportes) ? $fichiersImportes[0]['Nom_Fichier'
   <div class="main-content">
     <div class="topbar">
       <div class="user-profile">
-        <div class="notification-icon">🔔</div>
         <div class="avatar"><?= htmlspecialchars($initials) ?></div>
         <div class="user-info">
           <h4><?= htmlspecialchars($user['prenom'] . ' ' . $user['nom']) ?></h4>

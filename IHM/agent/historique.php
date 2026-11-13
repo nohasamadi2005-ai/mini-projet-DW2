@@ -4,6 +4,9 @@ $initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1
 $search = trim($_GET['q'] ?? '');
 $imports = getImportsAgent($_SESSION['user']['id'], $search);
 $stats = getStatistiquesImports($_SESSION['user']['id']);
+require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et afficherPagination()
+$pg = paginer($imports);          // 10 dépôts par page (?p=2)
+$imports = $pg['items'];
 ?>
 <!doctype html>
 <html lang="fr">
@@ -117,11 +120,6 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
       </div>
     </div>
     <div>
-      <div class="help-box">
-        <strong>Besoin d'aide ?</strong>
-        <p>Notre équipe vous répond du lundi au vendredi.</p>
-        <a href="#">Centre d'aide</a>
-      </div>
       <a href="index.php?page=logout" class="logout-btn">Se déconnecter</a>
     </div>
   </div>
@@ -130,7 +128,6 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
   <div class="main-content">
     <div class="topbar">
       <div class="user-profile">
-        <div class="notification-icon">🔔</div>
         <div class="avatar"><?= htmlspecialchars($initials) ?></div>
         <div class="user-info">
           <h4><?= htmlspecialchars($user['prenom'] . ' ' . $user['nom']) ?></h4>
@@ -177,7 +174,7 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
         <div class="table-header">
           <div>
             <h3>Fichiers importés</h3>
-            <span><?= count($imports) ?> dépôt(s) au total</span>
+            <span><?= (int) $pg['total'] ?> dépôt(s) au total</span>
           </div>
           <!-- Le filtre recherche par nom de fichier ou par année -->
           <form method="get" action="index.php" class="search-box">
@@ -238,6 +235,7 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
             <?php endif; ?>
           </tbody>
         </table>
+        <?php afficherPagination($pg); ?>
       </div>
     </div>
   </div>

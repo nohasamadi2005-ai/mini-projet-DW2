@@ -4,24 +4,6 @@ require_once __DIR__ . '/../BD/VerificationAnnuelle.php';
 require_once __DIR__ . '/../BD/Notification.php';
 require_once __DIR__ . '/../BD/Quartier.php';   // lecture seule : liste des quartiers pour le filtre
 
-/*
- * VÉRIFICATION ANNUELLE (côté fournisseur)
- *
- *   VÉRIFICATION PAR CONTRAT : un contrat = un compteur dans un quartier (donc un seul type : Eau ou
- *   Électricité). Chaque relevé mensuel est rattaché au contrat du compteur qui couvre son mois.
- *   Le fichier de l'agent est encore PAR CLIENT et par type : si un client a plusieurs contrats du même
- *   type (ex. 2 maisons), la décision se prend sur le TOTAL de ses contrats de ce type.
- *
- *   conso contrat = dernier index vérifié de l'année - dernier index de l'année précédente
- *                  (ou Index_Initial du compteur s'il n'y en a pas)
- *   conso agent  = valeur du fichier Consommation_Annuelle.txt
- *   écart        = conso client - conso agent
- *
- *   |écart| <= TOLERANCE_ECART %  -> Conforme        : le client doit payer ses factures impayées
- *   client < agent (jusqu'à SEUIL_CONTROLE %) -> Régularisation : consommation non facturée, montant estimé
- *   client > agent (jusqu'à SEUIL_CONTROLE %) -> À vérifier : possible trop-perçu / erreur de saisie ou de relevé
- *   |écart| > SEUIL_CONTROLE %     -> À vérifier : contrôle manuel (nouvelle visite de l'agent, réclamation)
- */
 const TOLERANCE_ECART = 5.0;    // en %
 const SEUIL_CONTROLE  = 20.0;   // en %
 
@@ -50,18 +32,11 @@ function libelleStatut($statut)
 }
 
 
-// Montant TTC annuel estimé. Les tranches sont mensuelles : on répartit la conso sur 12 mois.
-// Le client et l'agent sont estimés de la même façon, donc leur différence est comparable.
 function estimerMontantAnnuel($conso, $type)
 {
     return round(12 * calculerMontants(max(0.0, $conso) / 12, $type)[2], 2);
 }
 
-
-/**
- * Compare la conso du client et celle de l'agent pour UN type de compteur.
- * $consoClient / $consoAgent : float ou null (donnée absente).
- */
 function evaluerEcart($consoClient, $consoAgent, $type, $dernierMois = 12, $anomalies = 0)
 {
     $r = [
@@ -127,10 +102,6 @@ function statutGlobal($types)
 
 function typeNormal($typeCompteur) { return $typeCompteur === 'Eau' ? 'Eau' : 'Electricite'; }
 
-
-// Contrat du compteur, du même client, qui couvre le mois d'un relevé.
-// Le client est nécessaire : en cas de transfert dans le mois, le relevé de clôture de l'ancien client
-// doit rester sur son contrat (et non sur celui du nouveau).
 function contratDuReleve($contratsParCompteur, $idCompteur, $idClient, $annee, $mois)
 {
     $debutMois = sprintf('%04d-%02d-01', $annee, $mois);
@@ -151,7 +122,6 @@ function contratDuReleve($contratsParCompteur, $idCompteur, $idClient, $annee, $
 }
 
 
-// [ID_Contrat] = ['conso' => float, 'dernierMois' => int]
 function consoParContrat($annee, $contratsParCompteur)
 {
     $parCompteur = [];
@@ -180,7 +150,6 @@ function consoParContrat($annee, $contratsParCompteur)
 }
 
 
-// [ID_Contrat] = nombre de relevés de l'année encore en anomalie
 function anomaliesParContrat($annee, $contratsParCompteur)
 {
     $res = [];
@@ -195,7 +164,6 @@ function anomaliesParContrat($annee, $contratsParCompteur)
 }
 
 
-// [ID_Contrat] = ['nb' => , 'total' => ] : factures de l'année non payées
 function impayesParContrat($annee, $contratsParCompteur)
 {
     $res = [];
@@ -211,12 +179,6 @@ function impayesParContrat($annee, $contratsParCompteur)
 }
 
 
-/**
- * Calcule la vérification de tous les clients pour une année (sans rien écrire en base).
- * Retourne une liste d'entrées (une par client) : id, nom, inconnu, contrats[] (une ligne par contrat),
- * statut, notifie. Chaque ligne de contrat porte : idContrat, quartier, ville, typeActivite, type,
- * consoContrat, nbGroupe/idsGroupe (contrats du même client et du même type) + le résultat d'evaluerEcart().
- */
 function calculerVerificationAnnuelle($annee, $idQuartier = 0)
 {
     $contrats = vaContrats($annee);
@@ -326,7 +288,6 @@ function notifiable($e)
 }
 
 
-// Libellé d'un groupe de contrats : « Contrat n°1040 (Al Manar, Larache) » ou « Contrats n°1040, 1041 (total) »
 function libelleContrats($r)
 {
     if ($r['idContrat'] === null) {
@@ -440,7 +401,6 @@ function resumerVerification($entrees)
 }
 
 
-// Contrôleur de la page fournisseur (gère aussi les POST, puis redirige)
 function preparerPageVerificationAnnuelle()
 {
     $annees   = vaAnneesDisponibles();

@@ -49,10 +49,6 @@ switch ($page) {
     // --- Espace Agent ---
     case 'agent':
     case 'saisie_agent':
-        exigerRole('agent');
-        require __DIR__ . '/IHM/agent/saisie_agent.php'; 
-        break;
-
     case 'agent_depot':
         exigerRole('agent');
         require_once __DIR__ . '/traitement/agent.php';
