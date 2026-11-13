@@ -228,6 +228,19 @@ function getImpayesContrat($idClient, $idCompteur)
     return ['nb' => (int) ($r[0]['nb'] ?? 0), 'montant' => (float) ($r[0]['montant'] ?? 0)];
 }
 
+function getImpayesClient($idClient)
+{
+    $r = consoSelect(
+        "SELECT COUNT(*) AS nb, COALESCE(SUM(f.Montant_TTC), 0) AS montant, MIN(f.ID_Facture) AS premiere
+           FROM facture f
+           JOIN consommation_mensuelle cm ON cm.ID_Consommation_Mensuelle = f.ID_Consommation_Mensuelle
+          WHERE cm.ID_Client = ? AND f.Statut_Paiement <> 'Payee'",
+        'i', [(int) $idClient]
+    );
+    return ['nb' => (int) ($r[0]['nb'] ?? 0), 'montant' => (float) ($r[0]['montant'] ?? 0),
+            'premiere' => (int) ($r[0]['premiere'] ?? 0)];
+}
+
 function executerContrat($cnx, $sql, $types, $params)
 {
     $stmt = mysqli_prepare($cnx, $sql);

@@ -9,10 +9,6 @@ function badgeActiviteTarif($libelle)
     $cls = ['Résidentiel' => 'act-res', 'Commercial' => 'act-com', 'Industriel' => 'act-ind'][$libelle] ?? 'act-res';
     return '<span class="badge-act ' . $cls . '">' . h($libelle) . '</span>';
 }
-function dh($n)
-{
-    return number_format((float) $n, 2, ',', ' ');
-}
 function qte($n)
 {
     return rtrim(rtrim(number_format((float) $n, 2, ',', ' '), '0'), ',');
@@ -26,7 +22,6 @@ function optionsTypes($types, $selection = 0)
     }
     return $html;
 }
-$sim = $d['sim'];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -85,11 +80,7 @@ $sim = $d['sim'];
         .tag-sel  { background: #FEF3C7; color: #B45309; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
         .btn-xs { padding: 3px 8px; font-size: 12px; }
         .aide { font-size: 12px; color: #64748B; }
-        .prix-input { width: 90px; }
 
-        .sim-total td { font-weight: 700; background: #F8FAFC; }
-        .sim-ttc td { font-weight: 700; background: #0F2137; color: #fff; font-size: 15px; }
-        .alerte-seuil { font-size: 12.5px; }
     </style>
 </head>
 <body>
@@ -129,7 +120,6 @@ $sim = $d['sim'];
             <a href="#quartiers">Quartiers</a>
             <a href="#types">Seuils &amp; redevances</a>
             <a href="#tranches">Tranches</a>
-            <a href="#simulateur">Simulateur</a>
         </div>
     </div>
 
@@ -233,8 +223,7 @@ $sim = $d['sim'];
 
         <section class="bloc" id="tranches">
             <h2><i class="fa-solid fa-layer-group"></i> Tranches de prix</h2>
-            <p class="aide mb-3">Les tranches sont affichées par bornes croissantes ; deux tranches ne peuvent pas avoir la même borne.
-                La tranche illimitée est obligatoire (on modifie son prix, on ne la supprime pas).
+            <p class="aide mb-3">Les tranches sont affichées par bornes croissantes.
                 Facturation normale : le prix de la tranche où tombe la consommation s'applique à <em>toute</em> la consommation.</p>
 
             <ul class="nav nav-pills mb-3" role="tablist">
@@ -254,41 +243,17 @@ $sim = $d['sim'];
                                 <div class="px-3 pt-3 pb-1"><span class="<?= $cle === 'Eau' ? 'badge-eau' : 'badge-elec' ?>"><?= h($libC) ?></span>
                                     <span class="aide ms-2">prix en DH HT par <?= $u ?></span></div>
                                 <table class="table mb-0">
-                                    <thead><tr><th>Tranche (<?= $u ?>)</th><th>Prix</th><th class="text-end"></th></tr></thead>
+                                    <thead><tr><th>Tranche (<?= $u ?>)</th><th>Prix</th></tr></thead>
                                     <tbody>
                                     <?php foreach ($d['tranches'][$idT][$cle] as $l): $illim = $l['Borne_Haute'] === null; ?>
                                         <tr>
                                             <td><?= $illim ? ((float) $l['Borne_Basse'] === 0.0 ? 'toute consommation' : 'au-delà de ' . qte($l['Borne_Basse'])) . ' <span class="aide">(illimitée)</span>'
                                                            : 'de ' . qte($l['Borne_Basse']) . ' à ' . qte($l['Borne_Haute']) ?></td>
-                                            <td colspan="2">
-                                                <form method="post" action="index.php?page=tarifs_action" class="d-flex align-items-center gap-2">
-                                                    <input type="hidden" name="action" value="tranche_modifier">
-                                                    <input type="hidden" name="id_tarif" value="<?= (int) $l['ID_Tarif'] ?>">
-                                                    <input type="text" name="prix" class="form-control form-control-sm prix-input" value="<?= h(rtrim(rtrim(number_format((float) $l['Prix_Unitaire'], 4, '.', ''), '0'), '.')) ?>">
-                                                    <button class="btn btn-outline-primary btn-xs ms-auto" title="Enregistrer"><i class="fa-solid fa-check"></i></button>
-                                                    <?php if (!$illim): ?>
-                                                        <button class="btn btn-outline-danger btn-xs" title="Supprimer cette tranche"
-                                                                formaction="index.php?page=tarifs_action"
-                                                                name="action" value="tranche_supprimer"
-                                                                onclick="return confirm('Supprimer cette tranche ?');"><i class="fa-solid fa-trash"></i></button>
-                                                    <?php endif; ?>
-                                                </form>
-                                            </td>
+                                            <td><strong><?= h(rtrim(rtrim(number_format((float) $l['Prix_Unitaire'], 4, '.', ''), '0'), '.')) ?></strong> DH</td>
                                         </tr>
                                     <?php endforeach; ?>
                                     </tbody>
                                 </table>
-                                <form method="post" action="index.php?page=tarifs_action" class="p-3 border-top d-flex flex-wrap align-items-end gap-2">
-                                    <input type="hidden" name="action" value="tranche_ajouter">
-                                    <input type="hidden" name="id_type" value="<?= $idT ?>">
-                                    <input type="hidden" name="type_compteur" value="<?= h($cle) ?>">
-                                    <div><label class="aide d-block mb-1">Borne haute (<?= $u ?>)</label>
-                                        <input type="text" name="borne" class="form-control form-control-sm" style="width:110px"></div>
-                                    <div><label class="aide d-block mb-1">Prix (DH)</label>
-                                        <input type="text" name="prix" class="form-control form-control-sm" style="width:90px" required></div>
-                                    <label class="aide d-flex align-items-center gap-1 mb-1"><input type="checkbox" name="illimitee" value="1" class="form-check-input mt-0"> illimitée</label>
-                                    <button class="btn btn-success btn-sm ms-auto"><i class="fa-solid fa-plus"></i> Ajouter</button>
-                                </form>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -296,62 +261,6 @@ $sim = $d['sim'];
                 </div>
             <?php endforeach; ?>
             </div>
-        </section>
-
-        <section class="bloc" id="simulateur">
-            <h2><i class="fa-solid fa-calculator"></i> Simulateur de facture</h2>
-            <p class="aide mb-3">Combien paie un abonné pour une consommation mensuelle donnée ? (calcul avec les tarifs enregistrés ci-dessus)</p>
-
-            <form method="get" action="index.php#simulateur" class="carte mb-3">
-                <input type="hidden" name="page" value="quartiers_tarifs">
-                <div class="row g-2 align-items-end">
-                    <div class="col-md-3"><label class="form-label aide mb-1">Type d'activité</label>
-                        <select name="sim_type" class="form-select"><?= optionsTypes($d['types'], $sim['type']) ?></select></div>
-                    <div class="col-md-3"><label class="form-label aide mb-1">Compteur</label>
-                        <select name="sim_compteur" class="form-select">
-                            <?php foreach (TYPES_COMPTEUR as $cle => $lib): ?>
-                                <option value="<?= h($cle) ?>" <?= $sim['compteur'] === $cle ? 'selected' : '' ?>><?= h($lib) ?></option>
-                            <?php endforeach; ?>
-                        </select></div>
-                    <div class="col-md-3"><label class="form-label aide mb-1">Consommation du mois</label>
-                        <input type="text" name="sim_conso" class="form-control" value="<?= h($sim['conso']) ?>" placeholder="ex. 600" required></div>
-                    <div class="col-md-3 d-grid"><button class="btn btn-primary"><i class="fa-solid fa-calculator"></i> Calculer</button></div>
-                </div>
-            </form>
-
-            <?php if ($sim['erreur']): ?>
-                <div class="alert alert-danger"><?= h($sim['erreur']) ?></div>
-            <?php elseif ($sim['resultat']): $r = $sim['resultat']; ?>
-                <div class="table-card">
-                    <div class="p-3 border-bottom">
-                        <strong><?= qte($r['consommation']) ?> <?= h($sim['unite']) ?></strong> —
-                        <?= badgeActiviteTarif($sim['libelle']) ?>
-                        <span class="<?= $sim['compteur'] === 'Eau' ? 'badge-eau' : 'badge-elec' ?> ms-1"><?= $sim['compteur'] === 'Eau' ? 'Eau' : 'Électricité' ?></span>
-                        <?php if ($r['consommation'] > $sim['seuil']): ?>
-                            <span class="text-danger alerte-seuil ms-2"><i class="fa-solid fa-triangle-exclamation"></i>
-                                dépasse le seuil d'alerte (<?= qte($sim['seuil']) ?> <?= h($sim['unite']) ?>)</span>
-                        <?php endif; ?>
-                    </div>
-                    <table class="table mb-0">
-                        <thead><tr><th>Tranche</th><th class="text-end">Quantité</th><th class="text-end">Prix unitaire</th><th class="text-end">Montant (DH)</th></tr></thead>
-                        <tbody>
-                        <?php foreach ($r['lignes'] as $l): ?>
-                            <tr>
-                                <td><?= $l['a'] === null ? 'au-delà de ' . qte($l['de']) : 'de ' . qte($l['de']) . ' à ' . qte($l['a']) ?></td>
-                                <td class="text-end"><?= qte($l['quantite']) ?> <?= h($sim['unite']) ?></td>
-                                <td class="text-end"><?= dh($l['prix']) ?></td>
-                                <td class="text-end"><?= dh($l['montant']) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        <?php if (!$r['lignes']): ?><tr><td colspan="4" class="aide">Aucune consommation.</td></tr><?php endif; ?>
-                        <tr><td colspan="3" class="text-end">Redevance fixe mensuelle</td><td class="text-end"><?= dh($r['redevance']) ?></td></tr>
-                        <tr class="sim-total"><td colspan="3" class="text-end">Total HT</td><td class="text-end"><?= dh($r['ht']) ?></td></tr>
-                        <tr><td colspan="3" class="text-end">TVA (18 %)</td><td class="text-end"><?= dh($r['tva']) ?></td></tr>
-                        <tr class="sim-ttc"><td colspan="3" class="text-end">Total TTC à payer</td><td class="text-end"><?= dh($r['ttc']) ?> DH</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
         </section>
 
     </div>

@@ -17,3 +17,12 @@ function getNotificationsClient($idClient)
         'i', [$idClient]
     );
 }
+
+function creerNotificationFacture($idClient, $idAdmin, $idFacture, $message)
+{
+    return consoExecuter(
+        "INSERT INTO notification (ID_Client, ID_Admin, ID_Facture, Message, Date_Envoi, Lu)
+         VALUES (?, ?, ?, ?, NOW(), 0)",
+        'iiis', [(int) $idClient, $idAdmin, $idFacture ?: null, $message]
+    );
+}

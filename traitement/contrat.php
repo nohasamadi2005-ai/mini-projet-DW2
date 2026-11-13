@@ -3,6 +3,7 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/Regles.php';
 require_once __DIR__ . '/Facture.php';
 require_once __DIR__ . '/../BD/Contrat.php';
+require_once __DIR__ . '/../BD/Notification.php';
 require_once __DIR__ . '/../BD/Quartier.php';
 
 const CONTRATS_PAR_PAGE = 10;
@@ -218,11 +219,39 @@ function actionCreerContrat($p, $idAdmin)
     }
 }
 
+function bloquerSiImpayes($ct, $action)
+{
+    $impayes = getImpayesClient($ct['ID_Client']);
+    if ($impayes['nb'] === 0) {
+        return null;
+    }
+    $montant = fr($impayes['montant']);
+    $notifie = '';
+    try {
+        creerNotificationFacture(
+            (int) $ct['ID_Client'],
+            ((int) ($_SESSION['user']['id'] ?? 0)) ?: null,
+            $impayes['premiere'],
+            "Votre demande de $action du contrat n° {$ct['ID_Contrat']} n'a pas pu être traitée : "
+            . "vous avez {$impayes['nb']} facture(s) impayée(s) pour un montant total de $montant DH. "
+            . "Merci de régler vos factures ; l'opération pourra ensuite être effectuée."
+        );
+        $notifie = " Le client a été notifié.";
+    } catch (Throwable $e) {
+        $notifie = " (Notification au client impossible.)";
+    }
+    return $ct['Prenom'] . ' ' . $ct['Nom'] . " a encore " . $impayes['nb'] . " facture(s) impayée(s) ("
+         . $montant . " DH). Elles doivent être réglées avant le/la $action." . $notifie;
+}
+
 function actionResilierContrat($p)
 {
     $ct = getContratParId((int) ($p['id_contrat'] ?? 0));
     [$err, $cl] = verifierCloture($ct, dateValide($p['date_fin'] ?? ''), $p['index_fin'] ?? '');
     if ($err) {
+        return ['erreur', "Résiliation impossible : $err"];
+    }
+    if ($err = bloquerSiImpayes($ct, 'résiliation')) {
         return ['erreur', "Résiliation impossible : $err"];
     }
     $cnx = Connexion();
@@ -256,6 +285,9 @@ function actionTransfererContrat($p, $idAdmin)
         $err = verifierNouveauContrat($nouveau, $date, $infos);
     }
     if ($err) {
+        return ['erreur', "Transfert impossible : $err"];
+    }
+    if ($err = bloquerSiImpayes($ct, 'transfert')) {
         return ['erreur', "Transfert impossible : $err"];
     }
 
@@ -294,6 +326,9 @@ function actionDemenagerClient($p, $idAdmin)
         $err = verifierNouveauContrat((int) $ct['ID_Client'], $date, $cp);
     }
     if ($err) {
+        return ['erreur', "Déménagement impossible : $err"];
+    }
+    if ($err = bloquerSiImpayes($ct, 'déménagement')) {
         return ['erreur', "Déménagement impossible : $err"];
     }
 
