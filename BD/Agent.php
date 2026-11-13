@@ -42,18 +42,7 @@ function modifierMotDePasseAgent($id, $hash)
 
 //  AGENTS ET QUARTIERS
 
-// Tous les agents, avec le nombre de quartiers qui leur sont affectés
-function getAgents()
-{
-    return consoSelect(
-        "SELECT a.ID_Agent, a.Nom, a.Prenom, a.Email, a.Telephone, a.Zone, a.Actif,
-                COUNT(aq.ID_Quartier) AS Nb_Quartiers
-           FROM agent a
-           LEFT JOIN agent_quartier aq ON aq.ID_Agent = a.ID_Agent
-          GROUP BY a.ID_Agent, a.Nom, a.Prenom, a.Email, a.Telephone, a.Zone, a.Actif
-          ORDER BY a.Nom, a.Prenom"
-    );
-}
+
 
 function getAgentParId($idAgent)
 {
@@ -78,63 +67,6 @@ function getQuartiersAgent($idAgent)
     );
 }
 
-function getQuartiersPourAffectation()
-{
-    return consoSelect(
-        "SELECT q.ID_Quartier, q.Nom, q.Ville, q.ID_Type_Activite, t.Libelle AS Type_Activite
-           FROM quartier q
-           JOIN type_activite t ON t.ID_Type_Activite = q.ID_Type_Activite
-          ORDER BY t.ID_Type_Activite, q.Ville, q.Nom"
-    );
-}
-
-// [ID_Quartier => ID_Agent] : qui s'occupe de quel quartier (un quartier n'a qu'un agent)
-function getAffectationsQuartiers()
-{
-    $out = [];
-    foreach (consoSelect("SELECT ID_Quartier, ID_Agent FROM agent_quartier") as $l) {
-        $out[(int) $l['ID_Quartier']] = (int) $l['ID_Agent'];
-    }
-    return $out;
-}
-
-
-function setQuartiersAgent($idAgent, $idsQuartiers)
-{
-    $idAgent = (int) $idAgent;
-    if (!getAgentParId($idAgent)) {
-        return false;
-    }
-
-    // On ne garde que des quartiers qui existent, sans doublon
-    $valides = array_map('intval', array_column(getQuartiersPourAffectation(), 'ID_Quartier'));
-    $ids = array_values(array_unique(array_intersect(
-        array_map('intval', (array) $idsQuartiers), $valides
-    )));
-
-    $cnx = consoConnexion();   // même connexion que consoExecuter -> même transaction
-    try {
-        mysqli_begin_transaction($cnx);
-
-        consoExecuter("DELETE FROM agent_quartier WHERE ID_Agent = ?", 'i', [$idAgent]);
-
-        foreach ($ids as $idQuartier) {
-            // Si le quartier appartenait à un autre agent, il passe à celui-ci
-            consoExecuter(
-                "INSERT INTO agent_quartier (ID_Agent, ID_Quartier) VALUES (?, ?)
-                 ON DUPLICATE KEY UPDATE ID_Agent = VALUES(ID_Agent)",
-                'ii', [$idAgent, $idQuartier]
-            );
-        }
-
-        mysqli_commit($cnx);
-        return true;
-    } catch (Throwable $e) {
-        mysqli_rollback($cnx);
-        error_log('setQuartiersAgent : ' . $e->getMessage());
-        return false;
-    }
-}
 
 
 //  TOURNÉE

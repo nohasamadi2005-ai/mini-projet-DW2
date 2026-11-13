@@ -90,22 +90,7 @@ switch ($page) {
     include 'IHM/agent/tournee.php';
     break;
 
-    // ---- Gestion des agents par le fournisseur (Personne 4) ----
-    case 'agents':
-        exigerRole('fournisseur');
-        require_once __DIR__ . '/traitement/agent.php';
-        $d = preparerPageAgents();
-        require __DIR__ . '/IHM/fournisseur/agents.php';
-        break;
-
-    case 'agents_action':
-        exigerRole('fournisseur');
-        require_once __DIR__ . '/traitement/agent.php';
-        if ($post) {
-            traiterActionAgents();
-        }
-        header('Location: index.php?page=agents');
-        exit;    
+   
     
     case 'logout':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
