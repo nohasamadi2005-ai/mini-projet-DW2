@@ -1,21 +1,13 @@
 <?php
 require_once __DIR__ . '/connexion.php';
 require_once __DIR__ . '/../traitement/Regles.php';
-require_once __DIR__ . '/Statistiques.php';   // statFromReleves() : relevé -> contrat -> quartier -> type d'activité
+require_once __DIR__ . '/Statistiques.php';
 
-// Nombre de resaisies que le fournisseur peut demander (client = 1re saisie + 1 resaisie)
 if (!defined('MAX_RESAISIES')) { define('MAX_RESAISIES', 1); }
 
-/**
- * Récupère les anomalies en attente de traitement par le fournisseur.
- * Exclut les relevés en statut 'Resaisie demandee' (car en attente d'action client).
- */
 function getAnomaliesEnAttente() {
     $cnx = Connexion();
     
-    // Sélectionne uniquement les relevés nécessitant une action du fournisseur :
-    // 1. Relevés non traités (Statut NULL, vide ou 'Anomalie')
-    // 2. Relevés en statut 'Saisie_Fournisseur' (suite à 2 échecs du client)
     $sql = "SELECT cm.ID_Consommation_Mensuelle,
                    cm.Index_Precedent,
                    cm.Index_Actuel,
@@ -49,8 +41,6 @@ function getAnomaliesEnAttente() {
 
     if ($res) {
         while ($row = mysqli_fetch_assoc($res)) {
-            // Seuil donné par Regles.php (Personne 2). On lui passe le type d'activité du quartier :
-            // tant que seuilMax() n'en tient pas compte, il renvoie le seuil par défaut.
             $estEau = (strtolower($row['Type_Compteur']) === 'eau');
             $seuil  = seuilMax($row['Type_Compteur'], $row['Type_Activite'] ?? null);
             $row['Seuil'] = $seuil;
@@ -58,9 +48,6 @@ function getAnomaliesEnAttente() {
             $nbRefus = intval($row['Nb_Refus'] ?? 0);
             $statutTraitement = strtolower($row['Statut_Traitement'] ?? '');
 
-            // RÈGLE MÉTIER : le client a droit à 2 saisies (1ère + 1 resaisie).
-            // Dès que la 2e saisie est encore négative, Saisie.php passe le statut à
-            // 'Saisie_Fournisseur' : le fournisseur corrige alors lui-même l'index.
             if ($statutTraitement === 'saisie_fournisseur') {
                 $row['Statut_Traitement'] = 'Saisie_Fournisseur';
                 $row['Type_Anomalie'] = 'Saisie_Fournisseur';
@@ -80,21 +67,16 @@ function getAnomaliesEnAttente() {
     return $anomalies;
 }
 
-/**
- * Traitement d'une surconsommation : validation et alerte du client avec lien vers réclamation
- */
 function traiterSurconsommation($idConsommation, $idClient) {
     $cnx = Connexion();
     $idConso = intval($idConsommation);
     $idClient = intval($idClient);
 
-    // 1. Validation du statut dans consommation_mensuelle
     $sql = "UPDATE consommation_mensuelle 
             SET Statut_Traitement = 'Verifie' 
             WHERE ID_Consommation_Mensuelle = $idConso";
     mysqli_query($cnx, $sql);
 
-    // 2. Récupération de l'ID_Facture associée
     $sqlFacture = "SELECT ID_Facture FROM facture WHERE ID_Consommation_Mensuelle = $idConso LIMIT 1";
     $resFacture = mysqli_query($cnx, $sqlFacture);
     $idFacture = null;
@@ -102,7 +84,6 @@ function traiterSurconsommation($idConsommation, $idClient) {
         $idFacture = intval($rowF['ID_Facture']);
     }
 
-    // 3. Message explicatif incitant à faire une réclamation
     $message = "Une surconsommation a été détectée sur votre relevé ce mois-ci et votre facture a été générée. Si cette hausse est inhabituelle ou si vous suspectez une anomalie/fuite, vous pouvez déposer une réclamation pour justifier votre consommation.";
 
     try {
@@ -117,16 +98,11 @@ function traiterSurconsommation($idConsommation, $idClient) {
     mysqli_close($cnx);
 }
 
-/**
- * Gestion des demandes de resaisie basée sur la table `anomalie`
- */
 function demanderResaisie($idConsommation, $idClient, $motif) {
     $cnx = Connexion();
     $idConso = intval($idConsommation);
     $idClient = intval($idClient);
 
-    // Garde-fou : le client n'a droit qu'à UNE resaisie (2 saisies au total).
-    // Si un refus existe déjà, on bascule directement en correction fournisseur.
     $r = mysqli_query($cnx, "SELECT COUNT(*) AS n FROM anomalie WHERE ID_Consommation_Mensuelle = $idConso");
     $row = mysqli_fetch_assoc($r);
     if (intval($row['n'] ?? 0) >= MAX_RESAISIES) {
@@ -137,14 +113,12 @@ function demanderResaisie($idConsommation, $idClient, $motif) {
         return false;
     }
 
-    // 1. Historiser le refus
     $stmtAnomalie = mysqli_prepare($cnx, "INSERT INTO anomalie (ID_Consommation_Mensuelle, Type_Anomalie, Description, Statut) VALUES (?, 'Index negatif', ?, 'En cours')");
     mysqli_stmt_bind_param($stmtAnomalie, 'is', $idConso, $motif);
     mysqli_stmt_execute($stmtAnomalie);
     $idAnomalie = mysqli_insert_id($cnx);
     mysqli_stmt_close($stmtAnomalie);
 
-    // 2. Le client peut ressaisir une (dernière) fois
     mysqli_query($cnx, "UPDATE consommation_mensuelle
                         SET Statut_Traitement = 'Resaisie demandee'
                         WHERE ID_Consommation_Mensuelle = $idConso");
@@ -153,7 +127,6 @@ function demanderResaisie($idConsommation, $idClient, $motif) {
              . "Attention : c'est votre dernière tentative ; si l'index est de nouveau incorrect, "
              . "le fournisseur corrigera lui-même l'index d'après la photo de votre compteur.";
 
-    // 3. Notification au client
     try {
         $stmtNotif = mysqli_prepare($cnx, "INSERT INTO notification (ID_Client, ID_Anomalie, Message, Date_Envoi) VALUES (?, ?, ?, NOW())");
         mysqli_stmt_bind_param($stmtNotif, 'iis', $idClient, $idAnomalie, $message);
@@ -167,12 +140,9 @@ function demanderResaisie($idConsommation, $idClient, $motif) {
     return true;
 }
 
-/**
- * Correction manuelle par le fournisseur et génération de la facture
- */
 function corrigerEtFacturerParFournisseur($idConsommation, $idClient, $nouvelIndexCorrige) {
-    require_once __DIR__ . '/../traitement/Facture.php';   // genererFacture()
-    require_once __DIR__ . '/Consommation.php';            // getFactureDeSaisie()
+    require_once __DIR__ . '/../traitement/Facture.php';
+    require_once __DIR__ . '/Consommation.php';
 
     $cnx = Connexion();
     $idConso = intval($idConsommation);
@@ -184,7 +154,6 @@ function corrigerEtFacturerParFournisseur($idConsommation, $idClient, $nouvelInd
                                WHERE ID_Consommation_Mensuelle = $idConso");
     $data = mysqli_fetch_assoc($res);
 
-    // Sécurité : uniquement si le relevé attend bien la correction fournisseur
     if (!$data || $data['Statut_Traitement'] !== 'Saisie_Fournisseur') {
         mysqli_close($cnx);
         return "Ce relevé n'est pas en attente de correction fournisseur.";
@@ -197,7 +166,6 @@ function corrigerEtFacturerParFournisseur($idConsommation, $idClient, $nouvelInd
     }
     $consommation = round($indexCorrige - $indexPrecedent, 2);
 
-    // 1. Mise à jour de l'index + passage en 'Verifie'
     mysqli_query($cnx, "UPDATE consommation_mensuelle
                         SET Index_Actuel = $indexCorrige,
                             Consommation = $consommation,
@@ -207,12 +175,10 @@ function corrigerEtFacturerParFournisseur($idConsommation, $idClient, $nouvelInd
                         WHERE ID_Consommation_Mensuelle = $idConso");
     mysqli_close($cnx);
 
-    // 2. Facture : MÊME calcul que pour une saisie normale (tranches + TVA 18 %, mois de la saisie)
     genererFacture($idConso);
     $fa  = getFactureDeSaisie($idConso);
     $ttc = $fa ? number_format((float) $fa['Montant_TTC'], 2, ',', ' ') : '—';
 
-    // 3. Notification au client
     $cnx = Connexion();
     $msg = "Votre index a été corrigé par le fournisseur après vérification de la photo de votre compteur. "
          . "Index retenu : {$indexCorrige}. Votre facture s'élève à {$ttc} DH et est disponible dans « Mes factures ».";

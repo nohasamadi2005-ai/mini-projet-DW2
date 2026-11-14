@@ -46,7 +46,6 @@ switch ($page) {
         require __DIR__ . '/IHM/fournisseur/gestion_client.php'; 
         break;
     
-    // --- Espace Agent ---
     case 'agent':
     case 'saisie_agent':
         exigerRole('agent');
@@ -75,7 +74,7 @@ switch ($page) {
     case 'agent_tournee_export':
         exigerRole('agent');
         require_once __DIR__ . '/traitement/agent.php';
-        envoyerFeuilleTournee();          // télécharge la feuille (.txt) puis exit
+        envoyerFeuilleTournee();
         break;
 
     case 'agent_historique_detail':
@@ -94,7 +93,6 @@ switch ($page) {
     include 'IHM/agent/tournee.php';
     break;
 
-    // ---- Gestion des agents par le fournisseur (Personne 4) ----
     case 'agents':
         exigerRole('fournisseur');
         require_once __DIR__ . '/traitement/agent.php';
@@ -193,7 +191,7 @@ switch ($page) {
 
     case 'factures':
         exigerRole('client');
-        require_once __DIR__ . '/traitement/Facture.php'; // CORRECTION : Charger Facture.php et non Saisie.php
+        require_once __DIR__ . '/traitement/Facture.php';
         $d = preparerPageFactures();
         require __DIR__ . '/IHM/client/factures.php';
         break;
@@ -327,7 +325,6 @@ switch ($page) {
         $d = preparerPageReclamationsFournisseur();
         require __DIR__ . '/IHM/fournisseur/fournisseurReclamtion.php';
         break;
-    // ---- Contrats  ----
     case 'contrats':
         exigerRole('fournisseur');
         require_once __DIR__ . '/traitement/contrat.php';
@@ -335,11 +332,17 @@ switch ($page) {
         require __DIR__ . '/IHM/fournisseur/contrats.php';
         break;
 
+    case 'contrat_clients':
+        exigerRole('fournisseur');
+        require_once __DIR__ . '/traitement/contrat.php';
+        envoyerSuggestionsClients();
+        break;
+
     case 'contrat_action':
         exigerRole('fournisseur');
         require_once __DIR__ . '/traitement/contrat.php';
         if ($post) {
-            traiterActionContrat();          // redirige vers index.php?page=contrats
+            traiterActionContrat();
         }
         header('Location: index.php?page=contrats');
         exit;
@@ -351,7 +354,6 @@ case 'historique_compteurs':
         require __DIR__ . '/IHM/fournisseur/historique_compteurs.php';
         break;
 
-    // ---- Quartiers & tarifs (Personne 2) ----
     case 'quartiers_tarifs':
         exigerRole('fournisseur');
         require_once __DIR__ . '/traitement/tarifs.php';
@@ -363,7 +365,7 @@ case 'historique_compteurs':
         exigerRole('fournisseur');
         require_once __DIR__ . '/traitement/tarifs.php';
         if ($post) {
-            traiterActionTarifs();          // redirige vers index.php?page=quartiers_tarifs
+            traiterActionTarifs();
         }
         header('Location: index.php?page=quartiers_tarifs');
         exit;

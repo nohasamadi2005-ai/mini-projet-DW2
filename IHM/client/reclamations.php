@@ -96,7 +96,6 @@ function icone($nom)
     .carte { overflow-x:auto; } table.hist { min-width:780px; }
   }
 
-  /* --- Réclamations --- */
   .alerte { padding:12px 16px; border-radius:10px; margin-bottom:18px; font-weight:600; }
   .alerte.succes { background:#eafaf1; color:#14653a; border:1px solid #b7e8cd; }
   .alerte.erreur { background:#fdecec; color:#9b1c1c; border:1px solid #f4c2c2; }
@@ -278,7 +277,6 @@ function icone($nom)
   const nb    = document.getElementById('nbCar');
   const label = document.getElementById('labelDescription');
 
-  // Champs affichés selon le type choisi
   const BLOCS = {
     'Fuite externe': ['bloc_Fuite_externe', 'bloc_Fuite_externe_photo'],
     'Facture':       ['bloc_Facture'],
@@ -300,7 +298,6 @@ function icone($nom)
       const bloc = document.getElementById(id);
       const actif = visibles.indexOf(id) !== -1;
       bloc.hidden = !actif;
-      // un champ désactivé n'est ni envoyé ni contrôlé
       bloc.querySelectorAll('input, select').forEach(c => { c.disabled = !actif; });
     });
     const ok = t !== '';

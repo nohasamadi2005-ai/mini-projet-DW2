@@ -1,10 +1,6 @@
 <?php
 require_once __DIR__ . '/Consommation.php';
 
-// Table reclamation : ID_Reclamation, ID_Client, ID_Facture (facultatif), ID_Anomalie, Date_Reclamation,
-//                     Type_Reclamation, Description, Statut, Reponse, Date_Reponse,
-//                     Sous_Type, Lieu_Fuite, Photo
-
 function clientPossedeFacture($idFacture, $idClient)
 {
     $r = consoSelect(
@@ -17,8 +13,6 @@ function clientPossedeFacture($idFacture, $idClient)
     return !empty($r);
 }
 
-// Réclamation encore en cours de traitement pour la même facture et le même type
-// (ancienne version, conservée)
 function reclamationActiveExiste($idClient, $idFacture, $type)
 {
     $r = consoSelect(
@@ -31,8 +25,6 @@ function reclamationActiveExiste($idClient, $idFacture, $type)
     return !empty($r);
 }
 
-// Nouvelle version : fonctionne aussi pour les réclamations sans facture
-// ($idFacture et $sousType peuvent être null)
 function reclamationActiveMemeType($idClient, $type, $idFacture = null, $sousType = null)
 {
     $sql    = "SELECT ID_Reclamation FROM reclamation
@@ -53,7 +45,6 @@ function reclamationActiveMemeType($idClient, $type, $idFacture = null, $sousTyp
     return !empty($r);
 }
 
-// Ancienne version (réclamation liée obligatoirement à une facture), conservée
 function insererReclamation($idClient, $idFacture, $type, $description)
 {
     return consoExecuter(
@@ -63,7 +54,6 @@ function insererReclamation($idClient, $idFacture, $type, $description)
     );
 }
 
-// Nouvelle version : facture, sous-type, lieu et photo sont facultatifs selon le type
 function insererReclamationDetail($idClient, $idFacture, $type, $description, $sousType = null, $lieu = null, $photo = null)
 {
     return consoExecuter(

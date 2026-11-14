@@ -1,6 +1,4 @@
 <?php
-// Règles métier — Personne 2 (quartiers & tarifs).
-// Les tranches, seuils et redevances viennent de la base (tables tarif / type_activite).
 require_once __DIR__ . '/../BD/Tarif.php';
 
 date_default_timezone_set('Africa/Casablanca');
@@ -37,16 +35,11 @@ if (!function_exists('joursRestants')) {
     }
 }
 
-
-// ---------------------------------------------------------------------
-//  Tarifs : lecture (base de données, avec repli si la base est indisponible)
-// ---------------------------------------------------------------------
-
 if (!defined('TVA_TAUX')) {
     define('TVA_TAUX', 0.18);
 }
 if (!defined('TYPE_ACTIVITE_DEFAUT')) {
-    define('TYPE_ACTIVITE_DEFAUT', 1);   // Résidentiel : utilisé quand aucun type d'activité n'est donné
+    define('TYPE_ACTIVITE_DEFAUT', 1);
 }
 
 if (!function_exists('estEau')) {
@@ -57,7 +50,6 @@ if (!function_exists('estEau')) {
 }
 
 if (!function_exists('tarifsDeRepli')) {
-    // Résidentiel (tarifs du sujet du prof) : utilisé seulement si la base est inaccessible ou vide
     function tarifsDeRepli($typeCompteur)
     {
         if (estEau($typeCompteur)) {
@@ -85,12 +77,6 @@ if (!function_exists('tarifsDeRepli')) {
 }
 
 if (!function_exists('chargerTarifs')) {
-    /**
-     * Tarifs d'un type d'activité pour un type de compteur.
-     * $typeActivite : null (= Résidentiel), un ID, ou un libellé ('Commercial'...).
-     * Renvoie ['tranches' => [[borne, prix], ...], 'redevance' => x, 'seuil' => y].
-     * $vider = true : vide le cache (à appeler après une modification de tarif).
-     */
     function chargerTarifs($typeCompteur, $typeActivite = null, $vider = false)
     {
         static $cache = [];
@@ -135,12 +121,7 @@ if (!function_exists('chargerTarifs')) {
     }
 }
 
-// ---------------------------------------------------------------------
-//  Seuils d'alerte
-// ---------------------------------------------------------------------
-
 if (!function_exists('seuilMax')) {
-    // $typeActivite facultatif : null / ID / libellé (voir chargerTarifs)
     function seuilMax($typeCompteur, $typeActivite = null)
     {
         return chargerTarifs($typeCompteur, $typeActivite)['seuil'];
@@ -179,24 +160,13 @@ if (!function_exists('dateFr')) {
     }
 }
 
-// ---------------------------------------------------------------------
-//  Calcul des montants
-// ---------------------------------------------------------------------
-
 if (!function_exists('calculerDetail')) {
-    /**
-     * Calcul pur (sans base de données), testable seul. FACTURATION NORMALE :
-     * on cherche la tranche où tombe la consommation (]borneBasse ; borne], une conso égale
-     * à la borne reste dans cette tranche) et SON PRIX s'applique à TOUTE la consommation.
-     * La redevance fixe mensuelle s'ajoute au HT ; la TVA porte sur le total.
-     */
     function calculerDetail($consommation, array $tranches, $redevance = 0.0)
     {
         $conso  = max(0.0, (float) $consommation);
         $lignes = [];
 
         if ($conso > 0 && $tranches) {
-            // Tranche atteinte (par défaut la dernière, normalement la tranche illimitée)
             $k = count($tranches) - 1;
             foreach ($tranches as $i => $t) {
                 if ($t['borne'] === null || $conso <= $t['borne']) {
@@ -232,10 +202,6 @@ if (!function_exists('calculerDetail')) {
 }
 
 if (!function_exists('detailMontants')) {
-    /**
-     * Détail pour afficher une facture : la ligne de la tranche appliquée + redevance + HT / TVA / TTC.
-     * $typeActivite : null (= Résidentiel), un ID ou un libellé.
-     */
     function detailMontants($consommation, $typeCompteur, $typeActivite = null)
     {
         $t = chargerTarifs($typeCompteur, $typeActivite);
@@ -244,7 +210,6 @@ if (!function_exists('detailMontants')) {
 }
 
 if (!function_exists('calculerMontants')) {
-    // Même signature qu'avant (+ $typeActivite facultatif) : renvoie [HT, TVA, TTC]
     function calculerMontants($consommation, $typeCompteur, $typeActivite = null)
     {
         $d = detailMontants($consommation, $typeCompteur, $typeActivite);

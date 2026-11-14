@@ -1,8 +1,6 @@
 <?php
 require_once __DIR__ . '/Consommation.php';
 
-// Table notification : ID_Notification, ID_Client, ID_Admin, ID_Anomalie, ID_Reclamation, ID_Facture, Message, Date_Envoi
-
 function creerNotification($idClient, $idAdmin, $message)
 {
     return consoExecuter(
@@ -17,5 +15,14 @@ function getNotificationsClient($idClient)
         "SELECT Message, Date_Envoi FROM notification WHERE ID_Client = ?
          ORDER BY ID_Notification DESC",
         'i', [$idClient]
+    );
+}
+
+function creerNotificationFacture($idClient, $idAdmin, $idFacture, $message)
+{
+    return consoExecuter(
+        "INSERT INTO notification (ID_Client, ID_Admin, ID_Facture, Message, Date_Envoi, Lu)
+         VALUES (?, ?, ?, ?, NOW(), 0)",
+        'iiis', [(int) $idClient, $idAdmin, $idFacture ?: null, $message]
     );
 }

@@ -1,11 +1,6 @@
 <?php
-// Tranches de prix, seuils et redevances par type d'activité — accès base de données.
-// Personne 2 (quartiers & tarifs). Pas de règle métier ici : la validation est dans
-// traitement/tarifs.php, le calcul dans traitement/Regles.php.
-require_once __DIR__ . '/Consommation.php';   // consoSelect, consoExecuter
+require_once __DIR__ . '/Consommation.php';
 
-// Tranches d'un type d'activité pour un type de compteur ('Eau' ou 'Electricite'),
-// dans l'ordre croissant. La tranche illimitée (Borne_Haute NULL) vient en dernier.
 function getTranches($idTypeActivite, $typeCompteur)
 {
     return consoSelect(
@@ -27,7 +22,6 @@ function getTrancheParId($idTarif)
     return $r[0] ?? null;
 }
 
-// $borneHaute = null pour la tranche illimitée. Renvoie l'id créé.
 function ajouterTranche($idTypeActivite, $typeCompteur, $borneHaute, $prix)
 {
     return consoExecuter(
@@ -45,7 +39,6 @@ function supprimerTranche($idTarif)
     return consoExecuter("DELETE FROM tarif WHERE ID_Tarif = ?", 'i', [(int) $idTarif]);
 }
 
-// Types d'activité avec seuils et redevances (pour l'écran et pour Regles.php)
 function getTypesActiviteDetail()
 {
     return consoSelect(
@@ -64,7 +57,6 @@ function getTypeActiviteDetail($idTypeActivite)
     return $r[0] ?? null;
 }
 
-// Retrouve un type d'activité par son libellé (utile : Anomalie.php fournit le libellé)
 function getTypeActiviteParLibelle($libelle)
 {
     $r = consoSelect(
@@ -86,8 +78,6 @@ function modifierTypeActivite($idTypeActivite, $seuilEau, $seuilElec, $redevance
     );
 }
 
-// ID du type d'activité du quartier du contrat ACTIF d'un compteur (null si pas de contrat actif).
-// Sert à passer $typeActivite à calculerMontants / seuilMax / detecterAnomalie.
 function getTypeActiviteDuCompteur($idCompteur)
 {
     $r = consoSelect(

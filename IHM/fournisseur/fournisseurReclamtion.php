@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/../../traitement/auth.php';
 exigerRole('fournisseur');
-// $d est préparé dans index.php (case 'reclamations_fournisseur')
 if (!function_exists('h')) {
     function h($s) { return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8'); }
 }
@@ -78,7 +77,7 @@ $total = array_sum($c);
         <div class="sidebar-brand">
             <div class="logo-icon"><i class="fa-solid fa-droplet"></i></div>
             <div>
-                <div class="brand-text">Gestion des Factures</div>
+                <div class="brand-text">Fluxio</div>
                 <div class="brand-sub">Eau & Électricité</div>
             </div>
         </div>
@@ -297,7 +296,6 @@ $total = array_sum($c);
                 document.getElementById('mRepLue').textContent  = d.reponse || '—';
                 document.getElementById('mDateRep').textContent = d.datereponse ? '— ' + d.datereponse : '';
 
-                // Décisions possibles selon le type de réclamation
                 const cat = d.categorie;
                 selAction.innerHTML = '';
                 (ACTIONS[cat] || ACTIONS['Autre']).forEach(a => {

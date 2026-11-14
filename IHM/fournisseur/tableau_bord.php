@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../BD/Statistiques.php';
 exigerRole('fournisseur');
 
 $annees = statAnnees();
-$annee  = isset($_GET['annee']) ? (int) $_GET['annee'] : ($annees[0] ?? 0);   // 0 = toutes les années
+$annee  = isset($_GET['annee']) ? (int) $_GET['annee'] : ($annees[0] ?? 0);
 
 $caTypes   = statCAParTypeActivite($annee);
 $consoQuar = statConsoParQuartier($annee);
@@ -110,7 +110,7 @@ if (!function_exists('pct')) { function pct($v, $max) { return $max > 0 ? round(
         <div class="sidebar-brand">
             <div class="logo-icon"><i class="fa-solid fa-droplet"></i></div>
             <div>
-                <div class="brand-text">Gestion des Factures</div>
+                <div class="brand-text">Fluxio</div>
                 <div class="brand-sub">Eau & Électricité</div>
             </div>
         </div>

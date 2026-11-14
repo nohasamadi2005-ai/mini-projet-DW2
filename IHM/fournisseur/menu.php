@@ -1,7 +1,4 @@
 <?php
-/* Menu de l'espace fournisseur — UN SEUL fichier, inclus par toutes les pages fournisseur
-   à la place de leur <ul class="sidebar-menu"> :   require __DIR__ . '/menu.php';      */
-// Pour ajouter une page au menu, ajoutez une ligne dans $liensMenu (rien à changer ailleurs).
 $liensMenu = [
     'gestion_client'           => ['fa-users',                'Gestion Clients'],
     'contrats'                 => ['fa-file-signature',       'Contrats'],
@@ -12,12 +9,10 @@ $liensMenu = [
     'reclamations_fournisseur' => ['fa-file-invoice-dollar',  'Gestion des Réclamations'],
     'quartiers_tarifs'         => ['fa-tags',                 'Quartiers & Tarifs'],
 ];
-// Pages rattachées à une entrée du menu
 $pageMenu = $_GET['page'] ?? 'gestion_client';
 $pageMenu = ['fournisseur' => 'gestion_client', 'historique_compteurs' => 'contrats'][$pageMenu] ?? $pageMenu;
 ?>
 <style>
-/* Le menu défile si l'écran est petit : le bloc « Se déconnecter » reste toujours visible */
 .sidebar { min-height: 0; }
 .sidebar-menu { min-height: 0; overflow-y: auto; padding-top: 10px !important; padding-bottom: 10px !important; gap: 2px !important; }
 .sidebar-menu li a { padding-top: 10px !important; padding-bottom: 10px !important; }

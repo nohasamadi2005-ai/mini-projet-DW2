@@ -15,7 +15,6 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
   * { box-sizing: border-box; }
   body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: #f4f6f9; color: #14213d; display: flex; min-height: 100vh; }
 
-  /* Sidebar */
   .sidebar { width: 260px; background: #0a2540; color: #fff; display: flex; flex-direction: column; justify-content: space-between; padding: 24px; position: fixed; height: 100vh; }
   .logo-area { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
   .logo-icon { background: #38bdf8; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; color: #fff; box-shadow: 0 4px 12px rgba(56,189,248,0.3); }
@@ -32,7 +31,6 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
   .help-box a { color: #38bdf8; text-decoration: none; font-weight: 600; font-size: 12px; }
   .logout-btn { display: flex; align-items: center; gap: 10px; color: #ef4444; text-decoration: none; font-size: 14px; font-weight: 600; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); }
 
-  /* Main Content */
   .main-content { margin-left: 260px; flex: 1; display: flex; flex-direction: column; }
   .topbar { background: #fff; padding: 16px 32px; display: flex; justify-content: flex-end; align-items: center; border-bottom: 1px solid #e2e8f0; }
   .user-profile { display: flex; align-items: center; gap: 12px; }
@@ -41,13 +39,11 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
   .user-info h4 { margin: 0; font-size: 14px; color: #14213d; }
   .user-info span { font-size: 12px; color: #6b7a90; }
 
-  /* Body Container */
   .content-body { padding: 32px; max-width: 1300px; }
   .page-header h1 { margin: 4px 0 8px; font-size: 24px; color: #14213d; }
   .page-header p { color: #6b7a90; margin: 0 0 24px; font-size: 14px; }
   .small-tag { font-size: 12px; font-weight: 700; color: #0284c7; letter-spacing: 0.08em; text-transform: uppercase; }
 
-  /* Stats Cards (2 colonnes) */
   .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
   .stat-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; justify-content: space-between; }
   .stat-card .top-line { display: flex; justify-content: space-between; align-items: center; color: #6b7a90; font-size: 13px; font-weight: 600; }
@@ -99,7 +95,6 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
 </head>
 <body>
 
-  <!-- Sidebar -->
   <div class="sidebar">
     <div>
       <div class="logo-area">
@@ -126,7 +121,6 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
     </div>
   </div>
 
-  <!-- Main Content -->
   <div class="main-content">
     <div class="topbar">
       <div class="user-profile">
@@ -146,7 +140,6 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
         <p>Retrouvez l'ensemble des fichiers annuels transmis au fournisseur.</p>
       </div>
 
-      <!-- Stats Cards (2 cartes épurées) -->
       <div class="stats-grid">
         <div class="stat-card">
           <div class="top-line">
@@ -172,14 +165,12 @@ $stats = getStatistiquesImports($_SESSION['user']['id']);
         </div>
       </div>
 
-      <!-- Table Section -->
       <div class="table-container">
         <div class="table-header">
           <div>
             <h3>Fichiers importés</h3>
             <span><?= count($imports) ?> dépôt(s) au total</span>
           </div>
-          <!-- Le filtre recherche par nom de fichier ou par année -->
           <form method="get" action="index.php" class="search-box">
             <input type="hidden" name="page" value="agent_historique">
             <input type="text" name="q" placeholder="Rechercher par fichier ou année..." value="<?= htmlspecialchars($search) ?>">

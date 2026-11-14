@@ -1,28 +1,12 @@
 <?php
-/*
- * QUARTIERS & TARIFS — règles de gestion (Personne 2)
- *
- * Actions du fournisseur (formulaires de IHM/fournisseur/quartiers_tarifs.php) :
- *   quartier_ajouter / quartier_modifier / quartier_supprimer
- *   type_modifier      : seuils d'alerte et redevances fixes d'un type d'activité
- *   tranche_ajouter / tranche_modifier / tranche_supprimer
- * + le simulateur (GET) : « combien paie un abonné pour X m³ / kWh ? »
- *
- * Règles :
- *  - un quartier utilisé par un contrat ACTIF ne peut pas être supprimé ;
- *  - les bornes d'un barème sont strictement croissantes (pas deux fois la même borne) ;
- *  - il y a toujours UNE seule tranche illimitée, la dernière : elle ne peut pas être supprimée
- *    (sinon une grosse consommation ne serait plus facturée).
- */
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/Regles.php';
 require_once __DIR__ . '/../BD/Tarif.php';
 require_once __DIR__ . '/../BD/Quartier.php';
 
 const TYPES_COMPTEUR = ['Eau' => 'Eau (m³)', 'Electricite' => 'Électricité (kWh)'];
-const ANCRES_TARIFS  = ['quartiers', 'types', 'tranches', 'simulateur'];
+const ANCRES_TARIFS  = ['quartiers', 'types'];
 
-// "12,5" / "12.5" / " 1 200 " -> float ; null si ce n'est pas un nombre
 function nombreTarif($s)
 {
     $s = str_replace([',', ' '], ['.', ''], trim((string) $s));
@@ -34,47 +18,6 @@ function uniteCompteur($typeCompteur)
     return $typeCompteur === 'Eau' ? 'm³' : 'kWh';
 }
 
-
-// =====================================================================
-//  VALIDATIONS PURES (sans base de données : testables seules)
-// =====================================================================
-
-/**
- * Contrôle l'ajout d'une tranche. $existantes = tranches actuelles ([['Borne_Haute' => x|null], ...]).
- * $borne : float, ou null pour la tranche illimitée. Renvoie un message d'erreur ou null.
- */
-function validerNouvelleTranche(array $existantes, $borne, $prix)
-{
-    if ($prix === null || $prix <= 0) {
-        return "Le prix unitaire doit être un nombre strictement positif.";
-    }
-    $bornes = array_column($existantes, 'Borne_Haute');
-
-    if ($borne === null) {
-        foreach ($bornes as $b) {
-            if ($b === null) {
-                return "Il existe déjà une tranche illimitée : il ne peut y en avoir qu'une (la dernière).";
-            }
-        }
-        // La tranche illimitée doit venir après toutes les autres : c'est automatique (tri NULL en dernier)
-        return null;
-    }
-    if ($borne <= 0) {
-        return "La borne doit être strictement positive.";
-    }
-    if ($borne > 10000000) {
-        return "Borne trop grande : utilisez une tranche illimitée.";
-    }
-    foreach ($bornes as $b) {
-        if ($b !== null && abs((float) $b - $borne) < 0.0001) {
-            return "Une tranche se termine déjà à " . rtrim(rtrim(number_format($borne, 2, '.', ''), '0'), '.')
-                 . " : les bornes doivent être différentes et en ordre croissant.";
-        }
-    }
-    return null;
-}
-
-/** Contrôle les seuils / redevances d'un type d'activité. Renvoie un message d'erreur ou null. */
 function validerTypeActivite($seuilEau, $seuilElec, $redEau, $redElec)
 {
     if ($seuilEau === null || $seuilElec === null || $seuilEau <= 0 || $seuilElec <= 0) {
@@ -89,7 +32,6 @@ function validerTypeActivite($seuilEau, $seuilElec, $redEau, $redElec)
     return null;
 }
 
-/** Nom / ville d'un quartier : texte obligatoire de 100 caractères maximum. */
 function validerNomQuartier($nom, $ville)
 {
     if ($nom === '' || $ville === '') {
@@ -100,11 +42,6 @@ function validerNomQuartier($nom, $ville)
     }
     return null;
 }
-
-
-// =====================================================================
-//  ACTIONS — chacune renvoie ['succes'|'erreur', message]
-// =====================================================================
 
 function actionAjouterQuartier($p)
 {
@@ -190,65 +127,10 @@ function actionModifierTypeActivite($p)
         return ['erreur', "« {$type['Libelle']} » non modifié : $e"];
     }
     modifierTypeActivite($id, ...$v);
-    chargerTarifs('Eau', null, true);      // vide le cache des tarifs
+    chargerTarifs('Eau', null, true);
     return ['succes', "Seuils et redevances du type « {$type['Libelle']} » enregistrés."];
 }
 
-function actionAjouterTranche($p)
-{
-    $id      = (int) ($p['id_type'] ?? 0);
-    $compteur = (string) ($p['type_compteur'] ?? '');
-    if (!getTypeActiviteDetail($id) || !isset(TYPES_COMPTEUR[$compteur])) {
-        return ['erreur', "Tranche non ajoutée : type d'activité ou de compteur invalide."];
-    }
-    $illimitee = !empty($p['illimitee']);
-    $borne     = $illimitee ? null : nombreTarif($p['borne'] ?? '');
-    if (!$illimitee && $borne === null) {
-        return ['erreur', "Tranche non ajoutée : saisissez la borne haute (ou cochez « illimitée »)."];
-    }
-    $prix = nombreTarif($p['prix'] ?? '');
-    if ($e = validerNouvelleTranche(getTranches($id, $compteur), $borne, $prix)) {
-        return ['erreur', "Tranche non ajoutée : $e"];
-    }
-    try {
-        ajouterTranche($id, $compteur, $borne, $prix);
-    } catch (Throwable $e) {
-        return ['erreur', "Tranche non ajoutée : cette borne existe déjà."];
-    }
-    chargerTarifs('Eau', null, true);
-    return ['succes', "Tranche ajoutée (" . ($borne === null ? 'illimitée' : "jusqu'à $borne " . uniteCompteur($compteur)) . ", $prix DH)."];
-}
-
-function actionModifierTranche($p)
-{
-    $t = getTrancheParId((int) ($p['id_tarif'] ?? 0));
-    if (!$t) {
-        return ['erreur', "Tranche introuvable."];
-    }
-    $prix = nombreTarif($p['prix'] ?? '');
-    if ($prix === null || $prix <= 0) {
-        return ['erreur', "Tranche non modifiée : le prix doit être un nombre strictement positif."];
-    }
-    modifierTranche($t['ID_Tarif'], $prix);
-    chargerTarifs('Eau', null, true);
-    return ['succes', "Tranche modifiée (prix : $prix DH)."];
-}
-
-function actionSupprimerTranche($p)
-{
-    $t = getTrancheParId((int) ($p['id_tarif'] ?? 0));
-    if (!$t) {
-        return ['erreur', "Tranche introuvable."];
-    }
-    if ($t['Borne_Haute'] === null) {
-        return ['erreur', "Suppression impossible : la tranche illimitée est obligatoire (sinon les grosses consommations ne seraient pas facturées). Modifiez son prix à la place."];
-    }
-    supprimerTranche($t['ID_Tarif']);
-    chargerTarifs('Eau', null, true);
-    return ['succes', "Tranche « jusqu'à " . (float) $t['Borne_Haute'] . " " . uniteCompteur($t['Type_Compteur']) . " » supprimée."];
-}
-
-// Point d'entrée des formulaires (index.php?page=tarifs_action)
 function traiterActionTarifs()
 {
     $p = $_POST;
@@ -257,20 +139,12 @@ function traiterActionTarifs()
         case 'quartier_modifier':  $r = actionModifierQuartier($p);    $ancre = 'quartiers'; break;
         case 'quartier_supprimer': $r = actionSupprimerQuartier($p);   $ancre = 'quartiers'; break;
         case 'type_modifier':      $r = actionModifierTypeActivite($p); $ancre = 'types';    break;
-        case 'tranche_ajouter':    $r = actionAjouterTranche($p);      $ancre = 'tranches';  break;
-        case 'tranche_modifier':   $r = actionModifierTranche($p);     $ancre = 'tranches';  break;
-        case 'tranche_supprimer':  $r = actionSupprimerTranche($p);    $ancre = 'tranches';  break;
         default:                   $r = ['erreur', 'Action inconnue.']; $ancre = 'quartiers';
     }
     $_SESSION['tarif_msg'] = ['type' => $r[0], 'texte' => $r[1]];
     header('Location: index.php?page=quartiers_tarifs#' . (in_array($ancre, ANCRES_TARIFS, true) ? $ancre : 'quartiers'));
     exit;
 }
-
-
-// =====================================================================
-//  PAGE (index.php?page=quartiers_tarifs)
-// =====================================================================
 
 function preparerPageQuartiersTarifs()
 {
@@ -282,7 +156,7 @@ function preparerPageQuartiersTarifs()
     unset($q);
 
     $types    = getTypesActiviteDetail();
-    $tranches = [];   // [idType]['Eau'|'Electricite'] => lignes (avec Borne_Basse pour l'affichage)
+    $tranches = [];
     foreach ($types as $t) {
         foreach (array_keys(TYPES_COMPTEUR) as $c) {
             $basse = 0.0;
@@ -296,27 +170,6 @@ function preparerPageQuartiersTarifs()
         }
     }
 
-    // Simulateur (formulaire GET : index.php?page=quartiers_tarifs&sim_conso=600&...)
-    $sim = ['conso' => '', 'type' => (int) ($types[0]['ID_Type_Activite'] ?? 1), 'compteur' => 'Electricite',
-            'resultat' => null, 'erreur' => null, 'libelle' => null];
-    if (isset($_GET['sim_conso'])) {
-        $sim['conso']    = trim((string) $_GET['sim_conso']);
-        $sim['type']     = (int) ($_GET['sim_type'] ?? 0);
-        $sim['compteur'] = isset(TYPES_COMPTEUR[$_GET['sim_compteur'] ?? '']) ? $_GET['sim_compteur'] : 'Electricite';
-        $conso = nombreTarif($sim['conso']);
-        $type  = getTypeActiviteDetail($sim['type']);
-        if ($conso === null || $conso < 0 || $conso > 10000000) {
-            $sim['erreur'] = "Saisissez une consommation valide (nombre positif).";
-        } elseif (!$type) {
-            $sim['erreur'] = "Choisissez un type d'activité.";
-        } else {
-            $sim['resultat'] = detailMontants($conso, $sim['compteur'], $type['ID_Type_Activite']);
-            $sim['libelle']  = $type['Libelle'];
-            $sim['unite']    = uniteCompteur($sim['compteur']);
-            $sim['seuil']    = (float) $type[$sim['compteur'] === 'Eau' ? 'Seuil_Eau' : 'Seuil_Elec'];
-        }
-    }
-
     $msg = $_SESSION['tarif_msg'] ?? null;
     unset($_SESSION['tarif_msg']);
 
@@ -324,7 +177,6 @@ function preparerPageQuartiersTarifs()
         'quartiers' => $quartiers,
         'types'     => $types,
         'tranches'  => $tranches,
-        'sim'       => $sim,
         'msg'       => $msg,
     ];
 }

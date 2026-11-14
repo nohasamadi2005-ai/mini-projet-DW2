@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/Regles.php';
-require_once __DIR__ . '/../BD/Contrat.php';   // getContratsDuClient()
+require_once __DIR__ . '/../BD/Contrat.php';
 
 function preparerPageMesContrats()
 {
@@ -17,7 +17,6 @@ function preparerPageMesContrats()
         $actif  = $ct['Statut'] === 'Actif';
         $adr    = trim((string) $ct['Adresse_Branchement']);
 
-        // [P2] Vrais tarifs du type d'activité du contrat (tranches + redevance)
         $unit  = $eau ? 'm³' : 'kWh';
         $tr    = chargerTarifs($ct['Type_Compteur'], $ct['Type_Activite']);
         $bas   = 0.0;
@@ -39,8 +38,6 @@ function preparerPageMesContrats()
             'quartier'  => $ct['Quartier'] . ' (' . $ct['Ville'] . ')',
             'activite'  => $ct['Type_Activite'],
             'adresse'   => $adr,
-            // [P2] Le tarif dépend du type d'activité. Quand la personne 2 aura publié ses tarifs,
-            // on pourra afficher ici le détail des tranches via detailMontants().
             'tarif'     => 'Tarif ' . $ct['Type_Activite'] . ' — ' . ($eau ? 'Eau' : 'Électricité'),
             'seuil'     => seuilMax($ct['Type_Compteur'], $ct['Type_Activite']) . ' ' . ($eau ? 'm³' : 'kWh') . ' / mois',
             'debut'     => dateFr($ct['Date_Debut']),
@@ -57,7 +54,6 @@ function preparerPageMesContrats()
         }
         $nbActifs++;
 
-        // Un logement / local = même quartier + même adresse de branchement
         $cle = $ct['ID_Quartier'] . '|' . mb_strtolower($adr);
         if (!isset($groupesActifs[$cle])) {
             $groupesActifs[$cle] = [

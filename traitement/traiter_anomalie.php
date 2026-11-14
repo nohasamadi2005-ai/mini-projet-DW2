@@ -2,7 +2,6 @@
 require_once __DIR__ . '/auth.php';
 exigerRole('fournisseur');
 
-// INCLUSION OBLIGATOIRE DU FICHIER MODEL CONTENANT LES FONCTIONS
 require_once __DIR__ . '/../BD/Anomalie.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -22,7 +21,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['message_erreur'] = "Le client a déjà utilisé sa resaisie : corrigez l'index vous-même.";
             }
         } elseif ($action === 'corriger_saisie') {
-            // NOUVEAU : Traitement de la correction d'index effectuée par le fournisseur
             $indexCorrige = filter_input(INPUT_POST, 'index_corrige', FILTER_VALIDATE_FLOAT);
             if ($indexCorrige !== false && $indexCorrige !== null) {
                 $r = corrigerEtFacturerParFournisseur($idConsommation, $idClient, $indexCorrige);
@@ -38,6 +36,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Redirection vers le tableau de bord
 header('Location: index.php?page=traitement_anomalies');
 exit;

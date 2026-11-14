@@ -1,8 +1,6 @@
 <?php
 require_once __DIR__ . '/Consommation.php';
 
-
-// Années disponibles dans les fichiers déposés par les agents
 function vaAnneesDisponibles()
 {
     return array_map('intval', array_column(
@@ -10,13 +8,6 @@ function vaAnneesDisponibles()
     ));
 }
 
-
-// Valeurs du fichier de l'agent : [ID_Client => ['ConsommationEau' => .., 'ConsommationElect' => .., 'Fichier_Source' => ..]].
-// Seules les lignes intégrées comptent (les lignes rejetées sont ignorées).
-// Une ligne = un contrat (un compteur) : on garde la dernière ligne de chaque contrat, puis on additionne
-// par client et par type (un client peut avoir plusieurs contrats, par exemple une maison et une résidence
-// secondaire). Un type sans aucun contrat relevé vaut NULL (= « pas relevé »).
-// Anciens dépôts par client (ID_Contrat vide) : la dernière ligne du client donne l'eau et l'électricité.
 function vaReleveAgent($annee)
 {
     $lignes = consoSelect(
@@ -27,8 +18,8 @@ function vaReleveAgent($annee)
         'i', [$annee]
     );
 
-    $parContrat = [];     // dernière ligne de chaque contrat
-    $parClient  = [];     // dernière ligne d'un ancien dépôt par client
+    $parContrat = [];
+    $parClient  = [];
     foreach ($lignes as $l) {
         if ($l['ID_Contrat'] !== null) {
             $parContrat[(int) $l['ID_Contrat']] = $l;
@@ -42,7 +33,7 @@ function vaReleveAgent($annee)
         $par[$id] = ['ID_Client' => $id, 'ConsommationEau' => $l['ConsommationEau'],
                      'ConsommationElect' => $l['ConsommationElect'], 'Fichier_Source' => $l['Fichier_Source']];
     }
-    $remplace = [];       // [client][colonne] : l'ancienne valeur par client est remplacée par les contrats
+    $remplace = [];
     foreach ($parContrat as $l) {
         $id = (int) $l['ID_Client'];
         foreach (['ConsommationEau', 'ConsommationElect'] as $col) {
@@ -63,8 +54,6 @@ function vaReleveAgent($annee)
     return $par;
 }
 
-
-// Tous les relevés vérifiés (années <= $annee), triés pour calculer index final - index de départ
 function vaIndexVerifies($annee)
 {
     return consoSelect(
@@ -78,8 +67,6 @@ function vaIndexVerifies($annee)
     );
 }
 
-
-// Saisies de l'année encore en anomalie / ressaisie : [ID_Client => nombre]
 function vaAnomaliesEnAttente($annee)
 {
     $r = consoSelect(
@@ -94,8 +81,6 @@ function vaAnomaliesEnAttente($annee)
     return $out;
 }
 
-
-// Factures de l'année non payées : [ID_Client][type] = ['nb' => , 'total' => ]
 function vaImpayes($annee)
 {
     $r = consoSelect(
@@ -125,8 +110,6 @@ function vaClients()
     return $out;
 }
 
-
-// Date de la dernière notification « vérification annuelle » envoyée à ce client (ou null)
 function vaDerniereNotification($idClient, $annee)
 {
     $r = consoSelect(
@@ -135,7 +118,6 @@ function vaDerniereNotification($idClient, $annee)
     );
     return $r[0]['d'] ?? null;
 }
-// Contrats en cours pendant l'année
 function vaContrats($annee)
 {
     return consoSelect(
@@ -151,7 +133,6 @@ function vaContrats($annee)
     );
 }
 
-// Saisies de l'année encore en anomalie
 function vaReleveEnAnomalie($annee)
 {
     return consoSelect(
@@ -161,7 +142,6 @@ function vaReleveEnAnomalie($annee)
     );
 }
 
-// Factures de l'année non payées
 function vaFacturesImpayees($annee)
 {
     return consoSelect(

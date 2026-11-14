@@ -1,9 +1,6 @@
 <?php
-// Quartiers (zones) et types d'activité — lecture seule.
-// Personne 2 (quartiers & tarifs) complète ce fichier avec l'ajout / la modification.
-require_once __DIR__ . '/Consommation.php';   // consoSelect
+require_once __DIR__ . '/Consommation.php';
 
-// Tous les quartiers avec leur type d'activité, triés par type puis ville puis nom
 function getQuartiers()
 {
     return consoSelect(
@@ -31,12 +28,6 @@ function getTypesActivite()
     return consoSelect("SELECT ID_Type_Activite, Libelle FROM type_activite ORDER BY ID_Type_Activite");
 }
 
-
-// ---------------------------------------------------------------------
-// Ajouts Personne 2 : création, modification, suppression
-// ---------------------------------------------------------------------
-
-// Un quartier (nom + ville) existe-t-il déjà ? $sauf = id à ignorer (cas d'une modification)
 function quartierExiste($nom, $ville, $sauf = 0)
 {
     $r = consoSelect(
@@ -46,7 +37,6 @@ function quartierExiste($nom, $ville, $sauf = 0)
     return !empty($r);
 }
 
-// Renvoie l'id du quartier créé
 function ajouterQuartier($nom, $ville, $idTypeActivite)
 {
     return consoExecuter(
@@ -63,7 +53,6 @@ function modifierQuartier($idQuartier, $nom, $ville, $idTypeActivite)
     );
 }
 
-// Nombre de contrats ACTIFS dans ce quartier (règle : > 0 => suppression interdite)
 function compterContratsActifsQuartier($idQuartier)
 {
     $r = consoSelect(
@@ -73,14 +62,12 @@ function compterContratsActifsQuartier($idQuartier)
     return (int) ($r[0]['n'] ?? 0);
 }
 
-// Nombre total de contrats (actifs + résiliés) : sert à expliquer l'échec de la FK
 function compterContratsQuartier($idQuartier)
 {
     $r = consoSelect("SELECT COUNT(*) AS n FROM contrat WHERE ID_Quartier = ?", 'i', [(int) $idQuartier]);
     return (int) ($r[0]['n'] ?? 0);
 }
 
-// Ne vérifie PAS la règle métier : l'appelant (traitement/tarifs.php) doit contrôler avant.
 function supprimerQuartier($idQuartier)
 {
     return consoExecuter("DELETE FROM quartier WHERE ID_Quartier = ?", 'i', [(int) $idQuartier]);

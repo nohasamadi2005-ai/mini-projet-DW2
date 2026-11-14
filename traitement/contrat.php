@@ -1,24 +1,9 @@
 <?php
-/*
- * CONTRATS — règles de gestion (Personne 1)
- *
- * Actions du fournisseur :
- *   creer      : nouveau contrat (client + compteur libre ou neuf + zone + date)
- *   resilier   : fin du contrat (date + index de clôture). Le compteur devient libre.
- *   transferer : le même logement change d'occupant (ex. vente / nouveau locataire) :
- *                contrat clôturé + nouveau contrat sur le MÊME compteur pour le nouveau client.
- *   demenager  : le MÊME client change de logement :
- *                contrat clôturé + nouveau contrat pour lui sur UN AUTRE compteur.
- *   zone       : corriger la zone d'un compteur (contrats repris par la migration).
- *
- * Index de clôture : s'il est supérieur au dernier index relevé, on enregistre un
- * « relevé de clôture » (relevé vérifié du mois de fin) et sa facture est générée
- * pour l'ancien titulaire. Ainsi le nouveau titulaire ne paie que sa consommation.
- */
 require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/Regles.php';                 // maintenant()
-require_once __DIR__ . '/Facture.php';                // genererFacture()
+require_once __DIR__ . '/Regles.php';
+require_once __DIR__ . '/Facture.php';
 require_once __DIR__ . '/../BD/Contrat.php';
+require_once __DIR__ . '/../BD/Notification.php';
 require_once __DIR__ . '/../BD/Quartier.php';
 
 const CONTRATS_PAR_PAGE = 10;
@@ -51,13 +36,6 @@ function dateContratFr($d)
     return $d ? date('d/m/Y', strtotime($d)) : '—';
 }
 
-
-// =====================================================================
-//  VÉRIFICATIONS (avant toute écriture)
-// =====================================================================
-
-// Compteur du nouveau contrat. Renvoie [erreur, infos].
-// infos = ['idCompteur', 'type', 'indexDebut', 'idQuartier', 'adresse', 'neuf', 'indexInitial']
 function verifierCompteurNouveauContrat($p, $dateDebut, $idCompteurExclu = 0)
 {
     $mode = ($p['mode'] ?? 'libre') === 'neuf' ? 'neuf' : 'libre';
@@ -78,7 +56,6 @@ function verifierCompteurNouveauContrat($p, $dateDebut, $idCompteurExclu = 0)
             return ["le compteur $num était encore sous contrat jusqu'au " . dateContratFr($cp['Derniere_Fin'])
                   . " : la date de début doit être postérieure.", null];
         }
-        // Le compteur ne bouge pas : s'il a déjà eu un contrat, la zone est imposée.
         $quartier = $cp['Dernier_Quartier'] ? (int) $cp['Dernier_Quartier'] : (int) ($p['quartier'] ?? 0);
         return [null, [
             'idCompteur'   => $num,
@@ -91,7 +68,6 @@ function verifierCompteurNouveauContrat($p, $dateDebut, $idCompteurExclu = 0)
         ]];
     }
 
-    // Compteur neuf
     $numero = trim((string) ($p['numero'] ?? ''));
     if (!ctype_digit($numero) || (int) $numero < 1 || (int) $numero > 2147483647) {
         return ["le numéro du nouveau compteur doit être un nombre entier positif.", null];
@@ -118,12 +94,11 @@ function verifierCompteurNouveauContrat($p, $dateDebut, $idCompteurExclu = 0)
     ]];
 }
 
-// Client, date et zone d'un nouveau contrat. Renvoie une erreur ou null.
 function verifierNouveauContrat($idClient, $dateDebut, &$infos)
 {
-    $clients = array_column(getClientsPourContrat(), null, 'ID_Client');
-    if (!isset($clients[$idClient])) {
-        return "choisissez un client.";
+    $client = $idClient ? getClientPourContrat($idClient) : null;
+    if (!$client) {
+        return "choisissez le client : tapez son nom, son CIN ou son téléphone puis cliquez sur la bonne proposition.";
     }
     if (!$dateDebut) {
         return "la date de début est invalide.";
@@ -135,13 +110,11 @@ function verifierNouveauContrat($idClient, $dateDebut, &$infos)
         return "choisissez la zone (quartier) où se trouve le compteur.";
     }
     if ($infos['adresse'] === '') {
-        $infos['adresse'] = $clients[$idClient]['Adresse'] ?? '';
+        $infos['adresse'] = $client['Adresse'] ?? '';
     }
     return null;
 }
 
-// Clôture d'un contrat actif. Renvoie [erreur, cloture].
-// cloture = ['indexFin', 'releve' (bool : créer un relevé de clôture), 'mois', 'annee', 'precedent', 'avertissement']
 function verifierCloture($ct, $dateFin, $indexSaisi)
 {
     if (!$ct || $ct['Statut'] !== 'Actif') {
@@ -201,7 +174,6 @@ function verifierCloture($ct, $dateFin, $indexSaisi)
     ]];
 }
 
-// Après la transaction : relevé de clôture + facture de l'ancien titulaire
 function enregistrerReleveCloture($ct, $cl)
 {
     if (!$cl['releve']) {
@@ -214,11 +186,6 @@ function enregistrerReleveCloture($ct, $cl)
          . ($ct['Type_Compteur'] === 'Eau' ? 'm³' : 'kWh') . ')'
          . ($idFacture ? ", facture de clôture n° $idFacture générée." : '.');
 }
-
-
-// =====================================================================
-//  ACTIONS
-// =====================================================================
 
 function actionCreerContrat($p, $idAdmin)
 {
@@ -252,11 +219,39 @@ function actionCreerContrat($p, $idAdmin)
     }
 }
 
+function bloquerSiImpayes($ct, $action)
+{
+    $impayes = getImpayesClient($ct['ID_Client']);
+    if ($impayes['nb'] === 0) {
+        return null;
+    }
+    $montant = fr($impayes['montant']);
+    $notifie = '';
+    try {
+        creerNotificationFacture(
+            (int) $ct['ID_Client'],
+            ((int) ($_SESSION['user']['id'] ?? 0)) ?: null,
+            $impayes['premiere'],
+            "Votre demande de $action du contrat n° {$ct['ID_Contrat']} n'a pas pu être traitée : "
+            . "vous avez {$impayes['nb']} facture(s) impayée(s) pour un montant total de $montant DH. "
+            . "Merci de régler vos factures ; l'opération pourra ensuite être effectuée."
+        );
+        $notifie = " Le client a été notifié.";
+    } catch (Throwable $e) {
+        $notifie = " (Notification au client impossible.)";
+    }
+    return $ct['Prenom'] . ' ' . $ct['Nom'] . " a encore " . $impayes['nb'] . " facture(s) impayée(s) ("
+         . $montant . " DH). Elles doivent être réglées avant le/la $action." . $notifie;
+}
+
 function actionResilierContrat($p)
 {
     $ct = getContratParId((int) ($p['id_contrat'] ?? 0));
     [$err, $cl] = verifierCloture($ct, dateValide($p['date_fin'] ?? ''), $p['index_fin'] ?? '');
     if ($err) {
+        return ['erreur', "Résiliation impossible : $err"];
+    }
+    if ($err = bloquerSiImpayes($ct, 'résiliation')) {
         return ['erreur', "Résiliation impossible : $err"];
     }
     $cnx = Connexion();
@@ -276,7 +271,6 @@ function actionResilierContrat($p)
                     . enregistrerReleveCloture($ct, $cl) . $cl['avertissement']];
 }
 
-// Même compteur, nouvel occupant
 function actionTransfererContrat($p, $idAdmin)
 {
     $ct       = getContratParId((int) ($p['id_contrat'] ?? 0));
@@ -291,6 +285,9 @@ function actionTransfererContrat($p, $idAdmin)
         $err = verifierNouveauContrat($nouveau, $date, $infos);
     }
     if ($err) {
+        return ['erreur', "Transfert impossible : $err"];
+    }
+    if ($err = bloquerSiImpayes($ct, 'transfert')) {
         return ['erreur', "Transfert impossible : $err"];
     }
 
@@ -313,7 +310,6 @@ function actionTransfererContrat($p, $idAdmin)
                     . enregistrerReleveCloture($ct, $cl) . $cl['avertissement']];
 }
 
-// Même client, nouveau logement (autre compteur, éventuellement autre zone)
 function actionDemenagerClient($p, $idAdmin)
 {
     $ct   = getContratParId((int) ($p['id_contrat'] ?? 0));
@@ -330,6 +326,9 @@ function actionDemenagerClient($p, $idAdmin)
         $err = verifierNouveauContrat((int) $ct['ID_Client'], $date, $cp);
     }
     if ($err) {
+        return ['erreur', "Déménagement impossible : $err"];
+    }
+    if ($err = bloquerSiImpayes($ct, 'déménagement')) {
         return ['erreur', "Déménagement impossible : $err"];
     }
 
@@ -371,7 +370,6 @@ function actionChangerZone($p)
                     . "{$quartier['Type_Activite']}) pour tous ses contrats."];
 }
 
-// Point d'entrée des formulaires (index.php?page=contrat_action)
 function traiterActionContrat()
 {
     $idAdmin = (int) ($_SESSION['user']['id'] ?? 0);
@@ -386,18 +384,12 @@ function traiterActionContrat()
     }
     $_SESSION['contrat_msg'] = ['type' => $r[0], 'texte' => $r[1]];
 
-    // Retour sur la liste avec les mêmes filtres
     $retour = [];
     parse_str((string) ($p['retour'] ?? ''), $retour);
     $retour = array_intersect_key($retour, array_flip(['client', 'quartier', 'activite', 'statut', 'type', 'q', 'p']));
     header('Location: index.php?' . http_build_query(['page' => 'contrats'] + $retour));
     exit;
 }
-
-
-// =====================================================================
-//  PAGE (index.php?page=contrats)
-// =====================================================================
 
 function preparerPageContrats()
 {
@@ -423,14 +415,7 @@ function preparerPageContrats()
         $lignes[] = $c;
     }
 
-    $clientFiltre = null;
-    if ($f['client']) {
-        foreach (getClientsPourContrat() as $cl) {
-            if ((int) $cl['ID_Client'] === $f['client']) {
-                $clientFiltre = $cl;
-            }
-        }
-    }
+    $clientFiltre = $f['client'] ? getClientPourContrat($f['client']) : null;
 
     $msg = $_SESSION['contrat_msg'] ?? null;
     unset($_SESSION['contrat_msg']);
@@ -446,11 +431,33 @@ function preparerPageContrats()
         'stats'        => statistiquesContrats(),
         'quartiers'    => getQuartiers(),
         'activites'    => getTypesActivite(),
-        'clients'      => getClientsPourContrat(),
         'libres'       => getCompteursLibresPourContrat(),
         'clientFiltre' => $clientFiltre,
         'ouvrirCreation' => isset($_GET['nouveau']),
         'aujourdhui'   => aujourdhuiContrat(),
         'msg'          => $msg,
     ];
+}
+
+function clientPourJs($c)
+{
+    return [
+        'id'        => (int) $c['ID_Client'],
+        'nom'       => trim($c['Prenom'] . ' ' . $c['Nom']),
+        'cin'       => (string) ($c['CIN'] ?? ''),
+        'telephone' => (string) ($c['Telephone'] ?? ''),
+        'email'     => (string) ($c['Email'] ?? ''),
+        'adresse'   => (string) ($c['Adresse'] ?? ''),
+        'actifs'    => (int) ($c['Nb_Actifs'] ?? 0),
+    ];
+}
+
+function envoyerSuggestionsClients()
+{
+    $q = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 60);
+    $liste = mb_strlen($q) >= 2 || ctype_digit($q) ? rechercherClientsPourContrat($q, 10) : [];
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode(array_map('clientPourJs', $liste), JSON_UNESCAPED_UNICODE);
+    exit;
 }

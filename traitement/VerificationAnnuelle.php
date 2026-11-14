@@ -2,28 +2,10 @@
 require_once __DIR__ . '/Regles.php';
 require_once __DIR__ . '/../BD/VerificationAnnuelle.php';
 require_once __DIR__ . '/../BD/Notification.php';
-require_once __DIR__ . '/../BD/Quartier.php';   // lecture seule : liste des quartiers pour le filtre
+require_once __DIR__ . '/../BD/Quartier.php';
 
-/*
- * VÉRIFICATION ANNUELLE (côté fournisseur)
- *
- *   VÉRIFICATION PAR CONTRAT : un contrat = un compteur dans un quartier (donc un seul type : Eau ou
- *   Électricité). Chaque relevé mensuel est rattaché au contrat du compteur qui couvre son mois.
- *   Le fichier de l'agent est encore PAR CLIENT et par type : si un client a plusieurs contrats du même
- *   type (ex. 2 maisons), la décision se prend sur le TOTAL de ses contrats de ce type.
- *
- *   conso contrat = dernier index vérifié de l'année - dernier index de l'année précédente
- *                  (ou Index_Initial du compteur s'il n'y en a pas)
- *   conso agent  = valeur du fichier Consommation_Annuelle.txt
- *   écart        = conso client - conso agent
- *
- *   |écart| <= TOLERANCE_ECART %  -> Conforme        : le client doit payer ses factures impayées
- *   client < agent (jusqu'à SEUIL_CONTROLE %) -> Régularisation : consommation non facturée, montant estimé
- *   client > agent (jusqu'à SEUIL_CONTROLE %) -> À vérifier : possible trop-perçu / erreur de saisie ou de relevé
- *   |écart| > SEUIL_CONTROLE %     -> À vérifier : contrôle manuel (nouvelle visite de l'agent, réclamation)
- */
-const TOLERANCE_ECART = 5.0;    // en %
-const SEUIL_CONTROLE  = 20.0;   // en %
+const TOLERANCE_ECART = 5.0;
+const SEUIL_CONTROLE  = 20.0;
 
 const ST_CONFORME     = 'Conforme';
 const ST_REGULARISER  = 'Regularisation';
@@ -49,19 +31,11 @@ function libelleStatut($statut)
     ][$statut] ?? $statut;
 }
 
-
-// Montant TTC annuel estimé. Les tranches sont mensuelles : on répartit la conso sur 12 mois.
-// Le client et l'agent sont estimés de la même façon, donc leur différence est comparable.
 function estimerMontantAnnuel($conso, $type)
 {
     return round(12 * calculerMontants(max(0.0, $conso) / 12, $type)[2], 2);
 }
 
-
-/**
- * Compare la conso du client et celle de l'agent pour UN type de compteur.
- * $consoClient / $consoAgent : float ou null (donnée absente).
- */
 function evaluerEcart($consoClient, $consoAgent, $type, $dernierMois = 12, $anomalies = 0)
 {
     $r = [
@@ -110,8 +84,6 @@ function evaluerEcart($consoClient, $consoAgent, $type, $dernierMois = 12, $anom
     return $r;
 }
 
-
-// Statut global d'un client = le plus grave de ses statuts
 function statutGlobal($types)
 {
     foreach ([ST_A_VERIFIER, ST_REGULARISER, ST_SANS_SAISIE, ST_SANS_AGENT] as $s) {
@@ -127,10 +99,6 @@ function statutGlobal($types)
 
 function typeNormal($typeCompteur) { return $typeCompteur === 'Eau' ? 'Eau' : 'Electricite'; }
 
-
-// Contrat du compteur, du même client, qui couvre le mois d'un relevé.
-// Le client est nécessaire : en cas de transfert dans le mois, le relevé de clôture de l'ancien client
-// doit rester sur son contrat (et non sur celui du nouveau).
 function contratDuReleve($contratsParCompteur, $idCompteur, $idClient, $annee, $mois)
 {
     $debutMois = sprintf('%04d-%02d-01', $annee, $mois);
@@ -150,13 +118,11 @@ function contratDuReleve($contratsParCompteur, $idCompteur, $idClient, $annee, $
     return $choix;
 }
 
-
-// [ID_Contrat] = ['conso' => float, 'dernierMois' => int]
 function consoParContrat($annee, $contratsParCompteur)
 {
     $parCompteur = [];
     foreach (vaIndexVerifies($annee) as $l) {
-        $parCompteur[$l['ID_Compteur']][] = $l;     // déjà triés par année puis mois
+        $parCompteur[$l['ID_Compteur']][] = $l;
     }
 
     $res = [];
@@ -164,7 +130,7 @@ function consoParContrat($annee, $contratsParCompteur)
         $precedent = (float) $rows[0]['Index_Initial'];
         foreach ($rows as $l) {
             if ((int) $l['Annee'] < $annee) {
-                $precedent = (float) $l['Index_Actuel'];   // dernier index de l'année précédente
+                $precedent = (float) $l['Index_Actuel'];
                 continue;
             }
             $ct = contratDuReleve($contratsParCompteur, $idCompteur, $l['ID_Client'], (int) $l['Annee'], (int) $l['Mois']);
@@ -179,8 +145,6 @@ function consoParContrat($annee, $contratsParCompteur)
     return $res;
 }
 
-
-// [ID_Contrat] = nombre de relevés de l'année encore en anomalie
 function anomaliesParContrat($annee, $contratsParCompteur)
 {
     $res = [];
@@ -194,8 +158,6 @@ function anomaliesParContrat($annee, $contratsParCompteur)
     return $res;
 }
 
-
-// [ID_Contrat] = ['nb' => , 'total' => ] : factures de l'année non payées
 function impayesParContrat($annee, $contratsParCompteur)
 {
     $res = [];
@@ -210,13 +172,6 @@ function impayesParContrat($annee, $contratsParCompteur)
     return $res;
 }
 
-
-/**
- * Calcule la vérification de tous les clients pour une année (sans rien écrire en base).
- * Retourne une liste d'entrées (une par client) : id, nom, inconnu, contrats[] (une ligne par contrat),
- * statut, notifie. Chaque ligne de contrat porte : idContrat, quartier, ville, typeActivite, type,
- * consoContrat, nbGroupe/idsGroupe (contrats du même client et du même type) + le résultat d'evaluerEcart().
- */
 function calculerVerificationAnnuelle($annee, $idQuartier = 0)
 {
     $contrats = vaContrats($annee);
@@ -258,14 +213,14 @@ function calculerVerificationAnnuelle($annee, $idQuartier = 0)
             }
 
             if ($a !== null && $cGroupe === null && $a == 0.0) {
-                continue;                           // pas de contrat de ce type et rien relevé
+                continue;
             }
             if ($a === null && $cGroupe === null) {
                 continue;
             }
             $r = evaluerEcart($cGroupe, $a, $type, $dernierMois ?: 12, $nbAnom);
 
-            if (!$groupe) {                         // relevé agent pour un client sans contrat cette année
+            if (!$groupe) {
                 $lignes[] = array_merge($r, [
                     'type' => $type, 'idContrat' => null, 'idQuartier' => null, 'quartier' => null, 'ville' => null,
                     'typeActivite' => null, 'consoContrat' => null, 'nbGroupe' => 1, 'idsGroupe' => [],
@@ -303,8 +258,6 @@ function calculerVerificationAnnuelle($annee, $idQuartier = 0)
     return $idQuartier ? filtrerParQuartier($out, $idQuartier) : $out;
 }
 
-
-// Ne garde que les lignes de contrat du quartier choisi (les clients sans ligne disparaissent)
 function filtrerParQuartier($entrees, $idQuartier)
 {
     $out = [];
@@ -325,8 +278,6 @@ function notifiable($e)
     return !$e['inconnu'] && $e['statut'] !== ST_SANS_AGENT;
 }
 
-
-// Libellé d'un groupe de contrats : « Contrat n°1040 (Al Manar, Larache) » ou « Contrats n°1040, 1041 (total) »
 function libelleContrats($r)
 {
     if ($r['idContrat'] === null) {
@@ -338,8 +289,6 @@ function libelleContrats($r)
     return 'Contrat n°' . $r['idContrat'] . ' (' . $r['quartier'] . ', ' . $r['ville'] . ')';
 }
 
-
-// Texte envoyé au client : une ligne par contrat (ou par groupe de contrats du même type)
 function construireMessageClient($annee, $nom, $lignesContrat)
 {
     $lignes   = ["Bonjour $nom, voici le résultat de la vérification annuelle $annee de vos consommations."];
@@ -386,7 +335,6 @@ function construireMessageClient($annee, $nom, $lignesContrat)
             default:
                 continue 2;
         }
-        // factures à payer uniquement pour les contrats sans blocage
         $nbPayer  += $r['impNb'];
         $totPayer += $r['impTotal'];
     }
@@ -400,8 +348,6 @@ function construireMessageClient($annee, $nom, $lignesContrat)
     return implode("\n", $lignes);
 }
 
-
-// Envoie la notification d'un client. Retourne null si OK, sinon un message d'erreur.
 function notifierClientAnnuel($e, $annee)
 {
     if (!notifiable($e)) {
@@ -427,7 +373,7 @@ function resumerVerification($entrees)
         foreach ($e['contrats'] as $r) {
             $s['contrats']++;
             $s['impaye'] += $r['impTotal'];
-            if (!isset($vus[$r['type']])) {           // la régularisation est calculée une fois par groupe
+            if (!isset($vus[$r['type']])) {
                 $vus[$r['type']] = true;
                 $s['regul'] += $r['regul'];
             }
@@ -439,17 +385,15 @@ function resumerVerification($entrees)
     return $s;
 }
 
-
-// Contrôleur de la page fournisseur (gère aussi les POST, puis redirige)
 function preparerPageVerificationAnnuelle()
 {
     $annees   = vaAnneesDisponibles();
     $annee    = (int) ($_POST['annee'] ?? $_GET['annee'] ?? ($annees[0] ?? date('Y', maintenant())));
-    $quartier = (int) ($_POST['quartier'] ?? $_GET['quartier'] ?? 0);      // 0 = tous les quartiers
+    $quartier = (int) ($_POST['quartier'] ?? $_GET['quartier'] ?? 0);
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action  = $_POST['action'] ?? '';
-        $entrees = calculerVerificationAnnuelle($annee);                    // toujours complet : le message couvre tous les contrats
+        $entrees = calculerVerificationAnnuelle($annee);
         $flash   = ['type' => 'succes', 'texte' => ''];
 
         if ($action === 'notifier') {
@@ -462,7 +406,7 @@ function preparerPageVerificationAnnuelle()
                 }
             }
         } elseif ($action === 'notifier_tous') {
-            $visibles = array_column(calculerVerificationAnnuelle($annee, $quartier), 'id');   // seulement les clients affichés
+            $visibles = array_column(calculerVerificationAnnuelle($annee, $quartier), 'id');
             $nb = 0;
             foreach ($entrees as $e) {
                 if (in_array($e['id'], $visibles, true) && notifiable($e) && !$e['notifie']) {
@@ -498,8 +442,6 @@ function preparerPageVerificationAnnuelle()
     ];
 }
 
-
-// Contrôleur de la page notifications du client
 function preparerPageNotifications()
 {
     $idClient = (int) $_SESSION['user']['id'];

@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../traitement/auth.php';
 require_once __DIR__ . '/../../BD/Facture.php';
-require_once __DIR__ . '/../../BD/Quartier.php';   // lecture seule : liste des quartiers / types
+require_once __DIR__ . '/../../BD/Quartier.php';
 
 
 exigerRole('fournisseur');
@@ -111,7 +111,7 @@ $filtreActif = $filtres['quartier'] || $filtres['type'] || $filtres['ville'] !==
         <div class="sidebar-brand">
             <div class="logo-icon"><i class="fa-solid fa-droplet"></i></div>
             <div>
-                <div class="brand-text">Gestion des Factures</div>
+                <div class="brand-text">Fluxio</div>
                 <div class="brand-sub">Eau & Électricité</div>
             </div>
         </div>

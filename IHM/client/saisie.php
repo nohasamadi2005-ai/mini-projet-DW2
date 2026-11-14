@@ -264,7 +264,6 @@ function icone($nom)
       <h1>Saisie mensuelle</h1>
       <p class="sous">Transmettez votre relevé de compteur pour le mois en cours.</p>
 
-      <!-- Message après envoi (succès / anomalie / erreur) -->
       <?php if ($d['flash']): ?>
         <div class="alerte <?= h($d['flash']['type']) ?>" role="alert">
           <?= icone($d['flash']['type'] === 'succes' ? 'valider' : 'alerte') ?>
@@ -483,7 +482,6 @@ surconso: ['info', 'Surconsommation détectée', 'Votre facture est disponible.'
     $('moisPrec').textContent   = c.moisPrecedent;
     $('indexPrec').textContent  = c.indexPrecedent;
 
-    // Photo du mois précédent
     const m = $('miniature');
     m.textContent = '';
     if (c.photo) {
@@ -498,7 +496,6 @@ surconso: ['info', 'Surconsommation détectée', 'Votre facture est disponible.'
     $('photoDate').textContent = c.photo ? 'Ajoutée le ' + c.datePhoto : 'Aucune photo précédente';
     $('agrandir').hidden = !c.photo;
 
-    // État de la saisie
     const e = ETATS[c.etat];
     $('etat').hidden = !e;
     if (e) {
@@ -526,7 +523,6 @@ surconso: ['info', 'Surconsommation détectée', 'Votre facture est disponible.'
 
   document.querySelectorAll('input[name="compteur"]').forEach(r =>
     r.addEventListener('change', () => afficher(r.value)));
-  // Un seul logement / local affiché à la fois (utile quand le client a beaucoup de contrats)
   const selLog = document.getElementById('selLogement');
   if (selLog) {
     const blocs = document.querySelectorAll('.logement[data-groupe]');
@@ -597,7 +593,6 @@ surconso: ['info', 'Surconsommation détectée', 'Votre facture est disponible.'
       fIdxAvant: 'Index : ' + f.indexPrec + ' ' + u, fIdxApres: 'Index : ' + f.indexAct + ' ' + u
     };
     Object.keys(txt).forEach(k => $(k).textContent = txt[k]);
-    // Détail par tranche + redevance (ou ligne simple si le détail est indisponible)
     const corps = $('fCorps');
     corps.textContent = '';
     const ligne = (lib, sous, qte, mont) => {

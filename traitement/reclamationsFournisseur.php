@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/Regles.php';
-require_once __DIR__ . '/Reclamation.php';            // numeroFacture()
+require_once __DIR__ . '/Reclamation.php';
 require_once __DIR__ . '/../BD/reclamationFournisseur.php';
 
 function flashReclamationFournisseur($type, $texte)
@@ -11,7 +11,6 @@ function flashReclamationFournisseur($type, $texte)
     exit;
 }
 
-// Catégorie de décisions de la réclamation (dépend du type et, pour une facture, du type de problème)
 function categorieReclamation($type, $sousType = null)
 {
     if ($type === 'Facture') {
@@ -22,9 +21,9 @@ function categorieReclamation($type, $sousType = null)
             return 'Autre';
         }
         if ($sousType === 'Surconsommation' || $sousType === 'Prix dans la facture') {
-            return 'Surconsommation';           // ancien nom : "Prix dans la facture"
+            return 'Surconsommation';
         }
-        return 'Facture';                       // ancienne réclamation sans sous-type
+        return 'Facture';
     }
     if (in_array($type, ['Fuite externe', 'Fuite interne', 'Déménagement', 'Saisie bloquée'], true)) {
         return $type;
@@ -32,9 +31,6 @@ function categorieReclamation($type, $sousType = null)
     return 'Autre';
 }
 
-// Décisions possibles selon le type + notification envoyée au client
-// 'statut' = statut de la réclamation après la décision
-// 'note'   = true si un message complémentaire est obligatoire
 function actionsReclamation()
 {
     $encours = [
@@ -233,7 +229,6 @@ function preparerPageReclamationsFournisseur()
         ];
     }
 
-    // Décisions par catégorie, pour remplir la liste déroulante du formulaire
     $actionsJs = [];
     foreach (actionsReclamation() as $cat => $liste) {
         foreach ($liste as $code => $a) {

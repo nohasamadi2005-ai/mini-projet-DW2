@@ -1,25 +1,21 @@
 <?php
-/** @var array $d données préparées par preparerPageAgents() (traitement/agent.php) */
 if (!function_exists('h')) {
     function h($s) { return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8'); }
 }
 
 $agents       = $d['agents'];
 $quartiers    = $d['quartiers'];
-$affectations = $d['affectations'];          // [ID_Quartier => ID_Agent]
+$affectations = $d['affectations'];
 
-// Première lettre d'un texte (gère les accents, sans dépendre de l'extension mbstring)
 $premiereLettre = function ($texte) {
     return preg_match('/^./us', (string) $texte, $m) ? $m[0] : '';
 };
 
-// Nom complet de chaque agent, pour indiquer qui a déjà un quartier
 $nomAgent = [];
 foreach ($agents as $a) {
     $nomAgent[(int) $a['ID_Agent']] = trim($a['Prenom'] . ' ' . $a['Nom']);
 }
 
-// Quartiers qui n'ont encore aucun agent
 $sansAgent = array_values(array_filter($quartiers, function ($q) use ($affectations) {
     return !isset($affectations[(int) $q['ID_Quartier']]);
 }));
@@ -102,7 +98,7 @@ $nbAffectes = count($quartiers) - count($sansAgent);
         <div class="sidebar-brand">
             <div class="logo-icon"><i class="fa-solid fa-droplet"></i></div>
             <div>
-                <div class="brand-text">Gestion des Factures</div>
+                <div class="brand-text">Fluxio</div>
                 <div class="brand-sub">Eau & Électricité</div>
             </div>
         </div>
