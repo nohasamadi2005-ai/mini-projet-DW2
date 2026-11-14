@@ -231,7 +231,6 @@ function icone($nom)
       <div>Fluxio<small>ÉNERGIE &amp; EAU</small></div></div>
     <div class="tag">ESPACE CLIENT</div>
     <nav>
-      <a href="index.php?page=client"><?= icone('accueil') ?> Accueil</a>
       <a href="index.php?page=saisie" class="actif"><?= icone('saisie') ?> Saisie mensuelle</a>
        <a href="index.php?page=mes_contrats"><?= icone('facture') ?> Mes contrats</a>
      <a href="index.php?page=factures"><?= icone('facture') ?> Mes factures</a>

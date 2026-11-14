@@ -135,7 +135,6 @@ function icone($nom)
       <div>Fluxio<small>ÉNERGIE &amp; EAU</small></div></div>
     <div class="tag">ESPACE CLIENT</div>
     <nav>
-      <a href="index.php?page=client"><?= icone('accueil') ?> Accueil</a>
       <a href="index.php?page=saisie"><?= icone('saisie') ?> Saisie mensuelle</a>
       <a href="index.php?page=mes_contrats"><?= icone('facture') ?> Mes contrats</a>
       <a href="index.php?page=factures"><?= icone('facture') ?> Mes factures</a>
@@ -161,7 +160,7 @@ function icone($nom)
     <main class="page">
       <div class="eyebrow">ESPACE CLIENT</div>
       <h1>Mes réclamations</h1>
-      <p class="sous">Signalez un problème (fuite, facture, déménagement, saisie bloquée...) et suivez la réponse du fournisseur.</p>
+      <p class="sous">Signalez un problème (fuite, facture, déménagement...) et suivez la réponse du fournisseur.</p>
 
       <?php if (!empty($d['message'])): ?>
         <div class="alerte <?= h($d['message']['type']) ?>"><?= h($d['message']['texte']) ?></div>
@@ -286,7 +285,6 @@ function icone($nom)
     'Fuite externe':  ['Description du problème', 'Décrivez la fuite (débit, depuis quand...)'],
     'Facture':        ['Description', 'Expliquez le problème constaté sur la facture...'],
     'Déménagement':   ['Votre déménagement', 'Indiquez que vous avez déménagé de la maison qui contient votre compteur, et écrivez votre nouvelle adresse.'],
-    'Saisie bloquée': ['Explication du problème', 'Expliquez pourquoi votre saisie est bloquée suite au rejet d’une saisie...'],
     'Autre':          ['Description', 'Décrivez votre réclamation...']
   };
   const TOUS = ['bloc_Fuite_externe', 'bloc_Fuite_externe_photo', 'bloc_Facture', 'bloc_Autre'];

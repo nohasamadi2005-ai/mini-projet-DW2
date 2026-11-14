@@ -116,7 +116,6 @@ $badges = [
   <div class="main-content">
     <div class="topbar">
       <div class="user-profile">
-        <div class="notification-icon">🔔</div>
         <div class="avatar"><?= htmlspecialchars($initials) ?></div>
         <div class="user-info">
           <h4><?= htmlspecialchars($user['prenom'] . ' ' . $user['nom']) ?></h4>

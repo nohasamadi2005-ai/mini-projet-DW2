@@ -113,7 +113,6 @@ $resilies = $d['resilies'];
       <div>Fluxio<small>ÉNERGIE &amp; EAU</small></div></div>
     <div class="tag">ESPACE CLIENT</div>
     <nav>
-      <a href="index.php?page=client"><?= icone('accueil') ?> Accueil</a>
       <a href="index.php?page=saisie"><?= icone('saisie') ?> Saisie mensuelle</a>
       <a href="index.php?page=mes_contrats" class="actif"><?= icone('contrat') ?> Mes contrats</a>
       <a href="index.php?page=factures"><?= icone('facture') ?> Mes factures</a>

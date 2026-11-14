@@ -4,7 +4,7 @@ require_once __DIR__ . '/Regles.php';
 require_once __DIR__ . '/../BD/Facture.php';
 require_once __DIR__ . '/../BD/Reclamation.php';
 
-const TYPES_RECLAMATION     = ['Fuite externe', 'Facture', 'Déménagement', 'Saisie bloquée', 'Autre'];
+const TYPES_RECLAMATION     = ['Fuite externe', 'Facture', 'Déménagement', 'Autre'];
 const SOUS_TYPES_FACTURE    = ['Fuite interne', 'Surconsommation', 'Autre'];
 const RECL_PHOTO_MAX        = 5 * 1024 * 1024;
 const RECL_PHOTOS_DOSSIER   = __DIR__ . '/../uploads/reclamations/';
