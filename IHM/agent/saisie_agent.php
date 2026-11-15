@@ -3,7 +3,7 @@ $user = $_SESSION['user'] ?? ['nom' => 'Utilisateur', 'prenom' => 'Agent'];
 $initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 $resultatTraitement = $resultatTraitement ?? ['erreurs' => [], 'succes' => ''];
 
-// Récupérer le dernier fichier importé par cet agent pour le bouton de téléchargement
+
 require_once __DIR__ . '/../../BD/AgentImport.php';
 $agentId = $user['id'] ?? 1;
 $fichiersImportes = getImportsAgent($agentId);

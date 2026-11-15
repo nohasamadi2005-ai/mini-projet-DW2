@@ -1,12 +1,12 @@
 <?php
-/** @var array $d données préparées par preparerPageDetailDepot() (traitement/agent.php) */
+
 $user     = $_SESSION['user'] ?? ['nom' => 'Utilisateur', 'prenom' => 'Agent'];
 $initials = strtoupper(substr($user['prenom'], 0, 1) . substr($user['nom'], 0, 1));
 
-$nf = function ($v) {                       // 1234.5 -> "1 234,50"
+$nf = function ($v) {                     
     return $v === null || $v === '' ? '—' : number_format((float) $v, 2, ',', ' ');
 };
-require_once __DIR__ . '/../../traitement/agent.php';   // contient paginer() et afficherPagination()
+require_once __DIR__ . '/../../traitement/agent.php';   
 $typeCompteur = ['Eau' => 'Eau', 'Electricite' => 'Électricité'];
 $badges = [
     'Integre' => ['integre', 'Intégré'],

@@ -1,10 +1,10 @@
 <?php
 
 require_once __DIR__ . '/connexion.php';
-require_once __DIR__ . '/Consommation.php';   // consoConnexion, consoSelect, consoExecuter
+require_once __DIR__ . '/Consommation.php';   
 
 
-//  COMPTES AGENT (existant, inchangé)
+
 
 function trouverAgentParEmail($email)
 {
@@ -40,7 +40,7 @@ function modifierMotDePasseAgent($id, $hash)
 }
 
 
-//  AGENTS ET QUARTIERS
+
 
 
 
@@ -53,7 +53,7 @@ function getAgentParId($idAgent)
     return $r[0] ?? null;
 }
 
-// Quartiers de la tournée d'un agent (avec leur type d'activité)
+
 function getQuartiersAgent($idAgent)
 {
     return consoSelect(
@@ -69,7 +69,7 @@ function getQuartiersAgent($idAgent)
 
 
 
-//  TOURNÉE
+
 
 
 function getTourneeAgent($idAgent, $annee)

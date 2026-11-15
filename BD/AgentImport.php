@@ -1,9 +1,8 @@
 <?php
 
-require_once __DIR__ . '/Consommation.php';   // consoSelect, consoExecuter
+require_once __DIR__ . '/Consommation.php';   
 
 
-//  ÉCRITURE
 
 
 function insererLigneImport($idClient, $idAgent, $annee, $consoEau, $consoElect, $fichierSource,
@@ -42,7 +41,7 @@ function insererLigneImport($idClient, $idAgent, $annee, $consoEau, $consoElect,
     }
 }
 
-// Coupe un texte à $max caractères (sans casser les accents, même sans l'extension mbstring)
+
 function tronquerTexte($texte, $max)
 {
     $texte = (string) $texte;
@@ -54,7 +53,7 @@ function insererConsommationAnnuelle($idClient, $idAgent, $annee, $consoEau, $co
     return insererLigneImport($idClient, $idAgent, $annee, $consoEau, $consoElect, $fichierSource);
 }
 
-//  CONTRÔLE DES LIGNES (utilisé par traitement/agent.php)
+
 
 
 function getEtatClientsPourAgent($idAgent)
@@ -105,7 +104,7 @@ function getEtatContratsPourAgent($idAgent, $annee)
 }
 
 
-//  LECTURE (historique)
+
 
 
 function getImportsAgent($idAgent = null, $search = '')
