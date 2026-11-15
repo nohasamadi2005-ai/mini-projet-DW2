@@ -55,6 +55,7 @@ function icone($nom)
   .side nav a:hover { background:rgba(255,255,255,.07); }
   .side nav a.actif { background:var(--blue); color:#fff; font-weight:600; }
   .badge { margin-left:auto; background:#ef4444; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:1px 6px; }
+  .side > nav:last-of-type { margin-top:auto; }
   .aide { margin-top:auto; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:14px; font-size:12px; }
   .aide strong { color:#fff; display:block; margin:6px 0 4px; }
   .aide a { color:var(--blue); text-decoration:none; font-weight:600; }
@@ -235,12 +236,6 @@ function icone($nom)
        <a href="index.php?page=mes_contrats"><?= icone('facture') ?> Mes contrats</a>
      <a href="index.php?page=factures"><?= icone('facture') ?> Mes factures</a>
      <a href="index.php?page=reclamations"><?= icone('message') ?> Mes réclamations</a>      <a href="index.php?page=notifications"><?= icone('cloche') ?> Notifications</a>    </nav>
-    <div class="aide">
-      <span class="num" style="width:20px;height:20px">?</span>
-      <strong>Besoin d'aide ?</strong>
-      Notre équipe vous répond du lundi au vendredi.
-      <br><br><a href="#">Centre d'aide</a>
-    </div>
     <nav>
       <a href="index.php?page=motdepasse"><?= icone('cle') ?> Mon mot de passe</a>
     </nav>
